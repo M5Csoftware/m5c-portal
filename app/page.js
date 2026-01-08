@@ -10,6 +10,7 @@ const Home = () => {
 
   const handleClick = () => {
     setIsLoading(true);
+    
   };
 
   useEffect(() => {
