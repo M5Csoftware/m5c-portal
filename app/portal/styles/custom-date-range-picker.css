@@ -1,0 +1,48 @@
+/* custom-date-range-picker.css */
+
+.custom-calendar {
+    background-color: white;
+}
+
+.custom-calendar .rdrCalendarWrapper {
+    background-color: white;
+    color: #000000;
+}
+
+.custom-calendar .rdrMonthAndYearWrapper {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.custom-calendar .rdrDayNumber span {
+    color: black;
+}
+
+.custom-calendar .rdrDayToday .rdrDayNumber span:after {
+    border-color: var(--primary-color);
+}
+
+.custom-calendar .rdrDayPassive {
+    color: #c0c0c0;
+}
+
+/* .custom-calendar .rdrStaticRangeLabel{
+    color: var(--primary-color);
+} */
+.custom-calendar .rdrSelected,
+.custom-calendar .rdrInRange,
+.custom-calendar .rdrStartEdge,
+.custom-calendar .rdrEndEdge {
+    background-color: var(--primary-color) !important;
+    color: white !important;
+}
+
+.custom-calendar .rdrDayHovered {
+    border-radius: 50%;
+    background-color: rgba(0, 123, 255, 0.1) !important;
+    color: black;
+}
+
+.custom-calendar .rdrMonthAndYearPickers select{
+    color: white;
+}

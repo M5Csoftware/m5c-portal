@@ -1,0 +1,4 @@
+accountCode,fullName,email,kycType,kycNumber,phoneNumber,addressLine1,addressLine2,pincode,city,state,country,addressType
+DL002,Suraj Chandrakar,surajchandrakar0031@gmail.com,passport,1234,6263792959,"Bilaspur(CGH),Chhattisgarh,IN,495115","Bilaspur, CG",495115,Bilaspur(CGH),Chhattisgarh,IN,Consignee
+DL002,Suraj Chandrakar,surajchandrakar@m5clogs.com,passport,4567,6263792959,"Kawardha, CG","Kawardha, CG",491559,Kawardha,CG,IN,Consignor
+DL002,Suraj Chandrakar,surajchandrakar@gmail.com,N/A,N/A,6263792959,"Mungeli, CG","Mungeli, CG",495115,Mungeli,CG,IN,Consignee

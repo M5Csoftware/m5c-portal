@@ -1,0 +1,18 @@
+_id,awbNumber,shipmentDetails_time,shipmentDetails_date,shipmentDetails_courierUsed,shipmentDetails_chargedWeight,consignorDetails_name,consignorDetails_mobileNo,consignorDetails_address,consigneeDetails_name,consigneeDetails_mobileNo,consigneeDetails_address,packageDetails_dimensions,packageDetails_volumetricWeight,packageDetails_contents,packageDetails_quantity,paymentDetails_amount,paymentDetails_paymentMethod
+1,100001,10:00,01-08-2024,Blue Dart,2 kg,Amit Sharma,9812345678,10/1 Main Street, Delhi, Rajesh Kumar,9876543210,15/2 Side Road, Mumbai,20x20x20 cm,1 kg,Books,3,1500,Net Banking
+2,100002,12:30,02-08-2024,DTDC,3 kg,Sunita Patel,9823456789,20/2 Old City, Bangalore, Deepak Singh,9887654321,25/3 New Lane, Chennai,25x25x25 cm,2 kg,Clothing,5,2000,UPI
+3,100003,14:00,03-08-2024,Blaze Express,5 kg,Vikram Mehta,9834567890,30/3 Green Park, Hyderabad, Priya Reddy,9898765432,35/4 Blue Estate, Kolkata,30x30x30 cm,3 kg,Electronics,1,2500,Credit Card
+4,100004,09:15,04-08-2024,First Flight,4 kg,Neha Agarwal,9845678901,40/4 Red Avenue, Pune, Arun Kumar,9909876543,45/5 Yellow Tower, Jaipur,20x20x20 cm,2 kg,Toys,6,1800,Debit Card
+5,100005,16:45,05-08-2024,India Post,6 kg,Anil Gupta,9856789012,50/5 Blue Hills, Ahmedabad, Kavita Sharma,9910987654,55/6 Green Garden, Surat,35x35x35 cm,4 kg,Furniture,2,3500,Cash on Delivery
+6,100006,11:00,06-08-2024,Shiprocket,7 kg,Rajiv Sharma,9867890123,60/6 Hilltop, Noida, Rina Mehta,9921098765,65/7 Roadside, Lucknow,40x40x40 cm,5 kg,Home Appliances,3,4000,Net Banking
+7,100007,13:30,07-08-2024,Delhivery,3 kg,Shruti Verma,9878901234,70/7 Valley Road, Gurgaon, Arvind Patel,9932109876,75/8 Tower Lane, Chandigarh,25x25x25 cm,2 kg,Books,2,1200,UPI
+8,100008,15:00,08-08-2024,GoJavas,4 kg,Sandeep Mehta,9889012345,80/8 Orchard Park, Jaipur, Meena Singh,9943210987,85/9 Sunset Blvd, Kanpur,30x30x30 cm,3 kg,Clothing,4,1800,Credit Card
+9,100009,10:30,09-08-2024,Ecom Express,5 kg,Divya Kumar,9890123456,90/9 Riverside, Varanasi, Rajesh Gupta,9954321098,95/10 Horizon Street, Bhopal,35x35x35 cm,4 kg,Electronics,1,2300,Debit Card
+10,100010,12:00,10-08-2024,Shipyaari,6 kg,Arjun Yadav,9901234567,100/10 Main Road, Kolkata, Aarti Sharma,9965432109,105/11 Lake View, Indore,40x40x40 cm,5 kg,Furniture,2,3000,Cash on Delivery
+11,100011,14:30,11-08-2024,Logistic World,7 kg,Sonia Reddy,9912345678,110/11 Sky Tower, Bengaluru, Praveen Raj,9976543210,115/12 Greenfield, Bhubaneswar,45x45x45 cm,6 kg,Home Appliances,3,3700,Net Banking
+12,100012,09:00,12-08-2024,Parcel Post,2 kg,Shravan Kumar,9923456789,120/12 High Street, Pune, Geeta Rani,9987654321,125/13 Park Avenue, Dehradun,20x20x20 cm,1 kg,Books,5,1300,UPI
+13,100013,11:30,13-08-2024,Shipmate,4 kg,Nisha Mehta,9934567890,130/13 Lakeview, Delhi, Rohit Singh,9998765432,135/14 Ridge Road, Raipur,25x25x25 cm,2 kg,Clothing,2,1700,Credit Card
+14,100014,13:00,14-08-2024,SendMyParcel,5 kg,Manoj Kumar,9945678901,140/14 Forest Park, Mumbai, Sunita Sharma,9009876543,145/15 Sunset Lane, Agra,30x30x30 cm,3 kg,Electronics,1,2200,Debit Card
+15,100015,15:15,15-08-2024,Packers & Movers,6 kg,Rekha Patel,9956789012,150/15 Ocean View, Chennai, Vikas Reddy,9010987654,155/16 Hilltop, Coimbatore,35x35x35 cm,4 kg,Furniture,2,2900,Cash on Delivery
+16,100016,10:00,16-08-2024,PacknSend,2 kg,Ankit Sharma,9967890123,160/16 Central Road, Kolkata, Seema Verma,9021098765,165/17 Lakeside, Patna,20x20x20 cm,1 kg,Books,4,1400,Net Banking
+17,100017,12:30,17-08-2024,ShipXpress,3 kg,Nidhi Gupta,9978901234,170/17 Green Hill, Delhi, Rajiv Kumar,9032109876,175/18 Meadow Lane, Mumbai,25x25x25 cm,2 kg,Clothing,3,1900,UPI

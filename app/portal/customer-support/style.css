@@ -1,0 +1,23 @@
+.ticket-detail-ul li{
+    width: 165px;
+    text-align: center;
+    
+}
+.end {
+  width: 20px !important; 
+}
+.text-overflow {
+    max-width: 150px; /* Adjust as needed */
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  .whitespace-nowrap {
+    white-space: nowrap;
+  }
+  
+  .truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  

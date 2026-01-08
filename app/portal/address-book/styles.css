@@ -1,0 +1,11 @@
+.contact-detail-ul li{
+    width: 147px;
+    text-align: center;
+    
+  }
+  .action-buttons-li{
+    width: 109px !important;
+  }
+  .action-buttons-li-checkbox{
+    width: 38px !important;
+  }

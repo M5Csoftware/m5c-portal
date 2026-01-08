@@ -1,0 +1,18 @@
+.shipment-detail-ul li {
+  width: 140px;
+}
+
+.text-overflow {
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.whitespace-nowrap {
+  white-space: nowrap;
+}
+
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
