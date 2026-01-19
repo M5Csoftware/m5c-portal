@@ -69,7 +69,14 @@ const ManifestOverview = ({ params }) => {
   const [originalShipments, setOriginalShipments] = useState([]); // Store original API data
   const [viewingLabel, setViewingLabel] = useState(null); // For label modal
   const [showLabelModal, setShowLabelModal] = useState(false);
-  const { server, setDisptchedSuccessModal, disptchedSuccessModal, dispatchOpen, setDisptchedOpen, setSelectedManifest } = useContext(GlobalContext);
+  const {
+    server,
+    setDisptchedSuccessModal,
+    disptchedSuccessModal,
+    dispatchOpen,
+    setDisptchedOpen,
+    setSelectedManifest,
+  } = useContext(GlobalContext);
   const [previewUrl, setPreviewUrl] = useState(null);
   const { data: session } = useSession();
 
@@ -80,7 +87,7 @@ const ManifestOverview = ({ params }) => {
         if (!accountCode) return;
 
         const response = await axios.get(
-          `${server}/portal/label-preferences?accountCode=${accountCode}`
+          `${server}/portal/label-preferences?accountCode=${accountCode}`,
         );
 
         if (response.data.success && response.data.data?.logoUrl) {
@@ -102,8 +109,9 @@ const ManifestOverview = ({ params }) => {
       from: {
         name: shipment.shipperFullName || "SENDER NAME",
         address:
-          `${shipment.shipperAddressLine1 || ""} ${shipment.shipperAddressLine2 || ""
-            }`.trim() || "SENDER ADDRESS",
+          `${shipment.shipperAddressLine1 || ""} ${
+            shipment.shipperAddressLine2 || ""
+          }`.trim() || "SENDER ADDRESS",
         city: shipment.shipperCity || "SENDER CITY",
         state: shipment.shipperState || "SENDER STATE",
         zip: shipment.shipperPincode || "000000",
@@ -112,8 +120,9 @@ const ManifestOverview = ({ params }) => {
         name: shipment.receiverFullName || "RECEIVER NAME",
         attn: "Attn:",
         address:
-          `${shipment.receiverAddressLine1 || ""} ${shipment.receiverAddressLine2 || ""
-            }`.trim() || "RECEIVER ADDRESS",
+          `${shipment.receiverAddressLine1 || ""} ${
+            shipment.receiverAddressLine2 || ""
+          }`.trim() || "RECEIVER ADDRESS",
         city: shipment.receiverCity || "RECEIVER CITY",
         state: shipment.receiverState || "RECEIVER STATE",
         zip: shipment.receiverPincode || "000000",
@@ -131,7 +140,7 @@ const ManifestOverview = ({ params }) => {
         volWt: `${shipment.totalVolWt || 0} Kg`,
         chgWt: `${Math.max(
           shipment.totalActualWt || 0,
-          shipment.totalVolWt || 0
+          shipment.totalVolWt || 0,
         )} Kg`,
       },
       trackingNumber: shipment.awbNo,
@@ -175,11 +184,12 @@ const ManifestOverview = ({ params }) => {
                     <div style="border-bottom: 2px solid #374151; padding: 8px; background: white;">
   <div style="font-weight: bold; border-bottom: 2px solid black; font-size: 1.125rem; padding: 8px 0; display: flex; align-items: center; justify-content: space-between;">
     <span>M5C Logistics™</span>
-    ${previewUrl
-            ? `<img src="${previewUrl}" alt="Company Logo" 
+    ${
+      previewUrl
+        ? `<img src="${previewUrl}" alt="Company Logo" 
               style="height: 32px; object-fit: contain; max-width: 150px;" />`
-            : ""
-          }
+        : ""
+    }
   </div>
   <div style="padding-top: 4px;">
     <span style="font-weight: 600;">Date: </span>
@@ -195,18 +205,21 @@ const ManifestOverview = ({ params }) => {
                         <div style="padding: 32px 8px 8px 8px; font-weight: bold; line-height: 1.2;">
                             <div>${labelData.from.name}</div>
                             <div>${labelData.from.address}</div>
-                            <div>${labelData.from.city}, ${labelData.from.state
-          }</div>
+                            <div>${labelData.from.city}, ${
+                              labelData.from.state
+                            }</div>
                             <div>${labelData.from.zip}</div>
                         </div>
                     </div>
 
                     <!-- Service Code -->
                     <div style="padding: 8px; border-bottom: 2px solid black; display: flex; justify-content: space-between; background: white;">
-                        <div style="font-weight: bold;">${labelData.serviceCode
-          }</div>
-                        <div style="font-weight: bold;">${labelData.pageInfo
-          }</div>
+                        <div style="font-weight: bold;">${
+                          labelData.serviceCode
+                        }</div>
+                        <div style="font-weight: bold;">${
+                          labelData.pageInfo
+                        }</div>
                     </div>
 
                     <!-- To + Details -->
@@ -226,12 +239,14 @@ const ManifestOverview = ({ params }) => {
 
                         <div style="display: flex; font-weight: 600;">
                             <div style="flex: 1; padding: 8px; font-size: 12px; line-height: 1.2;">
-                                <div style="font-weight: 600;">${labelData.to.name
-          }</div>
+                                <div style="font-weight: 600;">${
+                                  labelData.to.name
+                                }</div>
                                 <div>${labelData.to.attn}</div>
                                 <div>${labelData.to.address}</div>
-                                <div>${labelData.to.city}, ${labelData.to.state
-          }</div>
+                                <div>${labelData.to.city}, ${
+                                  labelData.to.state
+                                }</div>
                                 <div>${labelData.to.zip}</div>
                             </div>
                             <div style="width: 176px; padding: 8px; font-size: 12px; border-left: 1px solid black; line-height: 1.2;">
@@ -247,13 +262,15 @@ const ManifestOverview = ({ params }) => {
                     <!-- Barcode -->
                     <div style="padding: 8px 16px; display: flex; flex-direction: column; background: white;">
                         <div style="display: flex; justify-content: center; margin: 10px 0;">
-                            <canvas id="barcode-canvas-${labelData.trackingNumber
-          }" width="280" height="60"></canvas>
+                            <canvas id="barcode-canvas-${
+                              labelData.trackingNumber
+                            }" width="280" height="60"></canvas>
                         </div>
                         <div style="margin-top: 8px; display: flex; justify-content: space-between; align-items: end;">
                             <div style="font-weight: bold; font-size: 12px;">TRACKING NUMBER</div>
-                            <div style="font-weight: bold; font-size: 20px;">${labelData.trackingNumber
-          }</div>
+                            <div style="font-weight: bold; font-size: 20px;">${
+                              labelData.trackingNumber
+                            }</div>
                         </div>
                     </div>
 
@@ -268,7 +285,7 @@ const ManifestOverview = ({ params }) => {
 
         // Generate barcode with unique ID
         const barcodeCanvas = labelWrapper.querySelector(
-          `#barcode-canvas-${labelData.trackingNumber}`
+          `#barcode-canvas-${labelData.trackingNumber}`,
         );
         if (barcodeCanvas) {
           try {
@@ -308,7 +325,7 @@ const ManifestOverview = ({ params }) => {
           onclone: function (clonedDoc) {
             // Ensure styles are applied in cloned document
             const clonedElement = clonedDoc.querySelector(
-              '[id*="barcode-canvas"]'
+              '[id*="barcode-canvas"]',
             );
             if (clonedElement) {
               clonedElement.style.display = "block";
@@ -341,7 +358,7 @@ const ManifestOverview = ({ params }) => {
         // Try to cleanup even if error occurs
         try {
           const tempContainer = document.querySelector(
-            '[style*="position: fixed"][style*="-9999px"]'
+            '[style*="position: fixed"][style*="-9999px"]',
           );
           if (tempContainer && tempContainer.parentNode) {
             tempContainer.parentNode.removeChild(tempContainer);
@@ -386,8 +403,9 @@ const ManifestOverview = ({ params }) => {
       for (let i = 0; i < originalShipments.length; i++) {
         const shipment = originalShipments[i];
         console.log(
-          `Downloading label ${i + 1}/${originalShipments.length} for AWB: ${shipment.awbNo
-          }`
+          `Downloading label ${i + 1}/${originalShipments.length} for AWB: ${
+            shipment.awbNo
+          }`,
         );
 
         const labelData = createLabelDataFromShipment(shipment);
@@ -435,11 +453,11 @@ const ManifestOverview = ({ params }) => {
       awbCount: shipments.length,
       totalPcs: shipments.reduce(
         (sum, shipment) => sum + (shipment?.boxes?.length || 0),
-        0
+        0,
       ),
       totalWeight: shipments.reduce(
         (sum, shipment) => sum + (shipment.totalActualWt || 0),
-        0
+        0,
       ),
       shipments: shipments.map((shipment) => ({
         awb: shipment.awbNo || "N/A",
@@ -496,7 +514,7 @@ const ManifestOverview = ({ params }) => {
   const handleSelectAll = (checked) => {
     if (checked) {
       setSelectedShipments(
-        new Set(manifestData.shipments.map((shipment) => shipment.awb))
+        new Set(manifestData.shipments.map((shipment) => shipment.awb)),
       );
     } else {
       setSelectedShipments(new Set());
@@ -552,7 +570,7 @@ const ManifestOverview = ({ params }) => {
     pdf.text(
       `Pieces: ${manifestData.totalPcs}`,
       margin + colWidth * 2 + 5,
-      currentY
+      currentY,
     );
 
     currentY += 8;
@@ -720,17 +738,17 @@ const ManifestOverview = ({ params }) => {
     pdf.text(
       `Shipments: ${manifestData.shipments.length}`,
       margin + 5,
-      currentY
+      currentY,
     );
     pdf.text(
       `Pieces: ${manifestData.totalPcs}`,
       margin + summaryColWidth + 5,
-      currentY
+      currentY,
     );
     pdf.text(
       `Weight: ${manifestData.totalWeight} KG`,
       margin + summaryColWidth * 2 + 5,
-      currentY
+      currentY,
     );
 
     // Save file
@@ -755,11 +773,11 @@ const ManifestOverview = ({ params }) => {
           prev.totalPcs - prev.shipments.find((s) => s.awb === awb)?.pcs || 0,
         totalWeight:
           prev.totalWeight -
-          prev.shipments.find((s) => s.awb === awb)?.actualWeight || 0,
+            prev.shipments.find((s) => s.awb === awb)?.actualWeight || 0,
       }));
       // Also remove from original shipments
       setOriginalShipments((prev) =>
-        prev.filter((shipment) => shipment.awbNo !== awb)
+        prev.filter((shipment) => shipment.awbNo !== awb),
       );
     }
   };
@@ -853,8 +871,9 @@ const ManifestOverview = ({ params }) => {
           <button
             onClick={downloadAllLabels}
             disabled={downloadingLabels}
-            className={`flex items-center gap-2 text-[#EA1B40] hover:text-red-600 text-sm font-medium ${downloadingLabels ? "opacity-50 cursor-not-allowed" : ""
-              }`}
+            className={`flex items-center gap-2 text-[#EA1B40] hover:text-red-600 text-sm font-medium ${
+              downloadingLabels ? "opacity-50 cursor-not-allowed" : ""
+            }`}
           >
             <Image width={15} height={15} src={"/Vector.svg"} alt="download" />
             {downloadingLabels ? "Downloading..." : "Download All Labels"}
@@ -916,8 +935,9 @@ const ManifestOverview = ({ params }) => {
               {manifestData.shipments.map((shipment, index) => (
                 <div
                   key={shipment.awb}
-                  className={`px-4 py-4 hover:bg-gray-50 transition-colors border mt-2 ${index % 2 === 0 ? "bg-white" : "bg-gray-50/50"
-                    }`}
+                  className={`px-4 py-4 hover:bg-gray-50 transition-colors border mt-2 ${
+                    index % 2 === 0 ? "bg-white" : "bg-gray-50/50"
+                  }`}
                 >
                   <div className="grid grid-cols-12 gap-4 items-center">
                     <div className="col-span-1 flex justify-center">
@@ -964,10 +984,11 @@ const ManifestOverview = ({ params }) => {
                           <button
                             onClick={() => downloadLabel(shipment.awb)}
                             disabled={downloadingLabels}
-                            className={`text-gray-400 hover:text-gray-600 transition-colors p-1 ${downloadingLabels
-                              ? "opacity-50 cursor-not-allowed"
-                              : ""
-                              }`}
+                            className={`text-gray-400 hover:text-gray-600 transition-colors p-1 ${
+                              downloadingLabels
+                                ? "opacity-50 cursor-not-allowed"
+                                : ""
+                            }`}
                             title="Download Label"
                           >
                             <Download className="w-4 h-4" />
@@ -1042,8 +1063,9 @@ const ManifestOverview = ({ params }) => {
                     }
                   }}
                   disabled={downloadingLabels}
-                  className={`px-3 py-1 text-sm border border-[#EA1B40] text-white rounded hover:bg-red-500 bg-[#EA1B40] transition-colors ${downloadingLabels ? "opacity-50 cursor-not-allowed" : ""
-                    }`}
+                  className={`px-3 py-1 text-sm border border-[#EA1B40] text-white rounded hover:bg-red-500 bg-[#EA1B40] transition-colors ${
+                    downloadingLabels ? "opacity-50 cursor-not-allowed" : ""
+                  }`}
                 >
                   {downloadingLabels ? "Downloading..." : "Download"}
                 </button>
@@ -1072,13 +1094,11 @@ const ManifestOverview = ({ params }) => {
         </div>
       )}
 
-
       {dispatchOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-[100]">
           <Dispatch />
         </div>
       )}
-
 
       {disptchedSuccessModal && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-[100]">
