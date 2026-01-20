@@ -1,5 +1,5 @@
 "use client";
-import { useContext, useState, useRef } from "react";
+import { useContext, useState, useRef, useEffect } from "react";
 import ShipNav from "./ShipNav";
 import Shipments from "./Shipments";
 import FilterShipment from "./FilterShipment";
@@ -10,6 +10,7 @@ import Manifest, {
 import PickupAndManifest from "./PickupAndManifest";
 import UploadModal from "./UploadModal";
 import Dispatch, { DisptchedSuccessModal } from "../component/Dispatch";
+import BulkActionsBar from "./BulkActionsBar"; // New component for bulk actions
 
 const Page = () => {
   const {
@@ -23,13 +24,36 @@ const Page = () => {
     dispatchOpen,
     setDisptchedSuccessModal,
     disptchedSuccessModal,
+    selectedAwbs,
+    setSelectedAwbs,
+    setManifestOpen,
+    setDisptchedOpen
   } = useContext(GlobalContext);
+  
   const [totalShipments, setTotalShipments] = useState(0);
   const [selectedCount, setSelectedCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
+  const [showBulkActions, setShowBulkActions] = useState(false);
+  const [isSelectMode, setIsSelectMode] = useState(false);
   
   // Create ref for the download function
   const downloadExcelRef = useRef(null);
+
+  // Show/hide bulk actions bar based on selection
+  useEffect(() => {
+    if (selectedAwbs && selectedAwbs.length > 0) {
+      setShowBulkActions(true);
+    } else {
+      setShowBulkActions(false);
+    }
+  }, [selectedAwbs]);
+
+  // Update selected count from shipments
+  useEffect(() => {
+    if (selectedAwbs) {
+      setSelectedCount(selectedAwbs.length);
+    }
+  }, [selectedAwbs]);
 
   // Handler for search from ShipNav
   const handleSearch = (searchValue) => {
@@ -48,9 +72,59 @@ const Page = () => {
     }
   };
 
-  // Handler for selected count update
-  const handleSelectedCountChange = (count) => {
-    setSelectedCount(count);
+  // Handler for selecting mode toggle
+  const handleSelectModeToggle = () => {
+    setIsSelectMode(!isSelectMode);
+    if (!isSelectMode) {
+      // When entering select mode, clear previous selections
+      setSelectedAwbs([]);
+    }
+  };
+
+  // Handler for bulk manifest creation
+  const handleBulkManifest = () => {
+    if (!selectedAwbs || selectedAwbs.length === 0) {
+      alert("Please select at least one shipment first.");
+      return;
+    }
+    setManifestOpen(true);
+  };
+
+  // Handler for bulk dispatch
+  const handleBulkDispatch = () => {
+    if (!selectedAwbs || selectedAwbs.length === 0) {
+      alert("Please select at least one shipment first.");
+      return;
+    }
+    setDisptchedOpen(true);
+  };
+
+  // Handler for bulk download labels
+  const handleBulkDownloadLabels = () => {
+    if (!selectedAwbs || selectedAwbs.length === 0) {
+      alert("Please select at least one shipment first.");
+      return;
+    }
+    alert(`Downloading labels for ${selectedAwbs.length} shipments...`);
+    // You can implement bulk label download logic here
+  };
+
+  // Handler for clearing selection
+  const handleClearSelection = () => {
+    setSelectedAwbs([]);
+    setShowBulkActions(false);
+  };
+
+  // Handler for select all
+  const handleSelectAll = (allAwbs) => {
+    if (allAwbs && allAwbs.length > 0) {
+      setSelectedAwbs([...allAwbs]);
+    }
+  };
+
+  // Handler for deselect all
+  const handleDeselectAll = () => {
+    setSelectedAwbs([]);
   };
 
   return (
@@ -65,8 +139,23 @@ const Page = () => {
         onDownload={handleDownload}
         selectedCount={selectedCount}
         onSearch={handleSearch}
+        isSelectMode={isSelectMode}
+        onSelectModeToggle={handleSelectModeToggle}
+        onBulkManifest={handleBulkManifest}
+        onBulkDispatch={handleBulkDispatch}
       />
       
+      {/* Bulk Actions Bar */}
+      {showBulkActions && selectedAwbs && selectedAwbs.length > 0 && (
+        <BulkActionsBar
+          selectedCount={selectedAwbs.length}
+          onBulkManifest={handleBulkManifest}
+          onBulkDispatch={handleBulkDispatch}
+          onBulkDownloadLabels={handleBulkDownloadLabels}
+          onClearSelection={handleClearSelection}
+        />
+      )}
+
       {selectedLi == 3 ? (
         <PickupAndManifest statusFilter={"drop"} />
       ) : (
@@ -74,7 +163,10 @@ const Page = () => {
           setTotalShipments={setTotalShipments}
           searchTerm={searchTerm}
           onDownloadSetup={handleDownloadSetup}
-          onSelectedCountChange={handleSelectedCountChange}
+          onSelectedCountChange={setSelectedCount}
+          isSelectMode={isSelectMode}
+          onSelectAll={handleSelectAll}
+          onDeselectAll={handleDeselectAll}
         />
       )}
 

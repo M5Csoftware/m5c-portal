@@ -8,7 +8,13 @@ import axios from "axios";
 import { useSession } from "next-auth/react";
 
 function Dispatch() {
-    const { setDisptchedOpen, bgPos, setBgPos } = useContext(GlobalContext);
+    const { 
+        setDisptchedOpen, 
+        bgPos, 
+        setBgPos,
+        selectedAwbs,
+        setSelectedAwbs
+    } = useContext(GlobalContext);
     const [pickupAddresses, setPickupAddresses] = useState([]);
 
     const { register, setValue, watch, formState: { errors } } = useForm();
@@ -46,6 +52,13 @@ function Dispatch() {
                     </div>
                 </div>
 
+                {/* Show selected AWBs count */}
+                {selectedAwbs && selectedAwbs.length > 0 && (
+                    <div className="text-sm text-green-600 font-medium">
+                        Selected {selectedAwbs.length} shipment(s) for dispatch
+                    </div>
+                )}
+
                 {/* ACTION BUTTONS */}
                 <ManifestActionButtons
                     setDisptchedOpen={setDisptchedOpen}
@@ -64,7 +77,6 @@ function RequestPickup({ pickupAddresses, setPickupAddresses }) {
     const { addressData, setAddressData, server, selectedBranch, setSelectedBranch } = useContext(GlobalContext);
     const { data: session } = useSession();
     const accountCode = session?.user?.accountCode;
-
 
     useEffect(() => {
         const fetchAddresses = async () => {
@@ -263,39 +275,46 @@ const ManifestActionButtons = ({ setDisptchedOpen, ctaButtonLabel }) => {
         setDisptchedSuccessModal,
         setManifestNumber,
         selectedBranch,
-        selectedManifest
+        selectedManifest,
+        setSelectedAwbs // Add this to clear selected AWBs after dispatch
     } = useContext(GlobalContext);
 
     const handleSubmitManifest = async () => {
-        // if (!selectedAwbs || !selectedManifest) {
-        //     alert("Please select at least one shipment (AWB)");
-        //     return;
-        // }
+        if (!selectedAwbs || selectedAwbs.length === 0) {
+            alert("Please select at least one shipment (AWB)");
+            return;
+        }
 
         const payload = {
             manifestNumber: selectedManifest,
             awbNumbers: selectedAwbs,
             pickupType: bgPos ? "drop" : "pending",
-            pickupAddress: bgPos
-                ? selectedBranch
-                : addressData,
+            pickupAddress: bgPos ? selectedBranch : addressData,
             accountCode: session?.user?.accountCode,
+            status: bgPos ? "dispatched" : "pending"
         };
 
-        console.log(payload, bgPos);
+        console.log("Dispatching manifest with payload:", payload);
 
         try {
+            // Always use PUT for dispatching (since we're updating)
             const res = await axios.put(
                 `${server}/portal/manifest`,
                 payload
             );
-            setManifestNumber(res.data.manifest.manifestNumber);
-            console.log(res.data.manifest.manifestNumber);
+            
+            setManifestNumber(res.data.manifest?.manifestNumber || selectedManifest);
+            console.log("Manifest dispatched:", res.data);
             setDisptchedSuccessModal(true);
             setDisptchedOpen(false);
+            
+            // Clear selected AWBs after successful dispatch
+            if (setSelectedAwbs) {
+                setSelectedAwbs([]);
+            }
         } catch (err) {
-            console.error("Manifest creation failed:", err);
-            alert("Failed to create manifest. Please check console.");
+            console.error("Manifest dispatch failed:", err.response?.data || err.message);
+            alert(`Failed to dispatch manifest: ${err.response?.data?.message || err.message}`);
         }
     };
 
@@ -323,7 +342,7 @@ const ManifestActionButtons = ({ setDisptchedOpen, ctaButtonLabel }) => {
                 className="border border-[var(--primary-color)] w-full text-[var(--primary-color)] font-semibold rounded-md px-12 py-3"
                 onClick={() => setDisptchedOpen(false)}
             >
-                Not Now
+                Cancel
             </button>
             <button
                 type="button"
@@ -336,6 +355,7 @@ const ManifestActionButtons = ({ setDisptchedOpen, ctaButtonLabel }) => {
                         handleSubmitManifest();
                     }
                 }}
+                disabled={!selectedAwbs || selectedAwbs.length === 0}
             >
                 {ctaButtonLabel}
             </button>
@@ -383,7 +403,7 @@ export const DisptchedSuccessModal = ({ manifestNumber, onClose }) => {
     const handleCopy = () => {
         navigator.clipboard.writeText(manifestNumber);
         setCopied(true);
-        setTimeout(() => setCopied(false), 2000); // Reset after 2s
+        setTimeout(() => setCopied(false), 2000);
     };
 
     return (
@@ -433,15 +453,20 @@ export const DisptchedSuccessModal = ({ manifestNumber, onClose }) => {
                     )}
                 </div>
 
-                <div className="mt-4 flex items-center justify-center  bg-yellow-50 px-4 py-2 rounded-md border border-yellow-400">
+                <div className="mt-4 flex items-center justify-center bg-yellow-50 px-4 py-2 rounded-md border border-yellow-400">
                     <Image src="/i_icon.svg" alt="Information icon" width={24} height={24} />
-                    <div className=" text-yellow-700 text-sm pl-4">
+                    <div className="text-yellow-700 text-sm pl-4">
                         Your pickup is scheduled within the next 2 to 3 working days.
                     </div>
                 </div>
 
-                <div className="mt-6 bg-[var(--primary-color)] hover:bg-red-700 text-white font-semibold px-6 py-2 rounded">
-                    <button onClick={onClose}>Back to Shipments Page</button>
+                <div className="mt-6">
+                    <button 
+                        onClick={onClose}
+                        className="bg-[var(--primary-color)] hover:bg-red-700 text-white font-semibold px-6 py-2 rounded"
+                    >
+                        Back to Shipments Page
+                    </button>
                 </div>
             </div>
         </div>
@@ -458,10 +483,7 @@ const BranchDropdown = ({ selectedBranch, setSelectedBranch }) => {
         const fetchBranches = async () => {
             try {
                 const res = await axios.get(`${server}/branch-master`);
-
-                // FIX: Correct response structure
                 const list = res.data;
-
                 setBranches(list);
             } catch (err) {
                 console.error("Error fetching branches:", err);
@@ -471,16 +493,12 @@ const BranchDropdown = ({ selectedBranch, setSelectedBranch }) => {
     }, [server]);
 
     const handleSelect = (branch) => {
-        // FIX: pass whole branch object
         setSelectedBranch(branch);
-
-        // update global data
         setAddressData({
             ...addressData,
             branchCode: branch.code,
             companyName: branch.companyName,
         });
-
         setOpen(false);
     };
 
@@ -500,7 +518,7 @@ const BranchDropdown = ({ selectedBranch, setSelectedBranch }) => {
                     {branches.map((branch, index) => (
                         <li
                             key={index}
-                            onClick={() => handleSelect(branch)}  // FIXED
+                            onClick={() => handleSelect(branch)}
                             className="cursor-pointer p-4 hover:bg-gray-100"
                         >
                             <div className="flex flex-col gap-1">
@@ -516,4 +534,3 @@ const BranchDropdown = ({ selectedBranch, setSelectedBranch }) => {
         </div>
     );
 };
-
