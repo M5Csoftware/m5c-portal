@@ -10,7 +10,6 @@ const Home = () => {
 
   const handleClick = () => {
     setIsLoading(true);
-    
   };
 
   useEffect(() => {
@@ -20,6 +19,8 @@ const Home = () => {
       audioRef.current.play(); // Automatically play the audio
     }
   }, []);
+
+  
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
