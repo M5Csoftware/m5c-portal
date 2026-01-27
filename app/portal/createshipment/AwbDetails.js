@@ -14,7 +14,7 @@ function AwbDetails({
   getValue,
   step,
   sectors,
-  destinations,
+  destinations, // This might be empty/not updating
   trigger,
 }) {
 
@@ -24,9 +24,13 @@ function AwbDetails({
   const [awbExists, setAwbExists] = useState(null);
   const [isCheckingAwb, setIsCheckingAwb] = useState(false);
   const [awbError, setAwbError] = useState("");
+  
+  // ✅ NEW: Local state for destinations
+  const [localDestinations, setLocalDestinations] = useState([]);
+  const [zones, setZones] = useState([]);
 
   const awbNo = watch("awbNo");
-
+  const selectedSector = watch("sector"); // ✅ Watch sector changes
 
   useEffect(() => {
     if (!formData) return;
@@ -36,6 +40,52 @@ function AwbDetails({
       setValue(key, formData[key]);
     });
   }, [formData]);
+
+  // ✅ NEW: Fetch destinations when sector changes
+  useEffect(() => {
+    const fetchDestinations = async () => {
+      if (!selectedSector || !server) {
+        setLocalDestinations([]);
+        return;
+      }
+
+      try {
+        console.log("Fetching destinations for sector:", selectedSector);
+        
+        const response = await axios.get(
+          `${server}/portal/create-shipment/get-zones?sector=${selectedSector}`
+        );
+
+        const zoneData = response.data || [];
+        setZones(zoneData);
+        console.log("Zones fetched:", zoneData);
+
+        if (!Array.isArray(zoneData)) {
+          console.error("Zones data is missing or not an array");
+          setLocalDestinations([]);
+          return;
+        }
+
+        // Extract unique destinations for this sector
+        const filteredDestinations = [...new Set(
+          zoneData
+            .filter((zone) => zone.sector === selectedSector)
+            .map((zone) => zone.destination)
+        )];
+
+        console.log("Filtered Destinations:", filteredDestinations);
+        setLocalDestinations(filteredDestinations);
+        
+        // Clear destination when sector changes
+        setValue("destination", "");
+      } catch (error) {
+        console.error("Error fetching destinations:", error);
+        setLocalDestinations([]);
+      }
+    };
+
+    fetchDestinations();
+  }, [selectedSector, server, setValue]);
 
   const handleNext = async () => {
     const isValid = await trigger([
@@ -54,8 +104,6 @@ function AwbDetails({
     onNext();
   };
 
-
-
   // Check if AWB exists in the system
   const checkAwbExists = async (awbNumber) => {
     if (!awbNumber || awbNumber.trim() === "") {
@@ -68,7 +116,6 @@ function AwbDetails({
     setAwbError("");
 
     try {
-      // Replace with your actual API endpoint
       const response = await axios.get(`${server}/portal/get-shipments?awbNo=${awbNumber}`);
       if (response.data) {
         setAwbExists(true);
@@ -197,17 +244,25 @@ function AwbDetails({
                 {errors.sector && (
                   <p className="text-red-500 text-xs">{errors.sector.message}</p>
                 )}
-
               </div>
+              
+              {/* ✅ FIXED: Use localDestinations instead of destinations prop */}
               <div className="w-1/2 items-center">
                 <select
                   className="w-full border border-[#979797] block outline-none mb-2 rounded-md h-12 px-6 py-4"
                   {...register("destination", {
                     required: "Destination is required",
                   })}
+                  disabled={!selectedSector || localDestinations.length === 0}
                 >
-                  <option value="">Destination</option>
-                  {destinations.map((destination, idx) => (
+                  <option value="">
+                    {!selectedSector 
+                      ? "Select Sector First" 
+                      : localDestinations.length === 0 
+                      ? "Loading destinations..." 
+                      : "Destination"}
+                  </option>
+                  {localDestinations.map((destination, idx) => (
                     <option key={idx} value={destination}>
                       {destination}
                     </option>
@@ -217,7 +272,6 @@ function AwbDetails({
                 {errors.destination && (
                   <p className="text-red-500 text-xs">{errors.destination.message}</p>
                 )}
-
               </div>
             </div>
           </div>
@@ -230,7 +284,6 @@ function AwbDetails({
             >
               Next
             </button>
-
           </div>
         </div>
       </div>
