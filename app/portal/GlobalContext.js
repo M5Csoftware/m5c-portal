@@ -17,7 +17,8 @@ export const GlobalProvider = ({ children }) => {
   const [isEditingAddress, setIsEditingAddress] = useState(false); // Initialize isEditingAddress state
   const [raiseTicketWindow, setRaiseTicketWindow] = useState(false); // Initialize raiseTicketWindow state
   const [filterShipmentWindow, setFilterShipmentWindow] = useState(false); // Initialize filterShipmentWindow state
-  const [filterCustomerSupportWindow, setFilterCustomerSupportWindow] = useState(false); // Initialize filterCustomerSupportWindow state
+  const [filterCustomerSupportWindow, setFilterCustomerSupportWindow] =
+    useState(false); // Initialize filterCustomerSupportWindow state
   const [contactToEdit, setContactToEdit] = useState(null); // State to store the contact being edited
   const [ticketRefreshTrigger, setTicketRefreshTrigger] = useState(false); // State to trigger ticket refresh
   const [ticketsData, setTicketsData] = useState([]);
@@ -43,10 +44,25 @@ export const GlobalProvider = ({ children }) => {
   };
   const [selectedBranch, setSelectedBranch] = useState(null);
 
+  // ADD FILTER STATE HERE - This is the most important addition
+  const [filters, setFilters] = useState({
+    filterType: "All",
+    m5Coin: false,
+    rto: false,
+    inTransit: false,
+    delivered: false,
+    priceRange: [0, 5000],
+    weightRange: [0.5, 12.0],
+    paymentMethod: null,
+    service: null,
+    country: null,
+    consignmentType: null,
+  });
 
   return (
     <GlobalContext.Provider
       value={{
+        // Your existing values...
         sidebarHovered,
         setSidebarHovered,
         adding,
@@ -103,6 +119,10 @@ export const GlobalProvider = ({ children }) => {
         setDisptchedSuccessModal,
         selectedManifest,
         setSelectedManifest,
+
+        // ADD THESE TWO LINES - This makes filters available to all components
+        filters,
+        setFilters,
       }}
     >
       {children}
