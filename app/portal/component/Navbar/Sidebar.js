@@ -1,22 +1,45 @@
 "use client";
-import { useState, useContext } from "react";
+import { useState, useContext, useEffect } from "react";
 import React from "react";
 import NavLink from "./NavLink";
 import Image from "next/image";
 import Link from "next/link";
 import { GlobalContext } from "../../GlobalContext";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 
 const Sidebar = () => {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const pathname = usePathname(); // Get current pathname
 
   const [activeTab, setActiveTab] = useState("Dashboard");
   const [toggleTools, setToggleTools] = useState(false);
   const [toggleLogout, setToggleLogout] = useState(false);
   let { adding, setAdding, sidebarHovered, setSidebarHovered } =
     useContext(GlobalContext);
+
+  // Sync activeTab with current URL on mount and URL changes
+  useEffect(() => {
+    if (pathname.includes("/shipments")) {
+      setActiveTab("Shipments");
+    } else if (pathname.includes("/reports")) {
+      setActiveTab("Reports");
+    } else if (pathname.includes("/address-book")) {
+      setActiveTab("Address Book");
+    } else if (pathname.includes("/account")) {
+      setActiveTab("Account");
+    } else if (pathname.includes("/tools")) {
+      setActiveTab("Tools");
+      setToggleTools(true); // Also expand tools menu if on a tools page
+    } else if (pathname.includes("/customer-support")) {
+      setActiveTab("Customer Support");
+    } else if (pathname.includes("/settings")) {
+      setActiveTab("Settings");
+    } else if (pathname === "/portal" || pathname === "/portal/") {
+      setActiveTab("Dashboard");
+    }
+  }, [pathname]);
 
   const handleOnClick = () => {
     setAdding((adding = false));
@@ -43,8 +66,9 @@ const Sidebar = () => {
     <nav
       onMouseEnter={() => setSidebarHovered(true)}
       onMouseLeave={() => setSidebarHovered(false)}
-      className={`container  px-2 py-7  transition-all flex flex-col flex-shrink-0 justify-between  ${sidebarHovered ? "max-w-[200px]" : "max-w-[70px]"
-        }`}
+      className={`container  px-2 py-7  transition-all flex flex-col flex-shrink-0 justify-between  ${
+        sidebarHovered ? "max-w-[200px]" : "max-w-[70px]"
+      }`}
     >
       <div className="fixed bg-white flex flex-col justify-between  h-[95vh]">
         <div className="relative flex flex-col    gap-9">
@@ -81,7 +105,7 @@ const Sidebar = () => {
           />
           <ul className="flex flex-col gap-1">
             <NavLink
-              onClick={() => { }}
+              onClick={() => {}}
               href="../../portal"
               navLogo="/dashboard.svg"
               navAltTxt="Dashboard logo"
@@ -90,7 +114,7 @@ const Sidebar = () => {
               setActiveTab={setActiveTab}
             />
             <NavLink
-              onClick={() => { }}
+              onClick={() => {}}
               href="../../portal/shipments"
               navLogo="/shipments.svg"
               navAltTxt="Shipments logo"
@@ -99,7 +123,7 @@ const Sidebar = () => {
               setActiveTab={setActiveTab}
             />
             <NavLink
-              onClick={() => { }}
+              onClick={() => {}}
               href="../../portal/reports"
               navLogo="/reports.svg"
               navAltTxt="Reports logo"
@@ -117,7 +141,7 @@ const Sidebar = () => {
               setActiveTab={setActiveTab}
             />
             <NavLink
-              onClick={() => { }}
+              onClick={() => {}}
               href="../../portal/account"
               navLogo="/account-ledger.svg"
               navAltTxt="Account ledger logo"
@@ -137,14 +161,15 @@ const Sidebar = () => {
               setActiveTab={setActiveTab}
             />
             <div
-              className={`overflow-hidden transition-all duration-500 ease-in-out ${toggleTools & sidebarHovered
-                ? "max-h-[500px] opacity-100"
-                : "max-h-0 opacity-0"
-                }`}
+              className={`overflow-hidden transition-all duration-500 ease-in-out ${
+                toggleTools & sidebarHovered
+                  ? "max-h-[500px] opacity-100"
+                  : "max-h-0 opacity-0"
+              }`}
             >
               <div className="flex flex-col gap-2 p-2">
                 <NavLinkTool
-                  onClick={() => { }}
+                  onClick={() => {}}
                   href="../../portal/tools/rate-calculator"
                   navLogo="/cust-support.svg"
                   navAltTxt="cust-support logo"
@@ -153,7 +178,7 @@ const Sidebar = () => {
                   setActiveTab={setActiveTab}
                 />
                 <NavLinkTool
-                  onClick={() => { }}
+                  onClick={() => {}}
                   href="../../portal/tools/volume-weight"
                   navLogo="/cust-support.svg"
                   navAltTxt="cust-support logo"
@@ -164,7 +189,7 @@ const Sidebar = () => {
               </div>
             </div>
             <NavLink
-              onClick={() => { }}
+              onClick={() => {}}
               href="../../portal/customer-support"
               navLogo="/cust-support.svg"
               navAltTxt="cust-support logo"
@@ -173,10 +198,11 @@ const Sidebar = () => {
               setActiveTab={setActiveTab}
             />
             <div
-              className={`relative overflow-hidden  h-[128px] flex   rounded-md transition-all  ${sidebarHovered
-                ? "max-w-44 max-h-32 bg-[var(--primary-color)]"
-                : "max-w-10 max-h-10"
-                }`}
+              className={`relative overflow-hidden  h-[128px] flex   rounded-md transition-all  ${
+                sidebarHovered
+                  ? "max-w-44 max-h-32 bg-[var(--primary-color)]"
+                  : "max-w-10 max-h-10"
+              }`}
             >
               <div className={`flex flex-col gap-3 px-2 py-3`}>
                 <div className="relative ">
@@ -275,8 +301,9 @@ const LogoutButton = (props) => {
   return (
     <li
       onClick={props.onClick}
-      className={`list-none flex gap-2 flex-col overflow-hidden h-10 transition-all ${props.sidebarHovered ? "max-w-44" : "max-w-10"
-        }`}
+      className={`list-none flex gap-2 flex-col overflow-hidden h-10 transition-all ${
+        props.sidebarHovered ? "max-w-44" : "max-w-10"
+      }`}
     >
       <Link href={props.href}>
         <div
