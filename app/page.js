@@ -10,7 +10,6 @@ const Home = () => {
 
   const handleClick = () => {
     setIsLoading(true);
-    
   };
 
   useEffect(() => {
@@ -66,24 +65,26 @@ const Home = () => {
                 Go To Portal
               </button>
             </Link>
-            <button
-              className="px-6 py-3 w-[10vw]"
-              style={{
-                backgroundColor: "#EA2147",
-                color: "white",
-                fontWeight: "600",
-                borderRadius: "0.5rem",
-                transition: "background-color 0.3s ease-in-out",
-              }}
-              onMouseEnter={(e) =>
-                (e.currentTarget.style.backgroundColor = "#d71b3c")
-              }
-              onMouseLeave={(e) =>
-                (e.currentTarget.style.backgroundColor = "#EA2147")
-              }
-            >
-              <Link href={`/auth/login`}>Login</Link>
-            </button>
+            <Link href={`/auth/login`}>
+              <button
+                className="px-6 py-3 w-[10vw]"
+                style={{
+                  backgroundColor: "#EA2147",
+                  color: "white",
+                  fontWeight: "600",
+                  borderRadius: "0.5rem",
+                  transition: "background-color 0.3s ease-in-out",
+                }}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.backgroundColor = "#d71b3c")
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.backgroundColor = "#EA2147")
+                }
+              >
+                Login
+              </button>
+            </Link>
             <button
               className="px-6 py-3 w-[10vw]"
               style={{
