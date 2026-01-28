@@ -79,7 +79,7 @@ const AccountTable = ({
   return (
     <div className="w-full">
       {/* Scrollable Table Container */}
-      <div className="overflow-x-auto w-[91vw] scrollbar-hide">
+      <div className="overflow-x-auto w-[91vw] table-scrollbar">
         <div className="min-w-max">
           {/* Header */}
           <ul className="flex sticky top-0 z-20 bg-white border border-[#E2E8F0] rounded-[4px] drop-shadow-sm p-4 text-[#A0AEC0] text-sm font-semibold items-center">
