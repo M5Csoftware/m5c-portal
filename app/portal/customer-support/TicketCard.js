@@ -136,7 +136,7 @@ const TicketCard = ({ ticketData, selected, onCheckboxChange }) => {
       className={`bg-white ${selected ? "bg-gray-100" : ""} text-[#71717A] relative`}
     >
       <ul className="flex justify-between bg-white border border-[#E2E8F0] rounded-[4px] shipment-detail-ul p-4 text-[#A0AEC0] text-sm items-center ticket-detail-ul">
-        <li style={{ width: "42px" }}>
+        <li style={{ width: "0px" }}>
           <input
             type="checkbox"
             name="shipment-detail"
@@ -157,9 +157,9 @@ const TicketCard = ({ ticketData, selected, onCheckboxChange }) => {
           </div>
         </li>
 
-        <li className="font-medium">{awbNumber || "N/A"}</li>
-        <li>{subCategory || "N/A"}</li>
-        <li>
+        <li className="font-medium pr-3">{awbNumber || "N/A"}</li>
+        <li className="pr-5">{subCategory || "N/A"}</li>
+        <li className="pr-5">
           {status === "Resolved" ? (
             <span className="px-4 py-1 text-xs font-semibold text-green-600 bg-green-100 rounded-md">
               {status}
@@ -179,8 +179,8 @@ const TicketCard = ({ ticketData, selected, onCheckboxChange }) => {
           )}
         </li>
 
-        <li>{formatDate(updatedAt)}</li>
-        <li>{formatDate(resolutionDate)}</li>
+        <li className="pr-7">{formatDate(updatedAt)}</li>
+        <li className="pr-9">{formatDate(resolutionDate)}</li>
         <li className="flex flex-col cursor-pointer gap-2 items-center end relative">
           <button
             onClick={() => setShowMenu(!showMenu)}
@@ -189,8 +189,9 @@ const TicketCard = ({ ticketData, selected, onCheckboxChange }) => {
             <Image
               src="/customer-support/option.svg"
               alt="Options"
-              width={16}
-              height={16}
+              width={4}
+              height={4}
+              className="cursor-default select-none"
             />
           </button>
 
