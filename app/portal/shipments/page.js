@@ -10,7 +10,8 @@ import Manifest, {
 import PickupAndManifest from "./PickupAndManifest";
 import UploadModal from "./UploadModal";
 import Dispatch, { DisptchedSuccessModal } from "../component/Dispatch";
-import BulkActionsBar from "./BulkActionsBar"; // New component for bulk actions
+import BulkActionsBar from "./BulkActionsBar";
+import ActiveFilters from "./ActiveFilters"; // New component for active filters
 
 const Page = () => {
   const {
@@ -27,15 +28,17 @@ const Page = () => {
     selectedAwbs,
     setSelectedAwbs,
     setManifestOpen,
-    setDisptchedOpen
+    setDisptchedOpen,
+    filters,
+    setFilters,
   } = useContext(GlobalContext);
-  
+
   const [totalShipments, setTotalShipments] = useState(0);
   const [selectedCount, setSelectedCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
   const [showBulkActions, setShowBulkActions] = useState(false);
   const [isSelectMode, setIsSelectMode] = useState(false);
-  
+
   // Create ref for the download function
   const downloadExcelRef = useRef(null);
 
@@ -127,24 +130,47 @@ const Page = () => {
     setSelectedAwbs([]);
   };
 
+  // Handler for clearing all filters
+  const handleClearFilters = () => {
+    setFilters({
+      filterType: "All",
+      m5Coin: false,
+      rto: false,
+      inTransit: false,
+      delivered: false,
+      priceRange: [0, 5000],
+      weightRange: [0.5, 12.0],
+      paymentMethod: null,
+      service: null,
+      country: null,
+      consignmentType: null,
+    });
+  };
+
   return (
     <main className="w-full px-9 flex flex-col relative">
       <h1 className="font-bold text-2xl text-[#18181B] sticky top-[74px] bg-[#f8f9fa]">
         Shipments
       </h1>
-      
+
       {/* Pass search handler and download handler to ShipNav */}
-      <ShipNav 
-        totalShipments={totalShipments} 
-        onDownload={handleDownload}
-        selectedCount={selectedCount}
-        onSearch={handleSearch}
-        isSelectMode={isSelectMode}
-        onSelectModeToggle={handleSelectModeToggle}
-        onBulkManifest={handleBulkManifest}
-        onBulkDispatch={handleBulkDispatch}
-      />
-      
+      <div className="z-50">
+        <ShipNav
+          totalShipments={totalShipments}
+          onDownload={handleDownload}
+          selectedCount={selectedCount}
+          onSearch={handleSearch}
+          isSelectMode={isSelectMode}
+          onSelectModeToggle={handleSelectModeToggle}
+          onBulkManifest={handleBulkManifest}
+          onBulkDispatch={handleBulkDispatch}
+          onClearFilters={handleClearFilters}
+        />
+      </div>
+
+      {/* Active Filters Display */}
+      <ActiveFilters />
+
       {/* Bulk Actions Bar */}
       {showBulkActions && selectedAwbs && selectedAwbs.length > 0 && (
         <BulkActionsBar
@@ -155,25 +181,26 @@ const Page = () => {
           onClearSelection={handleClearSelection}
         />
       )}
-
-      {selectedLi == 3 ? (
-        <PickupAndManifest statusFilter={"drop"} />
-      ) : (
-        <Shipments 
-          setTotalShipments={setTotalShipments}
-          searchTerm={searchTerm}
-          onDownloadSetup={handleDownloadSetup}
-          onSelectedCountChange={setSelectedCount}
-          isSelectMode={isSelectMode}
-          onSelectAll={handleSelectAll}
-          onDeselectAll={handleDeselectAll}
-        />
-      )}
+      <div className="mt-4 z-10">
+        {selectedLi == 3 ? (
+          <PickupAndManifest statusFilter={"drop"} />
+        ) : (
+          <Shipments
+            setTotalShipments={setTotalShipments}
+            searchTerm={searchTerm}
+            onDownloadSetup={handleDownloadSetup}
+            onSelectedCountChange={setSelectedCount}
+            isSelectMode={isSelectMode}
+            onSelectAll={handleSelectAll}
+            onDeselectAll={handleDeselectAll}
+          />
+        )}
+      </div>
 
       <div className="bg-white shadow-lg rounded-lg z-[100] fixed top-0 bottom-0 right-0 ">
         <FilterShipment />
       </div>
-      
+
       {manifestOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-[100]">
           <Manifest />
@@ -194,7 +221,7 @@ const Page = () => {
           />
         </div>
       )}
-      
+
       {disptchedSuccessModal && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-[100]">
           <DisptchedSuccessModal
