@@ -1144,9 +1144,9 @@ const SelectService = ({
                           </span>
                         </div>
 
-                        <span className="text-[var(--primary-color)] border border-[var(--primary-color)] rounded-md p-2.5 text-sm flex items-center font-semibold justify-center w-fit">
+                        {/* <span className="text-[var(--primary-color)] border border-[var(--primary-color)] rounded-md p-2.5 text-sm flex items-center font-semibold justify-center w-fit">
                           {service.shipper}
-                        </span>
+                        </span> */}
                       </div>
                     </div>
                   </div>
@@ -1162,7 +1162,11 @@ const SelectService = ({
 
                     <button
                       type="button"
-                      className="bg-[var(--primary-color)] text-white text-sm font-bold rounded-md px-12 py-3.5 hover:bg-red-700 transition-colors disabled:opacity-50"
+                      className={`${
+                        selectedServiceLocal === service.service
+                          ? "bg-green-600 hover:bg-green-700"
+                          : "bg-[var(--primary-color)] hover:bg-red-700"
+                      } text-white text-sm font-bold rounded-md px-12 py-3.5 transition-colors disabled:opacity-50`}
                       onClick={() => {
                         setSelectedServiceLocal(service.service);
                       }}
