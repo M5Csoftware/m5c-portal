@@ -367,7 +367,7 @@ const ShipNav = ({ totalShipments = 0, onDownload, selectedCount = 0, onSearch }
               {showDatePicker && (
                 <div
                   ref={datePickerRef}
-                  className="absolute z-10 top-full left-0 mt-2 bg-white shadow-lg rounded-md overflow-hidden border border-[#E2E8F0] custom-calendar"
+                  className="absolute z-50 top-full left-0 mt-2 bg-white shadow-lg rounded-md overflow-hidden border border-[#E2E8F0] custom-calendar"
                 >
                   <DateRangePicker
                     ranges={dateRange}
