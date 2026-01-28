@@ -191,7 +191,7 @@ const TicketCard = ({ ticketData, selected, onCheckboxChange }) => {
               alt="Options"
               width={4}
               height={4}
-              className="cursor-default select-none"
+              className="cursor-pointer select-none"
             />
           </button>
 
