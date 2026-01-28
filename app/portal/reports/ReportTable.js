@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 
 const ReportTable = ({
@@ -12,15 +12,16 @@ const ReportTable = ({
   onViewPDF,
   isShippingBill = false,
   isInvoice = false,
+  selectedRows,
+  setSelectedRows,
 }) => {
   const [selectAll, setSelectAll] = useState(false);
-  const [selectedRows, setSelectedRows] = useState({});
 
   const totalPages = Math.ceil(reportData.length / itemsPerPage);
 
   const paginatedData = reportData.slice(
     (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
+    currentPage * itemsPerPage,
   );
 
   const handleCheckboxToggle = () => {
@@ -47,11 +48,21 @@ const ReportTable = ({
     setSelectedRows(newSelectedRows);
 
     const totalSelectedOnPage = paginatedData.filter(
-      (_, idx) => newSelectedRows[(currentPage - 1) * itemsPerPage + idx]
+      (_, idx) => newSelectedRows[(currentPage - 1) * itemsPerPage + idx],
     ).length;
 
     setSelectAll(totalSelectedOnPage === paginatedData.length);
   };
+
+  // Update selectAll state when page changes or selected rows change
+  useEffect(() => {
+    const totalSelectedOnPage = paginatedData.filter(
+      (_, idx) => selectedRows[(currentPage - 1) * itemsPerPage + idx],
+    ).length;
+    setSelectAll(
+      totalSelectedOnPage === paginatedData.length && paginatedData.length > 0,
+    );
+  }, [currentPage, selectedRows, paginatedData.length]);
 
   const handlePrevPage = () => {
     if (currentPage > 1) setCurrentPage(currentPage - 1);
@@ -70,7 +81,7 @@ const ReportTable = ({
     // Handle Invoice Actions
     if (isInvoice && header === "Actions") {
       const invoiceNumber = data.InvoiceNumber;
-      
+
       return (
         <div className="flex gap-2 items-center justify-center">
           {/* <button
@@ -100,7 +111,9 @@ const ReportTable = ({
       };
       const status = data[header] || "Pending";
       return (
-        <span className={`px-2 py-1 rounded text-xs font-medium ${statusColors[status]}`}>
+        <span
+          className={`px-2 py-1 rounded text-xs font-medium ${statusColors[status]}`}
+        >
           {status}
         </span>
       );
@@ -111,7 +124,7 @@ const ReportTable = ({
       const viewUrl = data.FileUrl;
       const awbNo = data.AwbNo;
       const fileName = data.FileName;
-      
+
       return (
         <div className="flex gap-2 items-center justify-center">
           {/* <button
@@ -142,7 +155,9 @@ const ReportTable = ({
       };
       const status = data[header] || "uploaded";
       return (
-        <span className={`px-2 py-1 rounded text-xs font-medium ${statusColors[status]}`}>
+        <span
+          className={`px-2 py-1 rounded text-xs font-medium ${statusColors[status]}`}
+        >
           {status.charAt(0).toUpperCase() + status.slice(1)}
         </span>
       );
@@ -154,7 +169,7 @@ const ReportTable = ({
   return (
     <div className="w-full">
       {/* Scrollable Table Container */}
-      <div className="overflow-x-auto scrollbar-hide w-[91vw]">
+      <div className="overflow-x-auto table-scrollbar w-[91vw]">
         <div className="min-w-max">
           {/* Header */}
           <ul className="flex sticky top-0 bg-white border border-[#E2E8F0] rounded-[4px] drop-shadow-sm p-4 text-[#A0AEC0] text-sm font-semibold items-center text-center">
@@ -170,8 +185,8 @@ const ReportTable = ({
               <li
                 key={i}
                 className={`${
-                  (isShippingBill || isInvoice) && header === "Actions" 
-                    ? "w-[150px]" 
+                  (isShippingBill || isInvoice) && header === "Actions"
+                    ? "w-[150px]"
                     : "w-[100px]"
                 } h-[20px] mr-4 truncate`}
               >
@@ -235,15 +250,15 @@ const ReportTable = ({
                   {isInvoice
                     ? "No invoices available"
                     : isShippingBill
-                    ? "No shipping bills uploaded yet"
-                    : "No data available"}
+                      ? "No shipping bills uploaded yet"
+                      : "No data available"}
                 </p>
                 <p className="text-xs mt-2">
                   {isInvoice
                     ? "Invoices with Excel data will appear here"
                     : isShippingBill
-                    ? "Upload shipping bills to see them here"
-                    : "Data will appear here once available"}
+                      ? "Upload shipping bills to see them here"
+                      : "Data will appear here once available"}
                 </p>
               </div>
             )}

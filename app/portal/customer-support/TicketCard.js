@@ -157,9 +157,9 @@ const TicketCard = ({ ticketData, selected, onCheckboxChange }) => {
           </div>
         </li>
 
-        <li className="font-medium pr-3">{awbNumber || "N/A"}</li>
-        <li className="pr-5">{subCategory || "N/A"}</li>
-        <li className="pr-5">
+        <li className="font-medium">{awbNumber || "N/A"}</li>
+        <li className="">{subCategory || "N/A"}</li>
+        <li className="">
           {status === "Resolved" ? (
             <span className="px-4 py-1 text-xs font-semibold text-green-600 bg-green-100 rounded-md">
               {status}
@@ -179,8 +179,8 @@ const TicketCard = ({ ticketData, selected, onCheckboxChange }) => {
           )}
         </li>
 
-        <li className="pr-7">{formatDate(updatedAt)}</li>
-        <li className="pr-9">{formatDate(resolutionDate)}</li>
+        <li className="">{formatDate(updatedAt)}</li>
+        <li className="">{formatDate(resolutionDate)}</li>
         <li className="flex flex-col cursor-pointer gap-2 items-center end relative">
           <button
             onClick={() => setShowMenu(!showMenu)}
@@ -191,7 +191,7 @@ const TicketCard = ({ ticketData, selected, onCheckboxChange }) => {
               alt="Options"
               width={4}
               height={4}
-              className="cursor-default select-none"
+              className="cursor-pointer select-none"
             />
           </button>
 

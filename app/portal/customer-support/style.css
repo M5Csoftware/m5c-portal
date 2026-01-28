@@ -1,10 +1,10 @@
 .ticket-detail-ul li{
-    width: 165px;
+    width: 150px;
     text-align: center;
     
 }
 .end {
-  width: 20px !important; 
+  width: 60px !important; 
 }
 .text-overflow {
     max-width: 150px; /* Adjust as needed */

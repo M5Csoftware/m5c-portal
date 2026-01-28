@@ -191,7 +191,7 @@ const Tickets = ({ statusFilter, dateRange }) => {
       {/* Header */}
       <div>
         <ul className="ticket-detail-ul flex justify-between bg-white border border-[#E2E8F0] rounded-[4px] drop-shadow-sm shipment-detail-ul p-4 text-[#A0AEC0] text-sm items-center">
-          <li style={{ width: "42px" }}>
+          <li style={{ width: "0px" }}>
             <input
               type="checkbox"
               name="select-all"
