@@ -8,7 +8,7 @@ import { DateRangePicker, defaultStaticRanges } from "react-date-range";
 import "../styles/custom-date-range-picker.css";
 import { GlobalContext } from "../GlobalContext.js";
 
-const Nav = ({ onStatusChange, selectedLi, onLiChange }) => {
+const Nav = ({ onStatusChange, onDateRangeChange, selectedLi, onLiChange }) => {
   const searchParams = useSearchParams();
   const [lineLeft, setLineLeft] = useState(0);
   const [lineWidth, setLineWidth] = useState(0);
@@ -21,10 +21,6 @@ const Nav = ({ onStatusChange, selectedLi, onLiChange }) => {
     },
   ]);
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [startDate, setStartDate] = useState(
-    new Date(new Date().setDate(new Date().getDate() - 30))
-  );
-  const [endDate, setEndDate] = useState(new Date());
   const datePickerRef = useRef(null);
   const op = ["Open", "Closed", "In Progress"];
 
@@ -34,8 +30,8 @@ const Nav = ({ onStatusChange, selectedLi, onLiChange }) => {
 
   // Handle query parameters to switch tabs
   useEffect(() => {
-    const tab = searchParams.get('tab');
-    if (tab === 'help-articles') {
+    const tab = searchParams.get("tab");
+    if (tab === "help-articles") {
       onLiChange(1); // Switch to Help Articles tab (index 1)
     }
   }, [searchParams, onLiChange]);
@@ -47,7 +43,7 @@ const Nav = ({ onStatusChange, selectedLi, onLiChange }) => {
   useEffect(() => {
     if (lineRef.current) {
       const selectedElement = document.querySelector(
-        `.list-none > li:nth-child(${selectedLi + 1})`
+        `.list-none > li:nth-child(${selectedLi + 1})`,
       );
       if (selectedElement) {
         const ulElement = selectedElement.parentElement;
@@ -91,7 +87,23 @@ const Nav = ({ onStatusChange, selectedLi, onLiChange }) => {
   };
 
   const handleDateChange = (item) => {
-    setDateRange([item.selection]);
+    const newRange = [item.selection];
+    setDateRange(newRange);
+
+    // Pass the date range to parent component
+    if (onDateRangeChange) {
+      onDateRangeChange({
+        startDate: item.selection.startDate,
+        endDate: item.selection.endDate,
+      });
+    }
+
+    console.log(
+      "Date range changed:",
+      item.selection.startDate,
+      "to",
+      item.selection.endDate,
+    );
   };
 
   const getQuarterRange = () => {
@@ -166,6 +178,24 @@ const Nav = ({ onStatusChange, selectedLi, onLiChange }) => {
         </div>
       </div>
     );
+  };
+
+  // Add debug logging
+  useEffect(() => {
+    console.log("Nav - ticketsData:", ticketsData);
+    console.log("Nav - Open tickets:", countOpenTickets(ticketsData));
+    console.log(
+      "Nav - In Progress tickets:",
+      countInProgressTickets(ticketsData),
+    );
+    console.log("Nav - Closed tickets:", countClosedTickets(ticketsData));
+  }, [ticketsData]);
+
+  // Format date range display
+  const formatDateRange = () => {
+    const start = dateRange[0].startDate;
+    const end = dateRange[0].endDate;
+    return `${start.toLocaleDateString()} - ${end.toLocaleDateString()}`;
   };
 
   return (
@@ -279,9 +309,11 @@ const Nav = ({ onStatusChange, selectedLi, onLiChange }) => {
             </div>
             <button
               onClick={toggleDatePicker}
-              className="flex justify-between gap-2 items-center border border-gray-300 px-4 py-2 rounded-lg bg-white"
+              className="flex justify-between gap-2 items-center border border-gray-300 px-4 py-2 rounded-lg bg-white hover:bg-gray-50 transition-colors"
             >
-              <span className="text-[#2d3748]">Date</span>
+              <span className="text-[#2d3748] text-sm whitespace-nowrap">
+                {formatDateRange()}
+              </span>
               <Image
                 width={20}
                 height={20}
@@ -292,7 +324,7 @@ const Nav = ({ onStatusChange, selectedLi, onLiChange }) => {
             {showDatePicker && (
               <div
                 ref={datePickerRef}
-                className="absolute z-50 top-full left-0 mt-2 bg-white shadow-lg border border-[#E2E8F0] custom-calendar"
+                className="absolute z-50 top-full left-0 mt-2 bg-white shadow-lg border border-[#E2E8F0] custom-calendar rounded-lg"
               >
                 <DateRangePicker
                   ranges={dateRange}
@@ -349,21 +381,52 @@ export function totaltickets(data) {
 }
 
 export function countInProgressTickets(data) {
-  return Array.isArray(data)
-    ? data.filter((ticket) => ticket.status === "In Progress").length
-    : 0;
+  if (!Array.isArray(data)) return 0;
+  const count = data.filter((ticket) => {
+    const status = ticket.status?.toLowerCase();
+    return (
+      status === "in progress" ||
+      status === "in-progress" ||
+      status === "pending"
+    );
+  }).length;
+  console.log(
+    "In Progress count:",
+    count,
+    "from data:",
+    data.map((t) => t.status),
+  );
+  return count;
 }
 
 export function countOpenTickets(data) {
-  return Array.isArray(data)
-    ? data.filter((ticket) => ticket.status === "Open").length
-    : 0;
+  if (!Array.isArray(data)) return 0;
+  const count = data.filter((ticket) => {
+    const status = ticket.status?.toLowerCase();
+    return status === "open";
+  }).length;
+  console.log(
+    "Open count:",
+    count,
+    "from data:",
+    data.map((t) => t.status),
+  );
+  return count;
 }
 
 export function countClosedTickets(data) {
-  return Array.isArray(data)
-    ? data.filter((ticket) => ticket.status === "Closed").length
-    : 0;
+  if (!Array.isArray(data)) return 0;
+  const count = data.filter((ticket) => {
+    const status = ticket.status?.toLowerCase();
+    return status === "closed" || status === "resolved";
+  }).length;
+  console.log(
+    "Closed count:",
+    count,
+    "from data:",
+    data.map((t) => t.status),
+  );
+  return count;
 }
 
 export default Nav;

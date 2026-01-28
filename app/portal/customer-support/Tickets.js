@@ -6,7 +6,7 @@ import axios from "axios";
 import { GlobalContext } from "../GlobalContext";
 import { useSession } from "next-auth/react";
 
-const Tickets = ({ statusFilter }) => {
+const Tickets = ({ statusFilter, dateRange }) => {
   const [selectedtickets, setSelectedtickets] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(15);
@@ -35,15 +35,51 @@ const Tickets = ({ statusFilter }) => {
           }));
 
           console.log("Processed tickets:", allTickets);
+          console.log("Status filter:", statusFilter);
+          console.log("Date range:", dateRange);
 
           let filteredTickets = allTickets;
-          if (statusFilter && statusFilter !== "All") {
-            filteredTickets = allTickets.filter(
-              (ticket) => ticket.status === statusFilter,
+
+          // Apply status filter
+          if (statusFilter && statusFilter !== "All" && statusFilter !== "") {
+            filteredTickets = filteredTickets.filter(
+              (ticket) =>
+                ticket.status?.toLowerCase() === statusFilter.toLowerCase(),
             );
-            console.log(`Filtered to ${statusFilter}:`, filteredTickets);
+            console.log(`Filtered by status ${statusFilter}:`, filteredTickets);
           }
 
+          // Apply date range filter
+          if (dateRange && dateRange.startDate && dateRange.endDate) {
+            filteredTickets = filteredTickets.filter((ticket) => {
+              // Check both createdAt and updatedAt fields
+              const ticketDate = new Date(ticket.updatedAt || ticket.createdAt);
+              const startDate = new Date(dateRange.startDate);
+              const endDate = new Date(dateRange.endDate);
+
+              // Set time to start/end of day for accurate comparison
+              startDate.setHours(0, 0, 0, 0);
+              endDate.setHours(23, 59, 59, 999);
+
+              const isInRange =
+                ticketDate >= startDate && ticketDate <= endDate;
+
+              console.log(`Ticket ${ticket.displayTicketId}:`, {
+                ticketDate: ticketDate.toLocaleDateString(),
+                startDate: startDate.toLocaleDateString(),
+                endDate: endDate.toLocaleDateString(),
+                isInRange,
+              });
+
+              return isInRange;
+            });
+            console.log(`Filtered by date range:`, filteredTickets);
+          }
+
+          console.log(
+            `Available statuses:`,
+            allTickets.map((t) => t.status),
+          );
           setTicketsData(filteredTickets);
         } else {
           console.error("Invalid data format:", response.data);
@@ -62,6 +98,7 @@ const Tickets = ({ statusFilter }) => {
     }
   }, [
     statusFilter,
+    dateRange,
     ticketRefreshTrigger,
     session?.user?.accountCode,
     server,
@@ -76,7 +113,7 @@ const Tickets = ({ statusFilter }) => {
   // Reset to page 1 when data changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [ticketsData.length, statusFilter]);
+  }, [ticketsData.length, statusFilter, dateRange]);
 
   // Checkbox logic
   const handleCheckboxChange = (id) => {
@@ -144,13 +181,17 @@ const Tickets = ({ statusFilter }) => {
       {/* Debug info */}
       <div className="text-xs text-gray-500 p-2 bg-gray-100 rounded">
         Total Tickets: {ticketsData.length} | Showing: {currentItems.length} |
-        Page: {currentPage}/{Math.ceil(ticketsData.length / itemsPerPage) || 1}
+        Page: {currentPage}/{Math.ceil(ticketsData.length / itemsPerPage) || 1}{" "}
+        | Filter: {statusFilter || "All"} | Date Range:{" "}
+        {dateRange
+          ? `${new Date(dateRange.startDate).toLocaleDateString()} - ${new Date(dateRange.endDate).toLocaleDateString()}`
+          : "All Time"}
       </div>
 
       {/* Header */}
       <div>
         <ul className="ticket-detail-ul flex justify-between bg-white border border-[#E2E8F0] rounded-[4px] drop-shadow-sm shipment-detail-ul p-4 text-[#A0AEC0] text-sm items-center">
-          <li style={{ width: "42px" }}>
+          <li style={{ width: "0px" }}>
             <input
               type="checkbox"
               name="select-all"
@@ -183,7 +224,11 @@ const Tickets = ({ statusFilter }) => {
         ) : (
           <div className="text-center py-8 text-gray-500 bg-white border rounded">
             {ticketsData.length === 0
-              ? "No tickets found"
+              ? statusFilter && statusFilter !== "All"
+                ? `No ${statusFilter} tickets found${dateRange ? " in the selected date range" : ""}`
+                : dateRange
+                  ? "No tickets found in the selected date range"
+                  : "No tickets found"
               : "No tickets on this page. Try going to the first page."}
           </div>
         )}
