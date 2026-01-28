@@ -22,7 +22,7 @@ const Nav = ({ onStatusChange, selectedLi, onLiChange }) => {
   ]);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [startDate, setStartDate] = useState(
-    new Date(new Date().setDate(new Date().getDate() - 30))
+    new Date(new Date().setDate(new Date().getDate() - 30)),
   );
   const [endDate, setEndDate] = useState(new Date());
   const datePickerRef = useRef(null);
@@ -34,8 +34,8 @@ const Nav = ({ onStatusChange, selectedLi, onLiChange }) => {
 
   // Handle query parameters to switch tabs
   useEffect(() => {
-    const tab = searchParams.get('tab');
-    if (tab === 'help-articles') {
+    const tab = searchParams.get("tab");
+    if (tab === "help-articles") {
       onLiChange(1); // Switch to Help Articles tab (index 1)
     }
   }, [searchParams, onLiChange]);
@@ -47,7 +47,7 @@ const Nav = ({ onStatusChange, selectedLi, onLiChange }) => {
   useEffect(() => {
     if (lineRef.current) {
       const selectedElement = document.querySelector(
-        `.list-none > li:nth-child(${selectedLi + 1})`
+        `.list-none > li:nth-child(${selectedLi + 1})`,
       );
       if (selectedElement) {
         const ulElement = selectedElement.parentElement;
@@ -167,6 +167,17 @@ const Nav = ({ onStatusChange, selectedLi, onLiChange }) => {
       </div>
     );
   };
+
+  // Add debug logging
+  useEffect(() => {
+    console.log("Nav - ticketsData:", ticketsData);
+    console.log("Nav - Open tickets:", countOpenTickets(ticketsData));
+    console.log(
+      "Nav - In Progress tickets:",
+      countInProgressTickets(ticketsData),
+    );
+    console.log("Nav - Closed tickets:", countClosedTickets(ticketsData));
+  }, [ticketsData]);
 
   return (
     <div className="relative">
@@ -349,21 +360,52 @@ export function totaltickets(data) {
 }
 
 export function countInProgressTickets(data) {
-  return Array.isArray(data)
-    ? data.filter((ticket) => ticket.status === "In Progress").length
-    : 0;
+  if (!Array.isArray(data)) return 0;
+  const count = data.filter((ticket) => {
+    const status = ticket.status?.toLowerCase();
+    return (
+      status === "in progress" ||
+      status === "in-progress" ||
+      status === "pending"
+    );
+  }).length;
+  console.log(
+    "In Progress count:",
+    count,
+    "from data:",
+    data.map((t) => t.status),
+  );
+  return count;
 }
 
 export function countOpenTickets(data) {
-  return Array.isArray(data)
-    ? data.filter((ticket) => ticket.status === "Open").length
-    : 0;
+  if (!Array.isArray(data)) return 0;
+  const count = data.filter((ticket) => {
+    const status = ticket.status?.toLowerCase();
+    return status === "open";
+  }).length;
+  console.log(
+    "Open count:",
+    count,
+    "from data:",
+    data.map((t) => t.status),
+  );
+  return count;
 }
 
 export function countClosedTickets(data) {
-  return Array.isArray(data)
-    ? data.filter((ticket) => ticket.status === "Closed").length
-    : 0;
+  if (!Array.isArray(data)) return 0;
+  const count = data.filter((ticket) => {
+    const status = ticket.status?.toLowerCase();
+    return status === "closed" || status === "resolved";
+  }).length;
+  console.log(
+    "Closed count:",
+    count,
+    "from data:",
+    data.map((t) => t.status),
+  );
+  return count;
 }
 
 export default Nav;
