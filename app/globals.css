@@ -62,30 +62,71 @@ body {
   --g: no-repeat linear-gradient(#ea2147 0 0);
   background: var(--g), var(--g), var(--g), var(--g);
   background-size: 16px 14px;
-  animation: l7-1 2s infinite linear, l7-2 2s infinite linear;
+  animation:
+    l7-1 2s infinite linear,
+    l7-2 2s infinite linear;
+}
+
+/* Customize the scrollbar */
+.table-scrollbar::-webkit-scrollbar {
+  height: 16px; /* Scrollbar height for horizontal scrollbars */
+}
+
+.table-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #e2e8f0; /* Scrollbar thumb color (light grayish-blue) */
+  border-radius: 10px; /* Rounded edges for the thumb */
+  border: 6px solid #f8fafc; /* Subtle border to create a recessed effect */
+}
+
+.table-scrollbar::-webkit-scrollbar-track {
+  background-color: transparent; /* Track color (light off-white) */
+  border-radius: 10px; /* Rounded edges for the track */
+  margin: 4px;
+}
+
+/* Remove the scrollbar buttons */
+.table-scrollbar::-webkit-scrollbar-button {
+  display: none;
 }
 
 @keyframes l7-1 {
   0%,
   100% {
-    background-position: 0 -50px, 100% -50px;
+    background-position:
+      0 -50px,
+      100% -50px;
   }
 
   17.5% {
-    background-position: 0 100%, 100% -50px, 0 -50px, 100% -50px;
+    background-position:
+      0 100%,
+      100% -50px,
+      0 -50px,
+      100% -50px;
   }
 
   35% {
-    background-position: 0 100%, 100% 100%, 0 -50px, 100% -50px;
+    background-position:
+      0 100%,
+      100% 100%,
+      0 -50px,
+      100% -50px;
   }
 
   52.5% {
-    background-position: 0 100%, 100% 100%, 0 calc(100% - 16px), 100% -50px;
+    background-position:
+      0 100%,
+      100% 100%,
+      0 calc(100% - 16px),
+      100% -50px;
   }
 
   70%,
   98% {
-    background-position: 0 100%, 100% 100%, 0 calc(100% - 16px),
+    background-position:
+      0 100%,
+      100% 100%,
+      0 calc(100% - 16px),
       100% calc(100% - 16px);
   }
 }
