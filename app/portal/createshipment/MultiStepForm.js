@@ -230,117 +230,7 @@ const MultiStepForm = () => {
     }
   }, [totalActualWt, totalVolumetricWt]);
 
-  // Fetch services with rates (Main logic)
-  useEffect(() => {
-    const fetchServicesWithRates = async () => {
-      if (!chargeableWt || chargeableWt <= 0 || !selectedSector || !selectedDestination) {
-        setFilteredServicesWithRates([]);
-        return;
-      }
-
-      try {
-        // Get Zones for selected sector and destination
-        const zoneRes = await axios.get(
-          `${server}/zones?sector=${selectedSector}&destination=${selectedDestination}`
-        );
-        const zoneData = zoneRes.data || [];
-        const zoneServices = zoneData.map((z) => z.service);
-
-        console.log("zone", zoneServices);
-
-        // Get Shipper Tariff
-        const tariffRes = await axios.get(
-          `${server}/shipper-tariff?accountCode=${session?.user?.accountCode}`
-        );
-        const tariffServices = tariffRes.data || [];
-
-        console.log("tariffServices", tariffRes);
-
-        // Find common services
-        const commonServices = tariffServices.filter((t) =>
-          zoneServices.includes(t.service)
-        );
-
-        console.log("commonServices", commonServices);
-        const finalRates = [];
-
-
-        // Calculate rates for each service
-        for (let srv of commonServices) {
-          const zoneInfo = zoneData.find((z) => z.service === srv.service);
-          if (!zoneInfo) continue;
-
-          const rateRes = await axios.get(
-            `${server}/rate-sheet?service=${srv.service}`
-          );
-          const ratesData = rateRes.data;
-
-          console.log("rateRes", ratesData, chargeableWt);
-
-          const matchedRow = ratesData.find(
-            (row) => chargeableWt >= row.minWeight && chargeableWt <= row.maxWeight
-          );
-
-          console.log("matchedRow", matchedRow);
-
-          if (matchedRow) {
-            const zoneRate = matchedRow[zoneInfo.zone];
-
-            if (zoneRate) {
-              let basicAmt = 0.0;
-
-              if (matchedRow.type === "B") {
-                basicAmt = zoneRate * chargeableWt;
-              } else if (matchedRow.type === "S") {
-                basicAmt = zoneRate;
-              }
-
-              const cgstAmt = (basicAmt * cgst) / 100;
-              const sgstAmt = (basicAmt * sgst) / 100;
-              const grandTotal = basicAmt + cgstAmt + sgstAmt;
-
-              finalRates.push({
-                service: matchedRow.service,
-                zone: zoneInfo.zone,
-                rate: zoneRate,
-                shipper: matchedRow.shipper,
-                type: matchedRow.type,
-                network: srv.network,
-                basicAmt: basicAmt.toFixed(2),
-                cgstAmt: cgstAmt.toFixed(2),
-                sgstAmt: sgstAmt.toFixed(2),
-                grandTotal: grandTotal.toFixed(2),
-                from: srv.from,
-                to: srv.to,
-              });
-            }
-          }
-        }
-
-        // Remove duplicates
-        const uniqueResults = finalRates.filter(
-          (result, index, self) =>
-            index === self.findIndex((r) => r.service === result.service)
-        );
-
-        setFilteredServicesWithRates(uniqueResults);
-        console.log("Filtered Services with Rates:", uniqueResults);
-      } catch (error) {
-        console.error("Error fetching services with rates:", error);
-        setFilteredServicesWithRates([]);
-      }
-    };
-
-    fetchServicesWithRates();
-  }, [
-    chargeableWt,
-    selectedSector,
-    selectedDestination,
-    session?.user?.accountCode,
-    server,
-    cgst,
-    sgst,
-  ]);
+  // ✅ REMOVED: Duplicate fetchServicesWithRates logic - now handled in SelectService component
 
   // Update form values when service is selected
   useEffect(() => {
@@ -355,6 +245,7 @@ const MultiStepForm = () => {
         setValue("sgst", Number(selectedRate.sgstAmt));
         setValue("totalAmt", Number(selectedRate.grandTotal));
         setValue("service", selectedRate.service);
+        setValue("network", selectedRate.network);
       }
     }
   }, [selectedServiceLocal, filteredServicesWithRates, setValue]);
@@ -470,6 +361,7 @@ const MultiStepForm = () => {
             destination={destination}
             destinationFlag={destinationFlag}
             trigger={trigger}
+            setFilteredServicesWithRates={setFilteredServicesWithRates}
           />
           <Checkout
             register={register}
