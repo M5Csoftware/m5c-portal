@@ -12,7 +12,7 @@ import axios from "axios";
 import NotificationFlag from "../component/NotificationFlag";
 import { GlobalContext } from "../GlobalContext";
 import { useSession } from "next-auth/react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 
 const MultiStepForm = () => {
   const [step, setStep] = useState(1);
@@ -30,6 +30,7 @@ const MultiStepForm = () => {
   const [chargeableWt, setChargeableWt] = useState(0.0);
   const [visibleFlag, setVisibleFlag] = useState(false);
   const searchParams = useSearchParams();
+  const router = useRouter();
   const editAwb = searchParams.get("editAwb");
   const isEditMode = Boolean(editAwb);
 
@@ -155,6 +156,9 @@ const MultiStepForm = () => {
 
         alert("Shipment Updated Successfully!");
         console.log("Updated:", response.data);
+        
+        // Redirect to shipments page
+        router.push("/portal/shipments");
         return;
       }
 
@@ -182,7 +186,11 @@ const MultiStepForm = () => {
       setStep(1);
       setVisibleFlag(true);
 
-      setTimeout(() => setVisibleFlag(false), 5000);
+      setTimeout(() => {
+        setVisibleFlag(false);
+        // Redirect to shipments page
+        router.push("/portal/shipments");
+      }, 2000);
 
     } catch (error) {
       console.error("Error Creating/Updating shipment:", error);
