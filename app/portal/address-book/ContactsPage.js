@@ -9,6 +9,10 @@ const ContactsPage = () => {
   const { data: session } = useSession();
   const [contactsData, setContactsData] = useState([]);
   const [selectedContacts, setSelectedContacts] = useState([]);
+  const [editingContactId, setEditingContactId] = useState(null);
+  const [editFormData, setEditFormData] = useState({});
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const { adding, setAdding, server } = useContext(GlobalContext);
 
   const handleNew = () => {
@@ -75,20 +79,58 @@ const ContactsPage = () => {
     });
   };
 
-  const handleEdit = async (index) => {
-    console.log('edit contact:', index);
+  const handleEdit = (contact) => {
+    setEditingContactId(contact._id);
+    setEditFormData({ ...contact });
   };
 
-  const handleDelete = async (index) => {
+  const handleCancelEdit = () => {
+    setEditingContactId(null);
+    setEditFormData({});
+  };
+
+  const handleSaveEdit = async () => {
+    try {
+      // Send the entire object including _id to the PUT endpoint
+      await axios.put(`${server}/portal/address-book`, editFormData);
+      
+      // Update state
+      setContactsData((prevContacts) =>
+        prevContacts.map((contact) =>
+          contact._id === editingContactId ? { ...contact, ...editFormData } : contact
+        )
+      );
+      
+      setEditingContactId(null);
+      setEditFormData({});
+    } catch (error) {
+      console.error('Error updating contact:', error);
+      alert('Failed to update contact. Please try again.');
+    }
+  };
+
+  const handleEditFormChange = (field, value) => {
+    setEditFormData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const handleDeleteClick = (index) => {
+    setDeleteTarget(index);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleConfirmDelete = async () => {
     try {
       let idsToDelete = [];
 
       if (selectedContacts.length > 0) {
         // ✅ delete all selected
         idsToDelete = [...selectedContacts];
-      } else {
+      } else if (deleteTarget !== null) {
         // ✅ delete only the clicked one
-        const contactToDelete = filteredContacts()[index];
+        const contactToDelete = filteredContacts()[deleteTarget];
         idsToDelete = [contactToDelete._id];
       }
 
@@ -102,11 +144,19 @@ const ContactsPage = () => {
       setSelectedContacts((prevSelected) =>
         prevSelected.filter((id) => !idsToDelete.includes(id))
       );
+
+      setShowDeleteConfirm(false);
+      setDeleteTarget(null);
     } catch (error) {
       console.error('Error deleting contact(s):', error);
+      alert('Failed to delete contact(s). Please try again.');
     }
   };
 
+  const handleCancelDelete = () => {
+    setShowDeleteConfirm(false);
+    setDeleteTarget(null);
+  };
 
   return (
     <div>
@@ -200,19 +250,173 @@ const ContactsPage = () => {
                 contactData={contact}
                 selected={selectedContacts.includes(contact._id)}
                 onCheckboxChange={handleCheckboxChange}
-                handleDelete={() => handleDelete(index)}
-                handleEdit={() => handleEdit(index)}
+                handleDelete={() => handleDeleteClick(index)}
+                handleEdit={() => handleEdit(contact)}
+                isEditing={editingContactId === contact._id}
+                editFormData={editFormData}
+                handleEditFormChange={handleEditFormChange}
+                handleSaveEdit={handleSaveEdit}
+                handleCancelEdit={handleCancelEdit}
               />
             ))}
           </div>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold mb-4 text-gray-800">Confirm Delete</h3>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to delete {selectedContacts.length > 0 ? `${selectedContacts.length} contact(s)` : 'this contact'}?
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={handleCancelDelete}
+                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+              >
+                No
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
+              >
+                Yes, Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
-const ContactCard = ({ contactData, selected, onCheckboxChange, handleDelete, handleEdit }) => {
+const ContactCard = ({ 
+  contactData, 
+  selected, 
+  onCheckboxChange, 
+  handleDelete, 
+  handleEdit,
+  isEditing,
+  editFormData,
+  handleEditFormChange,
+  handleSaveEdit,
+  handleCancelEdit
+}) => {
   const { _id, fullName, addressLine1, pincode, city, state, country, kycNumber, kycType, email, phoneNumber } = contactData;
+
+  if (isEditing) {
+    return (
+      <div className={`bg-white ${selected ? 'bg-gray-200' : ''} text-[#71717A]`}>
+        <ul className='flex justify-between bg-white border-2 border-blue-400 rounded-[4px] contact-detail-ul p-4 text-xs'>
+          <li className='action-buttons-li-checkbox flex items-center justify-center' style={{ width: '42px' }}>
+            <input
+              type="checkbox"
+              name="contact-detail"
+              id={_id}
+              checked={selected}
+              onChange={() => onCheckboxChange(_id)}
+              disabled
+            />
+          </li>
+          <li className='flex items-center justify-center'>
+            <input
+              type="text"
+              value={editFormData.fullName || ''}
+              onChange={(e) => handleEditFormChange('fullName', e.target.value)}
+              className="border border-gray-300 rounded px-2 py-1 w-full"
+            />
+          </li>
+          <li className='flex items-center justify-center'>
+            <input
+              type="text"
+              value={editFormData.addressLine1 || ''}
+              onChange={(e) => handleEditFormChange('addressLine1', e.target.value)}
+              className="border border-gray-300 rounded px-2 py-1 w-full"
+            />
+          </li>
+          <li className='flex items-center justify-center'>
+            <input
+              type="text"
+              value={editFormData.pincode || ''}
+              onChange={(e) => handleEditFormChange('pincode', e.target.value)}
+              className="border border-gray-300 rounded px-2 py-1 w-full"
+            />
+          </li>
+          <li className='flex items-center justify-center gap-1'>
+            <input
+              type="text"
+              value={editFormData.city || ''}
+              onChange={(e) => handleEditFormChange('city', e.target.value)}
+              className="border border-gray-300 rounded px-2 py-1 w-16"
+              placeholder="City"
+            />
+            <input
+              type="text"
+              value={editFormData.state || ''}
+              onChange={(e) => handleEditFormChange('state', e.target.value)}
+              className="border border-gray-300 rounded px-2 py-1 w-16"
+              placeholder="State"
+            />
+            <input
+              type="text"
+              value={editFormData.country || ''}
+              onChange={(e) => handleEditFormChange('country', e.target.value)}
+              className="border border-gray-300 rounded px-2 py-1 w-16"
+              placeholder="Country"
+            />
+          </li>
+          <li className='flex flex-col gap-2 items-center'>
+            <input
+              type="text"
+              value={editFormData.kycNumber || ''}
+              onChange={(e) => handleEditFormChange('kycNumber', e.target.value)}
+              className="border border-gray-300 rounded px-2 py-1 w-full"
+            />
+            <input
+              type="text"
+              value={editFormData.kycType || ''}
+              onChange={(e) => handleEditFormChange('kycType', e.target.value)}
+              className="border border-gray-300 rounded px-2 py-1 w-full"
+            />
+          </li>
+          <li className='flex items-center justify-center'>
+            <input
+              type="email"
+              value={editFormData.email || ''}
+              onChange={(e) => handleEditFormChange('email', e.target.value)}
+              className="border border-gray-300 rounded px-2 py-1 w-full"
+            />
+          </li>
+          <li className='flex items-center justify-center'>
+            <input
+              type="text"
+              value={editFormData.phoneNumber || ''}
+              onChange={(e) => handleEditFormChange('phoneNumber', e.target.value)}
+              className="border border-gray-300 rounded px-2 py-1 w-full"
+            />
+          </li>
+          <li className='action-buttons-li flex items-center justify-center'>
+            <div className='flex gap-[10px]'>
+              <button 
+                onClick={handleSaveEdit}
+                className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600"
+              >
+                Save
+              </button>
+              <button 
+                onClick={handleCancelEdit}
+                className="px-3 py-1 bg-gray-500 text-white rounded hover:bg-gray-600"
+              >
+                Cancel
+              </button>
+            </div>
+          </li>
+        </ul>
+      </div>
+    );
+  }
 
   return (
     <div className={`bg-white ${selected ? 'bg-gray-200' : ''} text-[#71717A]`}>
