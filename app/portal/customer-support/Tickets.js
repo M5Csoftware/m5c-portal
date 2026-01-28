@@ -35,13 +35,19 @@ const Tickets = ({ statusFilter }) => {
           }));
 
           console.log("Processed tickets:", allTickets);
+          console.log("Status filter:", statusFilter);
 
           let filteredTickets = allTickets;
-          if (statusFilter && statusFilter !== "All") {
+          if (statusFilter && statusFilter !== "All" && statusFilter !== "") {
             filteredTickets = allTickets.filter(
-              (ticket) => ticket.status === statusFilter,
+              (ticket) =>
+                ticket.status?.toLowerCase() === statusFilter.toLowerCase(),
             );
             console.log(`Filtered to ${statusFilter}:`, filteredTickets);
+            console.log(
+              `Available statuses:`,
+              allTickets.map((t) => t.status),
+            );
           }
 
           setTicketsData(filteredTickets);
@@ -144,13 +150,14 @@ const Tickets = ({ statusFilter }) => {
       {/* Debug info */}
       <div className="text-xs text-gray-500 p-2 bg-gray-100 rounded">
         Total Tickets: {ticketsData.length} | Showing: {currentItems.length} |
-        Page: {currentPage}/{Math.ceil(ticketsData.length / itemsPerPage) || 1}
+        Page: {currentPage}/{Math.ceil(ticketsData.length / itemsPerPage) || 1}{" "}
+        | Filter: {statusFilter || "All"}
       </div>
 
       {/* Header */}
       <div>
         <ul className="ticket-detail-ul flex justify-between bg-white border border-[#E2E8F0] rounded-[4px] drop-shadow-sm shipment-detail-ul p-4 text-[#A0AEC0] text-sm items-center">
-          <li style={{ width: "42px" }}>
+          <li style={{ width: "0px" }}>
             <input
               type="checkbox"
               name="select-all"
@@ -165,7 +172,7 @@ const Tickets = ({ statusFilter }) => {
           <li>Status</li>
           <li>Last Updated</li>
           <li>Resolution Date</li>
-          <li className="end">Actions</li>
+          <li className="end pr-10">Actions</li>
         </ul>
       </div>
 
@@ -183,7 +190,9 @@ const Tickets = ({ statusFilter }) => {
         ) : (
           <div className="text-center py-8 text-gray-500 bg-white border rounded">
             {ticketsData.length === 0
-              ? "No tickets found"
+              ? statusFilter && statusFilter !== "All"
+                ? `No ${statusFilter} tickets found`
+                : "No tickets found"
               : "No tickets on this page. Try going to the first page."}
           </div>
         )}
