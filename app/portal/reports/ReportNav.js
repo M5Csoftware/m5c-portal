@@ -11,6 +11,7 @@ import { useSession } from "next-auth/react";
 import axios from "axios";
 import { GlobalContext } from "../GlobalContext";
 import { downloadInvoicePDF } from "./InvoicePDFDownloader";
+import * as XLSX from "xlsx";
 
 const Report = () => {
   const { server } = useContext(GlobalContext);
@@ -37,7 +38,8 @@ const Report = () => {
   const [shippingBills, setShippingBills] = useState([]);
   const [invoices, setInvoices] = useState([]);
   const [tableHeaders, setTableHeaders] = useState([]);
-  
+  const [selectedRows, setSelectedRows] = useState({});
+
   const [isLoadingReports, setIsLoadingReports] = useState(false);
   const [isLoadingBills, setIsLoadingBills] = useState(false);
   const [isLoadingInvoices, setIsLoadingInvoices] = useState(false);
@@ -125,7 +127,7 @@ const Report = () => {
     const k = 1024;
     const sizes = ["Bytes", "KB", "MB", "GB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + " " + sizes[i];
+    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
   };
 
   // Format date
@@ -146,7 +148,7 @@ const Report = () => {
     setIsLoadingBills(true);
     try {
       const res = await axios.get(
-        `${server}/upload-shipping-bill?accountCode=${session.user.accountCode}`
+        `${server}/upload-shipping-bill?accountCode=${session.user.accountCode}`,
       );
 
       if (res.data.success) {
@@ -180,7 +182,7 @@ const Report = () => {
     try {
       // Using unified endpoint with accountCode parameter
       const res = await axios.get(
-        `${server}/portal/billing-invoice-software?accountCode=${session.user.accountCode}`
+        `${server}/portal/billing-invoice-software?accountCode=${session.user.accountCode}`,
       );
 
       if (res.data.success) {
@@ -194,9 +196,11 @@ const Report = () => {
           Status: invoice.qrCodeData?.[0]?.irnNumber ? "Generated" : "Pending",
           InvoiceData: invoice,
         }));
-        
+
         setInvoices(invoicesList);
-        console.log(`✅ Loaded ${invoicesList.length} invoices with isExcel=true`);
+        console.log(
+          `✅ Loaded ${invoicesList.length} invoices with isExcel=true`,
+        );
       }
     } catch (error) {
       console.error("Error fetching invoices:", error.message);
@@ -209,20 +213,22 @@ const Report = () => {
   const handleDownloadShippingBillPDF = async (awbNo, fileName) => {
     try {
       console.log("📥 Downloading Shipping Bill:", { awbNo, fileName });
-      
+
       const downloadUrl = `${server}/upload-shipping-bill/download-pdf?awbNo=${encodeURIComponent(awbNo)}&fileName=${encodeURIComponent(fileName)}`;
-      
+
       const response = await fetch(downloadUrl);
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || `Download failed: ${response.status}`);
+        throw new Error(
+          errorData.message || `Download failed: ${response.status}`,
+        );
       }
 
       const blob = await response.blob();
-      
+
       if (blob.size === 0) {
-        throw new Error('Downloaded file is empty (0 bytes)');
+        throw new Error("Downloaded file is empty (0 bytes)");
       }
 
       const url = window.URL.createObjectURL(blob);
@@ -232,12 +238,12 @@ const Report = () => {
       a.style.display = "none";
       document.body.appendChild(a);
       a.click();
-      
+
       setTimeout(() => {
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
       }, 100);
-      
+
       console.log("✅ Shipping Bill downloaded successfully");
     } catch (error) {
       console.error("❌ Error downloading shipping bill:", error);
@@ -249,38 +255,39 @@ const Report = () => {
   const handleDownloadInvoicePDF = async (invoiceNumber) => {
     try {
       console.log("📥 Downloading Invoice:", invoiceNumber);
-      
+
       // Show loading notification
-      const loadingToast = document.createElement('div');
-      loadingToast.id = 'invoice-loading-toast';
-      loadingToast.textContent = '⏳ Generating PDF...';
-      loadingToast.style.cssText = 'position:fixed;top:20px;right:20px;background:#333;color:#fff;padding:12px 24px;border-radius:8px;z-index:9999;font-family:Arial;box-shadow:0 4px 12px rgba(0,0,0,0.15);';
+      const loadingToast = document.createElement("div");
+      loadingToast.id = "invoice-loading-toast";
+      loadingToast.textContent = "⏳ Generating PDF...";
+      loadingToast.style.cssText =
+        "position:fixed;top:20px;right:20px;background:#333;color:#fff;padding:12px 24px;border-radius:8px;z-index:9999;font-family:Arial;box-shadow:0 4px 12px rgba(0,0,0,0.15);";
       document.body.appendChild(loadingToast);
-      
+
       // Call the downloadInvoicePDF function
       await downloadInvoicePDF(server, invoiceNumber);
-      
+
       // Remove loading toast
-      const toast = document.getElementById('invoice-loading-toast');
+      const toast = document.getElementById("invoice-loading-toast");
       if (toast) document.body.removeChild(toast);
-      
+
       // Show success notification
-      const successToast = document.createElement('div');
-      successToast.textContent = '✅ Invoice downloaded successfully!';
-      successToast.style.cssText = 'position:fixed;top:20px;right:20px;background:#10b981;color:#fff;padding:12px 24px;border-radius:8px;z-index:9999;font-family:Arial;box-shadow:0 4px 12px rgba(0,0,0,0.15);';
+      const successToast = document.createElement("div");
+      successToast.textContent = "✅ Invoice downloaded successfully!";
+      successToast.style.cssText =
+        "position:fixed;top:20px;right:20px;background:#10b981;color:#fff;padding:12px 24px;border-radius:8px;z-index:9999;font-family:Arial;box-shadow:0 4px 12px rgba(0,0,0,0.15);";
       document.body.appendChild(successToast);
-      
+
       setTimeout(() => {
         document.body.removeChild(successToast);
       }, 3000);
-      
+
       console.log("✅ Invoice downloaded successfully");
-      
     } catch (error) {
       // Remove loading toast if exists
-      const toast = document.getElementById('invoice-loading-toast');
+      const toast = document.getElementById("invoice-loading-toast");
       if (toast) document.body.removeChild(toast);
-      
+
       console.error("❌ Error downloading invoice:", error);
       alert(`Failed to download invoice: ${error.message}`);
     }
@@ -296,28 +303,92 @@ const Report = () => {
   const handleViewInvoice = async (invoiceNumber) => {
     try {
       console.log("👁️ Viewing Invoice:", invoiceNumber);
-      
+
       // Fetch the invoice data using unified endpoint
       const response = await fetch(
-        `${server}/portal/billing-invoice-software?invoiceNumber=${encodeURIComponent(invoiceNumber)}`
+        `${server}/portal/billing-invoice-software?invoiceNumber=${encodeURIComponent(invoiceNumber)}`,
       );
-      
+
       if (!response.ok) {
         throw new Error("Invoice not found");
       }
-      
+
       const invoiceData = await response.json();
-      
+
       // Store invoice data in sessionStorage for viewer page
-      sessionStorage.setItem('viewInvoiceData', JSON.stringify(invoiceData));
-      
+      sessionStorage.setItem("viewInvoiceData", JSON.stringify(invoiceData));
+
       // Open viewer in new tab
-      window.open(`/view-invoice?invoiceNumber=${encodeURIComponent(invoiceNumber)}`, "_blank");
-      
+      window.open(
+        `/view-invoice?invoiceNumber=${encodeURIComponent(invoiceNumber)}`,
+        "_blank",
+      );
     } catch (error) {
       console.error("❌ Error viewing invoice:", error);
       alert(`Failed to view invoice: ${error.message}`);
     }
+  };
+
+  // Download All functionality - Only for Sale Report and Sale Summary Report
+  const handleDownloadAll = () => {
+    // Only work for Sale Report (index 0) and Sale Summary Report (index 1)
+    if (selectedLi !== 0 && selectedLi !== 1) {
+      return;
+    }
+
+    // Get selected row indices
+    const selectedIndices = Object.keys(selectedRows).filter(
+      (key) => selectedRows[key],
+    );
+
+    if (selectedIndices.length === 0) {
+      alert("Please select at least one row to download");
+      return;
+    }
+
+    // Get the selected data
+    const selectedData = selectedIndices.map(
+      (index) => filteredReportData[parseInt(index)],
+    );
+
+    // Prepare data for Excel
+    const excelData = selectedData.map((row) => {
+      const rowData = {};
+      tableHeaders.forEach((header) => {
+        rowData[header] = row[header] || "";
+      });
+      return rowData;
+    });
+
+    // Create worksheet
+    const worksheet = XLSX.utils.json_to_sheet(excelData);
+
+    // Create workbook
+    const workbook = XLSX.utils.book_new();
+    const sheetName = selectedLi === 0 ? "Sale Report" : "Sale Summary Report";
+    XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+
+    // Generate filename with timestamp
+    const timestamp = new Date().toISOString().split("T")[0];
+    const filename = `${sheetName}_${timestamp}.xlsx`;
+
+    // Download file
+    XLSX.writeFile(workbook, filename);
+
+    console.log(
+      `✅ Downloaded ${selectedIndices.length} records to ${filename}`,
+    );
+
+    // Show success notification
+    const successToast = document.createElement("div");
+    successToast.textContent = `✅ Downloaded ${selectedIndices.length} records successfully!`;
+    successToast.style.cssText =
+      "position:fixed;top:20px;right:20px;background:#10b981;color:#fff;padding:12px 24px;border-radius:8px;z-index:9999;font-family:Arial;box-shadow:0 4px 12px rgba(0,0,0,0.15);";
+    document.body.appendChild(successToast);
+
+    setTimeout(() => {
+      document.body.removeChild(successToast);
+    }, 3000);
   };
 
   // Fetch report data
@@ -328,7 +399,7 @@ const Report = () => {
       setIsLoadingReports(true);
       try {
         const res = await axios.get(
-          `${server}/portal/get-shipments?accountCode=${session.user.accountCode}`
+          `${server}/portal/get-shipments?accountCode=${session.user.accountCode}`,
         );
 
         const transform = (item) => ({
@@ -448,6 +519,7 @@ const Report = () => {
   const handleLiClick = (index) => {
     setSelectedLi(index);
     setCurrentPage(1);
+    setSelectedRows({}); // Clear selected rows when switching tabs
 
     if (index === 0) {
       // Sale Report
@@ -471,7 +543,7 @@ const Report = () => {
 
   useEffect(() => {
     const selectedElement = document.querySelector(
-      `.list-none > li:nth-child(${selectedLi + 1})`
+      `.list-none > li:nth-child(${selectedLi + 1})`,
     );
     if (selectedElement && lineRef.current) {
       const ulElement = selectedElement.parentElement;
@@ -590,18 +662,24 @@ const Report = () => {
         </div>
 
         <div className="flex">
-          <button className="border-2 bg-white border-[#979797] py-1 h-9 w-40 text-[#71717A] px-2 rounded-lg">
-            <div className="flex gap-4">
-              <Image
-                width={20}
-                height={20}
-                src="/arrow-right.svg"
-                alt="download_all"
-                className="rotate-90"
-              />
-              <span className="text-sm">Download All</span>
-            </div>
-          </button>
+          {/* Only show Download All button for Sale Report and Sale Summary Report */}
+          {(selectedLi === 0 || selectedLi === 1) && (
+            <button
+              onClick={handleDownloadAll}
+              className="border-2 bg-white border-[#979797] py-1 h-9 w-40 text-[#71717A] px-2 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              <div className="flex gap-4">
+                <Image
+                  width={20}
+                  height={20}
+                  src="/arrow-right.svg"
+                  alt="download_all"
+                  className="rotate-90"
+                />
+                <span className="text-sm">Download All</span>
+              </div>
+            </button>
+          )}
         </div>
       </div>
 
@@ -658,10 +736,18 @@ const Report = () => {
               currentPage={currentPage}
               setItemsPerPage={setItemsPerPage}
               setCurrentPage={setCurrentPage}
-              onDownloadPDF={selectedLi === 2 ? handleDownloadShippingBillPDF : handleDownloadInvoicePDF}
-              onViewPDF={selectedLi === 2 ? handleViewShippingBillPDF : handleViewInvoice}
+              onDownloadPDF={
+                selectedLi === 2
+                  ? handleDownloadShippingBillPDF
+                  : handleDownloadInvoicePDF
+              }
+              onViewPDF={
+                selectedLi === 2 ? handleViewShippingBillPDF : handleViewInvoice
+              }
               isShippingBill={selectedLi === 2}
               isInvoice={selectedLi === 3}
+              selectedRows={selectedRows}
+              setSelectedRows={setSelectedRows}
             />
           </div>
         ) : (
