@@ -8,8 +8,14 @@ import "react-date-range/dist/styles.css";
 import "react-date-range/dist/theme/default.css";
 import "../styles/custom-date-range-picker.css";
 import UploadModal from "./UploadModal";
+import { useRouter } from "next/navigation";
 
-const ShipNav = ({ totalShipments = 0, onDownload, selectedCount = 0, onSearch }) => {
+const ShipNav = ({
+  totalShipments = 0,
+  onDownload,
+  selectedCount = 0,
+  onSearch,
+}) => {
   const {
     setFilterShipmentWindow,
     selectedLi,
@@ -31,6 +37,7 @@ const ShipNav = ({ totalShipments = 0, onDownload, selectedCount = 0, onSearch }
   const [showUploadModal, setShowUploadModal] = useState(false);
   const lineRef = useRef(null);
   const datePickerRef = useRef(null);
+  const router = useRouter();
 
   // Handle search input change
   const handleSearchChange = (e) => {
@@ -45,7 +52,7 @@ const ShipNav = ({ totalShipments = 0, onDownload, selectedCount = 0, onSearch }
   useEffect(() => {
     if (lineRef.current) {
       const selectedElement = document.querySelector(
-        `.list-none > li:nth-child(${selectedLi + 1})`
+        `.list-none > li:nth-child(${selectedLi + 1})`,
       );
       if (selectedElement) {
         const ulElement = selectedElement.parentElement;
@@ -80,8 +87,11 @@ const ShipNav = ({ totalShipments = 0, onDownload, selectedCount = 0, onSearch }
     setFilterShipmentWindow(true);
   };
 
+  // const handleBulkUpload = () => {
+  //   setShowUploadModal(true);
+  // };
   const handleBulkUpload = () => {
-    setShowUploadModal(true);
+    router.push("/portal/bulkupload");
   };
 
   const toggleDatePicker = () => {
