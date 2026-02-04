@@ -13,6 +13,7 @@ import NotificationFlag from "../component/NotificationFlag";
 import { GlobalContext } from "../GlobalContext";
 import { useSession } from "next-auth/react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { Layers3Icon, Upload } from "lucide-react";
 
 const MultiStepForm = () => {
   const [step, setStep] = useState(1);
@@ -22,7 +23,9 @@ const MultiStepForm = () => {
   const [selectedSector, setSelectedSector] = useState("");
   const [selectedServiceLocal, setSelectedServiceLocal] = useState(null);
   const [successAwbNo, setSuccessAwbNo] = useState("");
-  const [filteredServicesWithRates, setFilteredServicesWithRates] = useState([]);
+  const [filteredServicesWithRates, setFilteredServicesWithRates] = useState(
+    [],
+  );
   const [zones, setZones] = useState([]);
   const [refetch, setRefetch] = useState(false);
   const [totalActualWt, setTotalActualWt] = useState(0.0);
@@ -33,7 +36,6 @@ const MultiStepForm = () => {
   const router = useRouter();
   const editAwb = searchParams.get("editAwb");
   const isEditMode = Boolean(editAwb);
-
 
   const { server } = useContext(GlobalContext);
   const { data: session } = useSession();
@@ -124,12 +126,13 @@ const MultiStepForm = () => {
     fetchEntity("Sector");
   }, [refetch, server]);
 
-
   useEffect(() => {
     const selectedSectorCode = watch("sector");
     const fetchZones = async () => {
       try {
-        const res = await axios.get(`${server}/zones?sector=${selectedSectorCode || ""}`);
+        const res = await axios.get(
+          `${server}/zones?sector=${selectedSectorCode || ""}`,
+        );
         setZones(res.data);
         console.log("Fetched zones:", res.data);
       } catch (error) {
@@ -138,7 +141,6 @@ const MultiStepForm = () => {
     };
     fetchZones();
   }, [watch("sector")]);
-
 
   // Form submission
   const onSubmit = async (data) => {
@@ -151,12 +153,12 @@ const MultiStepForm = () => {
           {
             ...data,
             source: "Portal",
-          }
+          },
         );
 
         alert("Shipment Updated Successfully!");
         console.log("Updated:", response.data);
-        
+
         // Redirect to shipments page
         router.push("/portal/shipments");
         return;
@@ -174,7 +176,7 @@ const MultiStepForm = () => {
 
       const newShipment = await axios.post(
         `${server}/portal/create-shipment`,
-        payload
+        payload,
       );
 
       const successAwb = newShipment.data.awbNo;
@@ -191,13 +193,11 @@ const MultiStepForm = () => {
         // Redirect to shipments page
         router.push("/portal/shipments");
       }, 2000);
-
     } catch (error) {
       console.error("Error Creating/Updating shipment:", error);
       alert("Something went wrong!");
     }
   };
-
 
   // Update destinations when sector changes
   useEffect(() => {
@@ -244,7 +244,7 @@ const MultiStepForm = () => {
   useEffect(() => {
     if (selectedServiceLocal && filteredServicesWithRates.length > 0) {
       const selectedRate = filteredServicesWithRates.find(
-        (r) => r.service === selectedServiceLocal
+        (r) => r.service === selectedServiceLocal,
       );
 
       if (selectedRate) {
@@ -269,40 +269,52 @@ const MultiStepForm = () => {
   const renderStep = () => {
     return (
       <div className="flex flex-col gap-4 pb-3">
+        <div className="flex justify-between items-center">
+          <div className="sticky top-20 bg-[#f8f9fa] z-10 flex flex-col gap-4 py-2">
+            <h1 className="font-bold text-2xl text-[#18181B]">
+              Create Shipment
+            </h1>
 
-        <div className="sticky top-20 bg-[#f8f9fa] z-10 flex flex-col gap-4 py-2">
-          <h1 className="font-bold text-2xl text-[#18181B]">
-            Create Shipment
-          </h1>
-
-          {/* Breadcrumbs */}
-          <ul className="flex text-xs gap-2 text-[#979797] w-fit rounded-md">
-            {[
-              { num: 1, label: "AirwayBill Details" },
-              { num: 2, label: "Shipper Details" },
-              { num: 3, label: "Receiver Details" },
-              { num: 4, label: "Shipment and Package Details" },
-              { num: 5, label: "Select Service" },
-              { num: 6, label: "Checkout" },
-            ].map((item, idx) => (
-              <li
-                key={item.num}
-                onClick={() => setStep(item.num)}
-                className={`flex items-center gap-1 cursor-pointer transition-colors ${step === item.num && "text-[var(--primary-color)]"
+            {/* Breadcrumbs */}
+            <ul className="flex text-xs gap-2 text-[#979797] w-fit rounded-md">
+              {[
+                { num: 1, label: "AirwayBill Details" },
+                { num: 2, label: "Shipper Details" },
+                { num: 3, label: "Receiver Details" },
+                { num: 4, label: "Shipment and Package Details" },
+                { num: 5, label: "Select Service" },
+                { num: 6, label: "Checkout" },
+              ].map((item, idx) => (
+                <li
+                  key={item.num}
+                  onClick={() => setStep(item.num)}
+                  className={`flex items-center gap-1 cursor-pointer transition-colors ${
+                    step === item.num && "text-[var(--primary-color)]"
                   }`}
-              >
-                <span>{item.label}</span>
-                {idx < 5 && (
-                  <Image
-                    src={`/right_arrow_${step === item.num ? "red" : "gray"}.svg`}
-                    alt="Navigation arrow"
-                    width={7}
-                    height={7}
-                  />
-                )}
-              </li>
-            ))}
-          </ul>
+                >
+                  <span>{item.label}</span>
+                  {idx < 5 && (
+                    <Image
+                      src={`/right_arrow_${step === item.num ? "red" : "gray"}.svg`}
+                      alt="Navigation arrow"
+                      width={7}
+                      height={7}
+                    />
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div>
+            <button
+              onClick={() => router.push("/portal/bulkupload")}
+              className="p-1 px-4 flex gap-1 items-center justify-center border-gray-400 border-[2px] border-opacity-75 rounded-lg bg-slate-100 text-gray-500 hover:bg-white font-bold text-sm tracking-wide "
+            >
+              <Layers3Icon size={18} />
+              Bulk Upload
+            </button>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
@@ -404,7 +416,6 @@ const MultiStepForm = () => {
         {renderStep()}
       </div>
     </div>
-
   );
 };
 
