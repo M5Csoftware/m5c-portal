@@ -1212,8 +1212,8 @@ export default function BulkUploadPage() {
         }
 
         if (balanceUpdate) {
-          successMessage += `💰 Customer balance updated: ₹${balanceUpdate.newBalance.toFixed(2)}\n`;
-          successMessage += `   (Change: ₹${balanceUpdate.difference > 0 ? "+" : ""}${balanceUpdate.difference.toFixed(2)})`;
+          successMessage += `💰 Customer balance updated: ₹${balanceUpdate.oldBalance.toFixed(2) - balanceUpdate.difference}\n`;
+          successMessage += `   (Change: ₹${balanceUpdate.difference > 0 ? "-" : ""}${balanceUpdate.difference.toFixed(2)})`;
         }
 
         alert(successMessage);
