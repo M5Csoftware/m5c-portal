@@ -1297,7 +1297,7 @@ export default function BulkUploadPage() {
           <div className="bg-white border border-[#E2E8F0] rounded-xl p-6 max-w-screen flex gap-10">
             <div className="w-4/5">
               <div
-                className="border-2 border-dashed flex justify-center items-center gap-4 border-[#CBD5E0] rounded-lg p-8 w-full bg-[#F8FAFC]"
+                className="border-2 border-dashed flex justify-center items-center gap-4 border-[#CBD5E0] rounded-lg p-6 w-full bg-[#F8FAFC]"
                 onDragOver={handleDragOver}
                 onDrop={handleDrop}
               >
