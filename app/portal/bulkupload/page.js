@@ -7,6 +7,14 @@ import { useContext, useEffect, useRef, useState } from "react";
 import * as XLSX from "xlsx";
 import { GlobalContext } from "../GlobalContext";
 import { useSession } from "next-auth/react";
+import {
+  SuccessModal,
+  ErrorModal,
+  WarningModal,
+  ConfirmModal,
+  InfoModal,
+  ValidationErrorModal,
+} from "@/app/portal/component/Modal/Modals";
 
 // List of common Indian zip code prefixes (first 2 digits) for accurate validation
 const INDIAN_ZIP_PREFIXES = [
@@ -90,6 +98,7 @@ const INDIAN_ZIP_PREFIXES = [
   "88",
   "89",
 ];
+
 // Helper function to validate if a zip code is Indian
 const isIndianZipCode = (zipCode) => {
   if (!zipCode) return false;
@@ -107,6 +116,7 @@ const isIndianZipCode = (zipCode) => {
   const prefix = zipStr.substring(0, 2);
   return INDIAN_ZIP_PREFIXES.includes(prefix);
 };
+
 const validateReceiverZipCode = (zipCode) => {
   if (!zipCode || zipCode.toString().trim() === "") {
     return {
@@ -181,6 +191,7 @@ const validateReceiverZipCode = (zipCode) => {
       "❌ Invalid zip code format. Must be a valid international postal code.",
   };
 };
+
 export default function BulkUploadPage() {
   const { register, setValue } = useForm();
 
@@ -195,6 +206,24 @@ export default function BulkUploadPage() {
     useState([]);
   const { data: session, status } = useSession();
   const [accountCode, setAccountCode] = useState("");
+
+  // Modal states
+  const [showValidationModal, setShowValidationModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [showWarningModal, setShowWarningModal] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showInfoModal, setShowInfoModal] = useState(false);
+
+  const [modalData, setModalData] = useState({
+    title: "",
+    message: "",
+    details: [],
+    errors: [],
+    warnings: [],
+    info: [],
+    onConfirm: null,
+  });
 
   useEffect(() => {
     console.log("🔄 BulkUpload page loaded");
@@ -934,52 +963,19 @@ export default function BulkUploadPage() {
 
       setValidationErrors(validationErrorsFound);
 
-      // Show validation results using alert
+      // Show validation results using modal
       if (validationErrorsFound.length > 0) {
-        const indianZipErrors = validationErrorsFound.filter((err) =>
-          err.message.includes("INDIAN ZIP CODE"),
-        );
-
-        const otherErrors = validationErrorsFound.filter(
-          (err) => !err.message.includes("INDIAN ZIP CODE"),
-        );
-
-        let errorSummary = "";
-
-        if (indianZipErrors.length > 0) {
-          errorSummary += `INDIAN ZIP CODES DETECTED (${indianZipErrors.length} shipments):\n`;
-          errorSummary += indianZipErrors
-            .slice(0, 5)
-            .map((err) => `   • Row ${err.row}: "${err.zipcode}"`)
-            .join("\n");
-
-          if (indianZipErrors.length > 5) {
-            errorSummary += `\n   ...and ${indianZipErrors.length - 5} more Indian zip codes`;
-          }
-        }
-
-        if (otherErrors.length > 0) {
-          if (errorSummary) errorSummary += "\n\n";
-          errorSummary += `OTHER ISSUES (${otherErrors.length} shipments):\n`;
-          errorSummary += otherErrors
-            .slice(0, 3)
-            .map(
-              (err) => `   • Row ${err.row}: "${err.zipcode}" - ${err.message}`,
-            )
-            .join("\n");
-
-          if (otherErrors.length > 3) {
-            errorSummary += `\n   ...and ${otherErrors.length - 3} more issues`;
-          }
-        }
-
-        alert(
-          `❌ VALIDATION FAILED!\n\n${errorSummary}\n\n⚠️ IMPORTANT: We only ship internationally!\nReceiver zip codes MUST be from: UK, USA, Canada, Australia, or Europe.\nIndian pincodes are NOT allowed.`,
-        );
+        setShowValidationModal(true);
       } else {
-        alert(
-          `✅ Excel file loaded successfully!\n📦 ${excelRows.length} shipments found\n🌍 All receiver zip codes are valid international codes`,
-        );
+        setModalData({
+          title: "File Loaded Successfully",
+          message: `Excel file loaded successfully!`,
+          details: [
+            `${excelRows.length} shipments found`,
+            "All receiver zip codes are valid international codes",
+          ],
+        });
+        setShowSuccessModal(true);
       }
 
       // For table display, keep simple mapping
@@ -1059,7 +1055,12 @@ export default function BulkUploadPage() {
   // ===== UPLOAD TO DATABASE
   const handleUpload = async () => {
     if (excelData.length === 0) {
-      alert("Please select an Excel file first");
+      setModalData({
+        title: "No File Selected",
+        message: "Please select an Excel file first",
+        errors: ["Upload an Excel file to continue"],
+      });
+      setShowErrorModal(true);
       return;
     }
 
@@ -1070,21 +1071,26 @@ export default function BulkUploadPage() {
       ).length;
       const otherErrorCount = validationErrors.length - indianZipCount;
 
-      alert(
-        `🚫 CANNOT PROCEED - INVALID ZIP CODES DETECTED!\n\n` +
-          `❌ Total errors: ${validationErrors.length}\n` +
-          (indianZipCount > 0
-            ? `   • Indian pincodes: ${indianZipCount}\n`
-            : "") +
-          (otherErrorCount > 0
-            ? `   • Other invalid formats: ${otherErrorCount}\n`
-            : "") +
-          `\n⚠️ ACTION REQUIRED:\n` +
-          `1. Fix the invalid zip codes in your Excel file\n` +
-          `2. Remove all Indian pincodes from ConsigneeZipcode column\n` +
-          `3. Re-upload the corrected file\n\n` +
-          `✓ We only accept international zip codes (UK, USA, Canada, Australia, Europe)`,
-      );
+      setModalData({
+        title: "Cannot Proceed - Invalid Zip Codes",
+        message:
+          "Your file contains invalid zip codes that must be fixed before uploading.",
+        errors: [
+          `Total errors: ${validationErrors.length}`,
+          indianZipCount > 0 ? `Indian pincodes: ${indianZipCount}` : null,
+          otherErrorCount > 0
+            ? `Other invalid formats: ${otherErrorCount}`
+            : null,
+          "",
+          "Action Required:",
+          "1. Fix the invalid zip codes in your Excel file",
+          "2. Remove all Indian pincodes from ConsigneeZipcode column",
+          "3. Re-upload the corrected file",
+          "",
+          "We only accept international zip codes (UK, USA, Canada, Australia, Europe)",
+        ].filter(Boolean),
+      });
+      setShowErrorModal(true);
       return;
     }
 
@@ -1102,7 +1108,12 @@ export default function BulkUploadPage() {
       );
 
       if (validShipments.length === 0) {
-        alert("❌ No valid shipments found after validation.");
+        setModalData({
+          title: "No Valid Shipments",
+          message: "No valid shipments found after validation.",
+          errors: ["Please check your Excel file and try again"],
+        });
+        setShowErrorModal(true);
         setLoading(false);
         return;
       }
@@ -1112,20 +1123,40 @@ export default function BulkUploadPage() {
       );
 
       // STEP 1: CALCULATE RATES FOR ALL SHIPMENTS - SERVER ONLY
-      alert(`📊 Calculating rates for ${validShipments.length} shipments...`);
+      setModalData({
+        title: "Calculating Rates",
+        message: `Calculating rates for ${validShipments.length} shipments...`,
+        info: ["This may take a moment", "Please wait..."],
+      });
+      setShowInfoModal(true);
 
       let shipmentsWithRates;
 
       try {
         shipmentsWithRates = await calculateShipmentRates(validShipments);
-        alert(
-          `✅ Successfully calculated rates for ${shipmentsWithRates.length} shipments`,
-        );
+        setShowInfoModal(false);
+
+        setModalData({
+          title: "Rates Calculated",
+          message: "Rate calculation completed successfully",
+          details: [
+            `Successfully calculated rates for ${shipmentsWithRates.length} shipments`,
+          ],
+        });
+        setShowSuccessModal(true);
       } catch (rateError) {
         console.error("Rate calculation error:", rateError);
-        alert(
-          `❌ Rate calculation failed: ${rateError.message}\n\nPlease check zone/service configuration and try again.`,
-        );
+        setShowInfoModal(false);
+        setModalData({
+          title: "Rate Calculation Failed",
+          message: "Failed to calculate rates for shipments",
+          errors: [
+            rateError.message,
+            "",
+            "Please check zone/service configuration and try again.",
+          ],
+        });
+        setShowErrorModal(true);
         setLoading(false);
         return;
       }
@@ -1136,22 +1167,40 @@ export default function BulkUploadPage() {
       ).length;
 
       if (zeroAmountCount > 0) {
-        const continueAnyway = confirm(
-          `${zeroAmountCount} shipments have ₹0 amounts.\n\n` +
-            `This might be because:\n` +
-            `1. Missing zone configuration\n` +
-            `2. Missing service tariff\n` +
-            `3. Invalid service/destination combination\n\n` +
-            `Would you like to:\n` +
-            `• Continue with upload (amounts can be adjusted later)\n` +
-            `• Cancel and check service/destination configurations`,
-        );
-
-        if (!continueAnyway) {
-          setLoading(false);
-          return;
-        }
+        // Show confirmation modal
+        setModalData({
+          title: "Zero Amount Shipments Detected",
+          message: `${zeroAmountCount} shipments have ₹0 amounts. This might be because of missing zone configuration, missing service tariff, or invalid service/destination combination.`,
+          warnings: [
+            "Would you like to continue with upload?",
+            "Amounts can be adjusted later",
+            "",
+            "Or cancel and check service/destination configurations",
+          ],
+          onConfirm: () => proceedWithUpload(shipmentsWithRates),
+        });
+        setShowWarningModal(true);
+        setLoading(false);
+        return;
       }
+
+      // If no zero amounts, proceed directly
+      await proceedWithUpload(shipmentsWithRates);
+    } catch (error) {
+      console.error("Upload error:", error);
+      setModalData({
+        title: "Upload Error",
+        message: "An error occurred while uploading data",
+        errors: [error.message, "", "Check console for details."],
+      });
+      setShowErrorModal(true);
+      setLoading(false);
+    }
+  };
+
+  const proceedWithUpload = async (shipmentsWithRates) => {
+    try {
+      setLoading(true);
 
       // STEP 2: Prepare final payload
       const currentAccountCode = getAccountCode();
@@ -1204,19 +1253,25 @@ export default function BulkUploadPage() {
       if (data.success) {
         const { newRecords, duplicates, balanceUpdate } = data;
 
-        let successMessage = `✅ Upload completed!\n`;
-        successMessage += `✓ New records: ${newRecords}\n`;
+        const details = [`New records: ${newRecords}`];
 
         if (duplicates > 0) {
-          successMessage += `⚠️ Duplicates: ${duplicates}\n`;
+          details.push(`Duplicates skipped: ${duplicates}`);
         }
 
         if (balanceUpdate) {
-          successMessage += `💰 Customer balance updated: ₹${balanceUpdate.oldBalance.toFixed(2) - balanceUpdate.difference}\n`;
-          successMessage += `   (Change: ₹${balanceUpdate.difference > 0 ? "-" : ""}${balanceUpdate.difference.toFixed(2)})`;
+          details.push(
+            `Customer balance updated: ₹${(balanceUpdate.oldBalance - balanceUpdate.difference).toFixed(2)}`,
+            `Change: ₹${balanceUpdate.difference > 0 ? "-" : ""}${balanceUpdate.difference.toFixed(2)}`,
+          );
         }
 
-        alert(successMessage);
+        setModalData({
+          title: "Upload Completed Successfully",
+          message: "Your shipments have been uploaded successfully!",
+          details: details,
+        });
+        setShowSuccessModal(true);
 
         if (newRecords > 0) {
           // Clear all data after successful upload
@@ -1230,13 +1285,21 @@ export default function BulkUploadPage() {
           }
         }
       } else {
-        alert(data.message || "Upload failed. Please try again.");
+        setModalData({
+          title: "Upload Failed",
+          message: data.message || "Upload failed. Please try again.",
+          errors: [data.message || "Unknown error occurred"],
+        });
+        setShowErrorModal(true);
       }
     } catch (error) {
       console.error("Upload error:", error);
-      alert(
-        `Error uploading data: ${error.message}\n\nCheck console for details.`,
-      );
+      setModalData({
+        title: "Upload Error",
+        message: "An error occurred while uploading data",
+        errors: [error.message, "", "Check console for details."],
+      });
+      setShowErrorModal(true);
     } finally {
       setLoading(false);
     }
@@ -1248,6 +1311,61 @@ export default function BulkUploadPage() {
 
   return (
     <>
+      {/* Modals */}
+      <ValidationErrorModal
+        isOpen={showValidationModal}
+        onClose={() => setShowValidationModal(false)}
+        validationErrors={validationErrors}
+      />
+
+      <SuccessModal
+        isOpen={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        title={modalData.title}
+        message={modalData.message}
+        details={modalData.details}
+      />
+
+      <ErrorModal
+        isOpen={showErrorModal}
+        onClose={() => setShowErrorModal(false)}
+        title={modalData.title}
+        message={modalData.message}
+        errors={modalData.errors}
+      />
+
+      <WarningModal
+        isOpen={showWarningModal}
+        onClose={() => {
+          setShowWarningModal(false);
+          setLoading(false);
+        }}
+        title={modalData.title}
+        message={modalData.message}
+        warnings={modalData.warnings}
+      />
+
+      <InfoModal
+        isOpen={showInfoModal}
+        onClose={() => setShowInfoModal(false)}
+        title={modalData.title}
+        message={modalData.message}
+        info={modalData.info}
+      />
+
+      <ConfirmModal
+        isOpen={showWarningModal && modalData.onConfirm !== null}
+        onClose={() => {
+          setShowWarningModal(false);
+          setLoading(false);
+        }}
+        onConfirm={modalData.onConfirm || (() => {})}
+        title={modalData.title}
+        message={modalData.message}
+        confirmText="Continue Upload"
+        cancelText="Cancel"
+      />
+
       <div className="bg-[#f8f9fa]">
         <div className="p-6">
           {/* Header */}
