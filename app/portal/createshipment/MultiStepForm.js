@@ -309,7 +309,7 @@ const MultiStepForm = () => {
           <div>
             <button
               onClick={() => router.push("/portal/bulkupload")}
-              className="p-1 px-4 flex gap-1 items-center justify-center border-gray-400 border-[2px] border-opacity-75 rounded-lg bg-slate-100 text-gray-500 hover:bg-white font-bold text-sm tracking-wide "
+              className="p-1 px-4 flex gap-1 items-center justify-center border-gray-400 border-[2px] border-opacity-75 rounded-lg bg-slate-100 text-gray-500 hover:bg-[var(--primary-color)] hover:text-white hover:border-[var(--primary-color)] font-bold text-sm tracking-wide "
             >
               <Layers3Icon size={18} />
               Bulk Upload
