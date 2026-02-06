@@ -735,7 +735,7 @@ const Page = () => {
         chargeableWeight !== "0.00" && (
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mt-4">
             <p className="text-yellow-800 text-center font-medium">
-              ⚠️ Fill in all required fields and click "Calculate Rate" to see
+              ⚠️ Fill in all required fields and click <strong>Calculate Rates</strong> to see
               pricing.
             </p>
           </div>
