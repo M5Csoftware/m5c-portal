@@ -47,7 +47,6 @@ const Report = () => {
   const headers = [
     "AwbNo",
     "BookingDate",
-    "FlightDate",
     "Branch",
     "OriginName",
     "Sector",
