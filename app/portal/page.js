@@ -147,12 +147,12 @@ const Page = () => {
         if (data.shipments && Array.isArray(data.shipments)) {
           setShipmentCount(data.shipments.length);
 
-          const holdCount = data.shipments.filter(
-            (shipment) =>
-              shipment.status?.toLowerCase().includes("hold") ||
-              shipment.status?.toLowerCase().includes("pending"),
-          ).length;
-          setHoldShipmentsCount(holdCount);
+          // const holdCount = data.shipments.filter(
+          //   (shipment) =>
+          //     shipment.status?.toLowerCase().includes("hold") ||
+          //     shipment.status?.toLowerCase().includes("pending"),
+          // ).length;
+          // setHoldShipmentsCount(holdCount);
         } else {
           setShipmentCount(0);
           setHoldShipmentsCount(0);
@@ -361,7 +361,7 @@ const Page = () => {
                   </button>
                 </div>
                 <Link
-                  href="../portal/shipments"
+                  href="../portal/shipments?tab=hold"
                   className="text-[#BB1C3A] text-sm flex items-center gap-2 cursor-pointer"
                 >
                   <span>See All Shipments</span>
