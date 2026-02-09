@@ -1,13 +1,13 @@
-'use client'
-import React, { useEffect, useState, useContext, useRef } from 'react'
-import Image from 'next/image'
-import Link from 'next/link'
-import ShipmentOverviewDashboard from './dashboard/ShipmentOverviewDashboard'
-import RecentShipments from './dashboard/RecentShipments'
+"use client";
+import React, { useEffect, useState, useContext, useRef } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import ShipmentOverviewDashboard from "./dashboard/ShipmentOverviewDashboard";
+import RecentShipments from "./dashboard/RecentShipments";
 import { useSession } from "next-auth/react";
-import AwbInput from '../components/AwbInput'
-import { GlobalContext } from './GlobalContext'
-import axios from 'axios'
+import AwbInput from "../components/AwbInput";
+import { GlobalContext } from "./GlobalContext";
+import axios from "axios";
 
 const Page = () => {
   const [activeDuration, setActiveDuration] = useState("12 Months");
@@ -17,40 +17,27 @@ const Page = () => {
   const [shipmentCount, setShipmentCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [holdShipmentsCount, setHoldShipmentsCount] = useState(0);
-
-  const holdReasons = [
-    {
-      reason: "Credit Limit Exceeded",
-      airwaybill: "M5P123987",
-      date: "26 May '24",
-    },
-    {
-      reason: "Incorrect Address",
-      airwaybill: "M5P456789",
-      date: "27 May '24",
-    },
-    {
-      reason: "Customs Clearance Pending",
-      airwaybill: "M5P789012",
-      date: "28 May '24",
-    },
-  ];
+  const [holdShipmentsData, setHoldShipmentsData] = useState([]);
+  const [holdLoading, setHoldLoading] = useState(true);
+  const [currentReasonIndex, setCurrentReasonIndex] = useState(0);
 
   // State variables for l2 values in StatTab components
   const [currency, setCurrency] = useState("INR");
   const [totalBalance, setTotalBalance] = useState(0);
   const [balanceLoading, setBalanceLoading] = useState(true);
   const [todaysRevenue, setTodaysRevenue] = useState(500000);
-  const [holdShipments, setHoldShipments] = useState(holdReasons.length);
   const [airwaybillStock, setAirwaybillStock] = useState(1000);
 
-  const formattedTotalBalance = new Intl.NumberFormat("en-IN").format(totalBalance);
-  const formattedtodaysRevenue = new Intl.NumberFormat("en-IN").format(todaysRevenue);
-
-  const [currentReasonIndex, setCurrentReasonIndex] = useState(0);
+  const formattedTotalBalance = new Intl.NumberFormat("en-IN").format(
+    totalBalance,
+  );
+  const formattedtodaysRevenue = new Intl.NumberFormat("en-IN").format(
+    todaysRevenue,
+  );
 
   // Get accountCode from session if not in GlobalContext
-  const finalAccountCode = accountCode || session?.user?.accountCode || session?.user?.email;
+  const finalAccountCode =
+    accountCode || session?.user?.accountCode || session?.user?.email;
 
   // Track if balance has been fetched
   const balanceFetchedRef = useRef(false);
@@ -59,34 +46,37 @@ const Page = () => {
   // Fetch balance function
   const fetchBalance = async () => {
     if (!finalAccountCode || !server) {
-      console.error('No account code or server available');
+      console.error("No account code or server available");
       setBalanceLoading(false);
       return;
     }
 
     // Prevent multiple simultaneous fetches
     if (isRefreshingRef.current) {
-      console.log('Balance fetch already in progress, skipping...');
+      console.log("Balance fetch already in progress, skipping...");
       return;
     }
 
     try {
       isRefreshingRef.current = true;
       setBalanceLoading(true);
-      console.log('Fetching balance from:', `${server}/payment/balance?accountCode=${finalAccountCode}`);
-      
-      const response = await axios.get(
-        `${server}/payment/balance?accountCode=${finalAccountCode}`
+      console.log(
+        "Fetching balance from:",
+        `${server}/payment/balance?accountCode=${finalAccountCode}`,
       );
-      
-      console.log('Balance response:', response.data);
-      
+
+      const response = await axios.get(
+        `${server}/payment/balance?accountCode=${finalAccountCode}`,
+      );
+
+      console.log("Balance response:", response.data);
+
       if (response.data.success) {
         setTotalBalance(response.data.balance || 0);
         balanceFetchedRef.current = true;
       }
     } catch (error) {
-      console.error('Error fetching balance:', error);
+      console.error("Error fetching balance:", error);
       setTotalBalance(0);
     } finally {
       setBalanceLoading(false);
@@ -104,29 +94,31 @@ const Page = () => {
   // Listen for payment success event only
   useEffect(() => {
     const handlePaymentSuccess = () => {
-      console.log('Payment success event received in dashboard, refreshing balance...');
+      console.log(
+        "Payment success event received in dashboard, refreshing balance...",
+      );
       setTimeout(() => {
         fetchBalance();
       }, 1000); // Small delay to ensure backend has updated
     };
 
     // Listen for custom event
-    window.addEventListener('paymentSuccess', handlePaymentSuccess);
+    window.addEventListener("paymentSuccess", handlePaymentSuccess);
 
     // Listen for storage event (for cross-tab communication)
     const handleStorageChange = (e) => {
-      if (e.key === 'paymentSuccess') {
+      if (e.key === "paymentSuccess") {
         setTimeout(() => {
           fetchBalance();
         }, 1000);
-        localStorage.removeItem('paymentSuccess');
+        localStorage.removeItem("paymentSuccess");
       }
     };
-    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener("storage", handleStorageChange);
 
     return () => {
-      window.removeEventListener('paymentSuccess', handlePaymentSuccess);
-      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener("paymentSuccess", handlePaymentSuccess);
+      window.removeEventListener("storage", handleStorageChange);
     };
   }, [finalAccountCode, server]);
 
@@ -140,7 +132,9 @@ const Page = () => {
 
       try {
         setLoading(true);
-        const response = await fetch(`${server}/portal/get-shipments?accountCode=${session.user.accountCode}`);
+        const response = await fetch(
+          `${server}/portal/get-shipments?accountCode=${session.user.accountCode}`,
+        );
 
         if (!response.ok) {
           setShipmentCount(0);
@@ -153,17 +147,18 @@ const Page = () => {
         if (data.shipments && Array.isArray(data.shipments)) {
           setShipmentCount(data.shipments.length);
 
-          const holdCount = data.shipments.filter(shipment =>
-            shipment.status?.toLowerCase().includes('hold') ||
-            shipment.status?.toLowerCase().includes('pending')
-          ).length;
-          setHoldShipmentsCount(holdCount);
+          // const holdCount = data.shipments.filter(
+          //   (shipment) =>
+          //     shipment.status?.toLowerCase().includes("hold") ||
+          //     shipment.status?.toLowerCase().includes("pending"),
+          // ).length;
+          // setHoldShipmentsCount(holdCount);
         } else {
           setShipmentCount(0);
           setHoldShipmentsCount(0);
         }
       } catch (error) {
-        console.error('Error fetching shipment count:', error);
+        console.error("Error fetching shipment count:", error);
         setShipmentCount(0);
         setHoldShipmentsCount(0);
       } finally {
@@ -179,18 +174,50 @@ const Page = () => {
   };
 
   const handlePrevClick = () => {
-    setCurrentReasonIndex((prevIndex) =>
-      prevIndex === 0 ? holdReasons.length - 1 : prevIndex - 1
+    setCurrentReasonIndex((prev) =>
+      prev === 0 ? holdShipmentsData.length - 1 : prev - 1,
     );
   };
 
   const handleNextClick = () => {
-    setCurrentReasonIndex((prevIndex) =>
-      prevIndex === holdReasons.length - 1 ? 0 : prevIndex + 1
+    setCurrentReasonIndex((prev) =>
+      prev === holdShipmentsData.length - 1 ? 0 : prev + 1,
     );
   };
 
-  const currentReason = holdReasons[currentReasonIndex];
+  const currentHold = holdShipmentsData[currentReasonIndex];
+
+  useEffect(() => {
+    const fetchHoldShipments = async () => {
+      if (!finalAccountCode || !server) {
+        setHoldLoading(false);
+        return;
+      }
+
+      try {
+        setHoldLoading(true);
+        const res = await axios.get(
+          `${server}/portal/dashboard-hold?accountCode=${finalAccountCode}&isHold=true&limit=10`,
+        );
+
+        if (res.data?.shipments) {
+          setHoldShipmentsData(res.data.shipments);
+          setHoldShipmentsCount(res.data.shipments.length);
+        } else {
+          setHoldShipmentsData([]);
+          setHoldShipmentsCount(0);
+        }
+      } catch (err) {
+        console.error("Hold fetch error:", err);
+        setHoldShipmentsData([]);
+        setHoldShipmentsCount(0);
+      } finally {
+        setHoldLoading(false);
+      }
+    };
+
+    fetchHoldShipments();
+  }, [finalAccountCode, server]);
 
   return (
     <div className="flex flex-col gap-4 px-9 relative">
@@ -207,7 +234,11 @@ const Page = () => {
       <div className="flex gap-4">
         <StatTab
           l1="Total Balance"
-          l2={balanceLoading ? "Loading..." : `${formattedTotalBalance} ${currency}`}
+          l2={
+            balanceLoading
+              ? "Loading..."
+              : `${formattedTotalBalance} ${currency}`
+          }
           logo="/wallet_white.svg"
         />
         <StatTab
@@ -239,7 +270,7 @@ const Page = () => {
           )}
 
           {/* Hold Shipments Section */}
-          {holdShipmentsCount === 0 ? (
+          {holdLoading || holdShipmentsData.length === 0 ? (
             <div className="bg-[#FFE3E4] rounded-lg p-6 flex flex-col gap-4 border border-[#E2E8F0] flex-1">
               <div className="flex items-center justify-between">
                 <h2 className="font-semibold text-lg">No Shipment on Hold</h2>
@@ -272,21 +303,29 @@ const Page = () => {
               <div className="flex items-center justify-between">
                 <h2 className="font-semibold">Hold Shipments</h2>
                 <span className="bg-[var(--primary-color)] px-2 py-1 text-white rounded-lg text-sm">
-                  {`${currentReasonIndex + 1}/${holdReasons.length}`}
+                  {`${currentReasonIndex + 1}/${holdShipmentsData.length}`}
                 </span>
               </div>
               <div className="bg-white flex flex-col gap-2 rounded-lg p-4">
                 <div className="text-xs text-[#71717A] flex w-full justify-between">
-                  <span>{currentReason.date}</span>
+                  <span>
+                    {currentHold?.date
+                      ? new Date(currentHold.date).toLocaleDateString("en-IN")
+                      : "--"}
+                  </span>{" "}
                   <span>Airwaybill</span>
                 </div>
                 <div className="font-semibold text-sm">
-                  {currentReason.airwaybill}
+                  <div className="font-semibold text-sm">
+                    {currentHold?.awbNo || "--"}
+                  </div>{" "}
                 </div>
                 <div className="flex gap-4 items-baseline justify-between">
                   <div className="text-[#BB1C3A] text-sm">
-                    {currentReason.reason}
-                  </div>
+                    {currentHold?.holdReason ||
+                      currentHold?.status ||
+                      "On Hold"}
+                  </div>{" "}
                   <div>
                     <button className="text-white bg-[var(--primary-color)] text-sm rounded-lg p-4">
                       Make Payment
@@ -299,10 +338,10 @@ const Page = () => {
                   <button
                     className="bg-[var(--primary-color)] py-2 px-3 rounded-md disabled:opacity-50"
                     onClick={handlePrevClick}
-                    disabled={currentReasonIndex === 0}
+                    disabled={holdShipmentsData.length < 1 || currentReasonIndex === 0}
                   >
                     <Image
-                      width={10}
+                      width={10} 
                       height={10}
                       src="/left_arrow_white.svg"
                       alt="left_arrow_white"
@@ -311,7 +350,7 @@ const Page = () => {
                   <button
                     className="bg-[var(--primary-color)] py-2 px-3 rounded-md disabled:opacity-50"
                     onClick={handleNextClick}
-                    disabled={currentReasonIndex === holdReasons.length - 1}
+                    disabled={currentReasonIndex === holdShipmentsData.length - 1}
                   >
                     <Image
                       width={10}
@@ -322,7 +361,7 @@ const Page = () => {
                   </button>
                 </div>
                 <Link
-                  href="../portal/shipments"
+                  href="../portal/shipments?tab=hold"
                   className="text-[#BB1C3A] text-sm flex items-center gap-2 cursor-pointer"
                 >
                   <span>See All Shipments</span>
@@ -415,7 +454,7 @@ const Page = () => {
                 </div>
               </div>
             ) : (
-              <div className='flex-1'>
+              <div className="flex-1">
                 <ShipmentOverviewDashboard duration={activeDuration} />
               </div>
             )}
@@ -424,7 +463,10 @@ const Page = () => {
           {/* Graph Status Cards - Always visible */}
           <div className="flex gap-4 justify-between">
             <GraphStatus label="Total Shipments" no={shipmentCount} />
-            <GraphStatus label="Delivered" no={shipmentCount > 0 ? "18" : "0"} />
+            <GraphStatus
+              label="Delivered"
+              no={shipmentCount > 0 ? "18" : "0"}
+            />
             <GraphStatus label="Pending" no={shipmentCount > 0 ? "3" : "0"} />
             <GraphStatus label="RTO" no={shipmentCount > 0 ? "1" : "0"} />
           </div>
@@ -442,8 +484,9 @@ const Page = () => {
 const GraphYearSelect = ({ duration, isActive, onClick }) => {
   return (
     <div
-      className={`text-xs transition-all border-2 px-4 py-2 rounded-lg font-bold cursor-pointer ${isActive ? "border-gray-400" : "border-transparent"
-        }`}
+      className={`text-xs transition-all border-2 px-4 py-2 rounded-lg font-bold cursor-pointer ${
+        isActive ? "border-gray-400" : "border-transparent"
+      }`}
       onClick={onClick}
     >
       {duration}

@@ -9,6 +9,7 @@ import "react-date-range/dist/theme/default.css";
 import "../styles/custom-date-range-picker.css";
 import UploadModal from "./UploadModal";
 import { useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 
 const ShipNav = ({
   totalShipments = 0,
@@ -38,6 +39,7 @@ const ShipNav = ({
   const lineRef = useRef(null);
   const datePickerRef = useRef(null);
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   // Handle search input change
   const handleSearchChange = (e) => {
@@ -175,6 +177,15 @@ const ShipNav = ({
     customQuarterRange,
     customFinancialYearRange,
   ];
+
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+
+    if (tab === "hold") {
+      setSelectedLi(5); // Hold Shipment tab index
+      setStatusFilter("Hold"); // optional, if you filter by status
+    }
+  }, []);
 
   return (
     <>
