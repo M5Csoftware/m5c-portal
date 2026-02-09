@@ -429,7 +429,7 @@ export const ValidationErrorModal = ({ isOpen, onClose, validationErrors }) => {
                       Row {err.row}:
                     </span>
                     <span className="text-orange-900 ml-2 font-mono bg-orange-100 px-2 py-0.5 rounded">
-                      "{err.zipcode}"
+                      {err.zipcode}
                     </span>
                     <p className="text-orange-700 ml-2 mt-1">{err.message}</p>
                   </div>
