@@ -455,3 +455,141 @@ export const ValidationErrorModal = ({ isOpen, onClose, validationErrors }) => {
     </Modal>
   );
 };
+
+// Add this to your Modals.js file
+
+export function ZoneValidationErrorModal({ isOpen, onClose, zoneErrors }) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto">
+      <div className="flex items-center justify-center min-h-screen px-4">
+        <div
+          className="fixed inset-0 bg-black opacity-50"
+          onClick={onClose}
+        ></div>
+
+        <div className="relative bg-white rounded-lg w-full max-w-4xl p-6">
+          <div className="flex items-center mb-4">
+            <div className="bg-amber-100 p-2 rounded-full mr-3">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-6 w-6 text-amber-600"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold text-amber-800">
+              Zone Configuration Validation Failed
+            </h3>
+            <button
+              onClick={onClose}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+            >
+              <svg
+                className="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </div>
+
+          <div className="mb-4">
+            <p className="text-sm text-gray-600 mb-2">
+              The following shipments have invalid sector-destination-service
+              combinations that do not exist in the zone matrix:
+            </p>
+
+            <div className="bg-amber-50 rounded-lg p-4 max-h-96 overflow-y-auto">
+              <table className="min-w-full divide-y divide-amber-200">
+                <thead>
+                  <tr>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-amber-800 uppercase tracking-wider">
+                      Row
+                    </th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-amber-800 uppercase tracking-wider">
+                      AWB
+                    </th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-amber-800 uppercase tracking-wider">
+                      Sector
+                    </th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-amber-800 uppercase tracking-wider">
+                      Destination
+                    </th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-amber-800 uppercase tracking-wider">
+                      Service
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-amber-100">
+                  {zoneErrors.map((error, index) => (
+                    <tr key={index}>
+                      <td className="px-4 py-2 text-sm text-gray-600">
+                        {error.index + 1}
+                      </td>
+                      <td className="px-4 py-2 text-sm font-mono text-gray-800">
+                        {error.awbNo}
+                      </td>
+                      <td className="px-4 py-2 text-sm text-gray-600">
+                        {error.sector}
+                      </td>
+                      <td className="px-4 py-2 text-sm text-gray-600">
+                        {error.destination}
+                      </td>
+                      <td className="px-4 py-2 text-sm text-gray-600">
+                        {error.service}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="bg-amber-100 rounded-lg p-4 mb-4">
+            <h4 className="font-medium text-amber-800 mb-2">How to fix:</h4>
+            <ul className="list-disc list-inside text-sm text-amber-700 space-y-1">
+              <li>
+                Check your Excel file for correct Sector, Destination, and
+                Service values
+              </li>
+              <li>
+                Ensure the combination exists in the Zone Matrix configuration
+              </li>
+              <li>
+                Contact your administrator if you need to add new zone
+                combinations
+              </li>
+              <li>Correct these values in your Excel file and re-upload</li>
+            </ul>
+          </div>
+
+          <div className="flex justify-end">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
