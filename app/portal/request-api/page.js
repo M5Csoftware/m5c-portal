@@ -119,14 +119,14 @@ const APIRequestForm = () => {
                                 </h3>
                                 <p className="text-gray-600 mb-6 max-w-md mx-auto">
                                     Your API request is currently under review. Please wait for our team to approve your application.
-                                    Once approved, you'll receive an email with your API key and access instructions.
+                                    Once approved, you will receive an email with your API key and access instructions.
                                 </p>
                                 <div className="bg-gray-50 rounded-lg p-4 max-w-md mx-auto">
                                     <p className="text-sm text-gray-600">
                                         Current Status: <span className="font-semibold text-yellow-600">Pending</span>
                                     </p>
                                     <p className="text-xs text-gray-500 mt-1">
-                                        You'll be notified at: <span className="font-medium">{session?.user?.email}</span>
+                                        You will be notified at: <span className="font-medium">{session?.user?.email}</span>
                                     </p>
                                 </div>
                             </div>

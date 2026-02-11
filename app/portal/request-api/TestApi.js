@@ -535,7 +535,7 @@ public class ${selectedApiDetails.name.replace(/\s+/g, '')} {
                                     {approvalStatus && approvalStatus.toLowerCase() !== "approved" && (
                                         <div className="mt-3 p-3 bg-white rounded border border-yellow-300">
                                             <p className="text-xs font-semibold text-gray-700">Current Status: <span className="text-yellow-700">{approvalStatus}</span></p>
-                                            <p className="text-xs text-gray-600 mt-1">You'll receive an email with your API key once your request is approved.</p>
+                                            <p className="text-xs text-gray-600 mt-1">You will receive an email with your API key once your request is approved.</p>
                                         </div>
                                     )}
                                 </div>

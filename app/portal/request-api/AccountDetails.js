@@ -261,7 +261,7 @@ const AccountDetails = ({
                     Your API request is now under review. Our team will verify your details and approve your application.
                   </p>
                   <p className="text-sm text-gray-600 mb-6">
-                    Once approved, we'll send your API key and access details to:
+                    Once approved, we will send your API key and access details to:
                     <br />
                     <span className="font-medium text-gray-900">{accountDetails.email}</span>
                   </p>
