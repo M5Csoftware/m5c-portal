@@ -8,7 +8,13 @@ import { DateRangePicker, defaultStaticRanges } from "react-date-range";
 import "../styles/custom-date-range-picker.css";
 import { GlobalContext } from "../GlobalContext.js";
 
-const Nav = ({ onStatusChange, onDateRangeChange, selectedLi, onLiChange }) => {
+const Nav = ({
+  onStatusChange,
+  onDateRangeChange,
+  selectedLi,
+  onLiChange,
+  onSearchChange, // ADDED: search handler
+}) => {
   const searchParams = useSearchParams();
   const [lineLeft, setLineLeft] = useState(0);
   const [lineWidth, setLineWidth] = useState(0);
@@ -22,6 +28,7 @@ const Nav = ({ onStatusChange, onDateRangeChange, selectedLi, onLiChange }) => {
   ]);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const datePickerRef = useRef(null);
+  const [searchTerm, setSearchTerm] = useState(""); // ADDED: search term state
   const op = ["Open", "Closed", "In Progress"];
 
   const { setRaiseTicketWindow, ticketsData } = useContext(GlobalContext);
@@ -104,6 +111,28 @@ const Nav = ({ onStatusChange, onDateRangeChange, selectedLi, onLiChange }) => {
       "to",
       item.selection.endDate,
     );
+  };
+
+  // ADDED: Handle search input change with debounce
+  const handleSearchChange = (e) => {
+    const value = e.target.value;
+    setSearchTerm(value);
+
+    // Use debounce to avoid too many updates
+    clearTimeout(window.searchTimeout);
+    window.searchTimeout = setTimeout(() => {
+      if (onSearchChange) {
+        onSearchChange(value);
+      }
+    }, 300);
+  };
+
+  // ADDED: Clear search handler
+  const handleClearSearch = () => {
+    setSearchTerm("");
+    if (onSearchChange) {
+      onSearchChange("");
+    }
   };
 
   const getQuarterRange = () => {
@@ -339,7 +368,7 @@ const Nav = ({ onStatusChange, onDateRangeChange, selectedLi, onLiChange }) => {
           </div>
 
           <div className="flex gap-3 relative">
-            <div className="rounded-md flex items-center gap-2 bg-[#F1F0F5] px-[11px] py-[6px]">
+            <div className="rounded-md flex items-center gap-2 bg-[#F1F0F5] px-[11px] py-[6px] relative">
               <Image
                 className=""
                 width={20}
@@ -348,10 +377,32 @@ const Nav = ({ onStatusChange, onDateRangeChange, selectedLi, onLiChange }) => {
                 alt="Search"
               />
               <input
-                className="bg-transparent text-[#71717A] outline-none"
+                className="bg-transparent text-[#71717A] outline-none w-64"
                 type="text"
-                placeholder="Search"
+                placeholder="Search tickets..."
+                value={searchTerm}
+                onChange={handleSearchChange}
               />
+              {searchTerm && (
+                <button
+                  onClick={handleClearSearch}
+                  className="absolute right-2 text-gray-400 hover:text-gray-600"
+                  type="button"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </button>
+              )}
             </div>
             <div className="flex gap-3">
               <button
@@ -390,12 +441,6 @@ export function countInProgressTickets(data) {
       status === "pending"
     );
   }).length;
-  console.log(
-    "In Progress count:",
-    count,
-    "from data:",
-    data.map((t) => t.status),
-  );
   return count;
 }
 
@@ -405,12 +450,6 @@ export function countOpenTickets(data) {
     const status = ticket.status?.toLowerCase();
     return status === "open";
   }).length;
-  console.log(
-    "Open count:",
-    count,
-    "from data:",
-    data.map((t) => t.status),
-  );
   return count;
 }
 
@@ -420,12 +459,6 @@ export function countClosedTickets(data) {
     const status = ticket.status?.toLowerCase();
     return status === "closed" || status === "resolved";
   }).length;
-  console.log(
-    "Closed count:",
-    count,
-    "from data:",
-    data.map((t) => t.status),
-  );
   return count;
 }
 
