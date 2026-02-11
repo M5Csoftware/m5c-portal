@@ -34,7 +34,7 @@ const VerificationStatus = ({ accountCode, verificationType, onComplete }) => {
 
     const updateOnboardingProgress = async () => {
       try {
-        await axios.put(`${server}/api/user/update-onboarding`, {
+        await axios.put(`${server}/user/update-onboarding`, {
           email: session?.user?.email,
           field: "kycCompleted",
           value: true,
