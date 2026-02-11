@@ -43,6 +43,10 @@ const Report = () => {
   const [isLoadingReports, setIsLoadingReports] = useState(false);
   const [isLoadingBills, setIsLoadingBills] = useState(false);
   const [isLoadingInvoices, setIsLoadingInvoices] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  // ADDED: State for button label
+  const [selectedRangeLabel, setSelectedRangeLabel] = useState("Last 30 days");
 
   const headers = [
     "AwbNo",
@@ -140,6 +144,93 @@ const Report = () => {
     });
   };
 
+  // ADDED: Parse date for comparison
+  const parseDateForComparison = (dateString) => {
+    if (!dateString) return null;
+    try {
+      const date = new Date(dateString);
+      // Return date at midnight for comparison
+      return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    } catch (error) {
+      return null;
+    }
+  };
+
+  // ADDED: Filter data by date range
+  const filterByDateRange = (data, dateField) => {
+    if (!data || data.length === 0) return data;
+
+    const startDate = dateRange[0].startDate;
+    const endDate = dateRange[0].endDate;
+
+    // Normalize dates to midnight for comparison
+    const normStartDate = new Date(
+      startDate.getFullYear(),
+      startDate.getMonth(),
+      startDate.getDate(),
+    );
+    const normEndDate = new Date(
+      endDate.getFullYear(),
+      endDate.getMonth(),
+      endDate.getDate(),
+    );
+
+    return data.filter((item) => {
+      const itemDate = parseDateForComparison(item[dateField]);
+      if (!itemDate) return false;
+
+      return itemDate >= normStartDate && itemDate <= normEndDate;
+    });
+  };
+
+  // ADDED: Filter data by search term
+  const filterBySearch = (data) => {
+    if (!searchTerm.trim()) return data;
+
+    const term = searchTerm.toLowerCase().trim();
+    return data.filter((item) => {
+      return Object.values(item).some((value) => {
+        if (typeof value === "string") {
+          return value.toLowerCase().includes(term);
+        }
+        return false;
+      });
+    });
+  };
+
+  // ADDED: Apply all filters
+  const applyFilters = () => {
+    let dataToFilter = [];
+    let dateField = "";
+
+    // Get the data to filter based on selected tab
+    if (selectedLi === 0) {
+      // Sale Report
+      dataToFilter = reportData;
+      dateField = "BookingDate";
+    } else if (selectedLi === 1) {
+      // Sale Summary Report
+      dataToFilter = getSaleSummaryData(reportData);
+      dateField = "BookingDate"; // Use same date field
+    } else if (selectedLi === 2) {
+      // Shipping Bill
+      dataToFilter = shippingBills;
+      dateField = "UploadedAt";
+    } else if (selectedLi === 3) {
+      // Invoice
+      dataToFilter = invoices;
+      dateField = "InvoiceDate";
+    }
+
+    // Apply date filter
+    let filteredData = filterByDateRange(dataToFilter, dateField);
+
+    // Apply search filter
+    filteredData = filterBySearch(filteredData);
+
+    return filteredData;
+  };
+
   // Fetch shipping bills
   const fetchShippingBills = async () => {
     if (!session?.user?.accountCode || isLoadingBills) return;
@@ -157,6 +248,7 @@ const Report = () => {
           FileName: bill.pdfFile.fileName || "",
           FileSize: formatFileSize(bill.pdfFile.fileSize || 0),
           UploadedAt: formatDate(bill.pdfFile.uploadedAt),
+          UploadedAtOriginal: bill.pdfFile.uploadedAt, // ADDED: Keep original date
           Status: bill.status || "uploaded",
           FileUrl: bill.pdfFile.fileUrl || "",
           DownloadUrl: bill.pdfFile.downloadUrl || bill.pdfFile.fileUrl || "",
@@ -189,6 +281,7 @@ const Report = () => {
         const invoicesList = res.data.data.map((invoice) => ({
           InvoiceNumber: invoice.invoiceNumber || "",
           InvoiceDate: formatDate(invoice.invoiceDate),
+          InvoiceDateOriginal: invoice.invoiceDate, // ADDED: Keep original date
           CustomerName: invoice.customer?.name || "",
           TotalAWBs: invoice.shipments?.length || 0,
           GrandTotal: invoice.invoiceSummary?.grandTotal?.toFixed(2) || "0.00",
@@ -445,7 +538,11 @@ const Report = () => {
 
         setReportData(transformed);
         setTableHeaders(headers);
-        setFilteredReportData(transformed);
+
+        // Apply initial filter
+        const filteredData = applyFilters();
+        setFilteredReportData(filteredData);
+
         console.log(`✅ Loaded ${transformed.length} shipment records`);
       } catch (error) {
         console.error("Error fetching report data:", error.message);
@@ -466,6 +563,13 @@ const Report = () => {
   useEffect(() => {
     fetchInvoices();
   }, [session?.user?.accountCode, server]);
+
+  // ADDED: Update filtered data when date range, search, or tab changes
+  useEffect(() => {
+    const filteredData = applyFilters();
+    setFilteredReportData(filteredData);
+    setCurrentPage(1); // Reset to first page
+  }, [dateRange, searchTerm, selectedLi, reportData, shippingBills, invoices]);
 
   const getSaleSummaryData = (shipments) => {
     const summaryMap = {};
@@ -521,22 +625,13 @@ const Report = () => {
     setSelectedRows({}); // Clear selected rows when switching tabs
 
     if (index === 0) {
-      // Sale Report
       setTableHeaders(headers);
-      setFilteredReportData(reportData);
     } else if (index === 1) {
-      // Sale Summary
-      const summaryData = getSaleSummaryData(reportData);
       setTableHeaders(saleSummaryHeaders);
-      setFilteredReportData(summaryData);
     } else if (index === 2) {
-      // Shipping Bill
       setTableHeaders(shippingBillHeaders);
-      setFilteredReportData(shippingBills);
     } else if (index === 3) {
-      // Invoice
       setTableHeaders(invoiceHeaders);
-      setFilteredReportData(invoices);
     }
   };
 
@@ -565,7 +660,63 @@ const Report = () => {
   }, []);
 
   const toggleDatePicker = () => setShowDatePicker(!showDatePicker);
-  const handleDateChange = (item) => setDateRange([item.selection]);
+
+  // MODIFIED: Update button label when date changes
+  const handleDateChange = (item) => {
+    setDateRange([item.selection]);
+
+    // Update button label
+    const startDate = item.selection.startDate;
+    const endDate = item.selection.endDate;
+
+    // Check if it matches predefined ranges
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+    const last7Days = new Date(today);
+    last7Days.setDate(today.getDate() - 7);
+    const last30Days = new Date(today);
+    last30Days.setDate(today.getDate() - 30);
+
+    // Helper to compare dates
+    const isSameDate = (date1, date2) => {
+      return (
+        date1.getFullYear() === date2.getFullYear() &&
+        date1.getMonth() === date2.getMonth() &&
+        date1.getDate() === date2.getDate()
+      );
+    };
+
+    if (isSameDate(startDate, today) && isSameDate(endDate, today)) {
+      setSelectedRangeLabel("Today");
+    } else if (
+      isSameDate(startDate, yesterday) &&
+      isSameDate(endDate, yesterday)
+    ) {
+      setSelectedRangeLabel("Yesterday");
+    } else if (isSameDate(startDate, last7Days) && isSameDate(endDate, today)) {
+      setSelectedRangeLabel("Last 7 days");
+    } else if (
+      isSameDate(startDate, last30Days) &&
+      isSameDate(endDate, today)
+    ) {
+      setSelectedRangeLabel("Last 30 days");
+    } else {
+      // Custom range
+      const formatShortDate = (date) => {
+        return date.toLocaleDateString("en-IN", {
+          day: "numeric",
+          month: "short",
+        });
+      };
+      setSelectedRangeLabel(
+        `${formatShortDate(startDate)} - ${formatShortDate(endDate)}`,
+      );
+    }
+
+    // Don't close picker automatically - let user select both dates
+    // setShowDatePicker(false);
+  };
 
   const getQuarterRange = () => {
     const currentMonth = new Date().getMonth();
@@ -617,6 +768,11 @@ const Report = () => {
       },
     },
   ];
+
+  // ADDED: Handle search input
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+  };
 
   return (
     <div className="top-[106px] bg-[#f8f9fa] h-[600px] overflow-hidden">
@@ -689,7 +845,8 @@ const Report = () => {
               onClick={toggleDatePicker}
               className="flex justify-between gap-2 items-center border border-gray-300 px-4 py-2 rounded-lg bg-white"
             >
-              <span className="text-[#2d3748]">Last 30 days</span>
+              {/* MODIFIED: Use dynamic label */}
+              <span className="text-[#2d3748]">{selectedRangeLabel}</span>
               <Image
                 width={20}
                 height={20}
@@ -707,6 +864,8 @@ const Report = () => {
                   onChange={handleDateChange}
                   staticRanges={staticRanges}
                   classNames={{ dateRangePickerWrapper: "custom-calendar" }}
+                  moveRangeOnFirstSelection={false}
+                  months={2}
                 />
               </div>
             )}
@@ -714,10 +873,13 @@ const Report = () => {
 
           <div className="rounded-md flex items-center gap-2 bg-[#F1F0F5] px-[11px] py-[6px]">
             <Image width={20} height={20} src="/search.svg" alt="Search" />
+            {/* MODIFIED: Add onChange handler */}
             <input
               className="bg-transparent text-[#71717A] outline-none"
               type="text"
               placeholder="Search"
+              value={searchTerm}
+              onChange={handleSearchChange}
             />
           </div>
         </div>
