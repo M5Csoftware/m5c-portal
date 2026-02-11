@@ -341,7 +341,7 @@ const Shipments = ({
           <span className="px-4"></span>
         </ul>
       </div>
-      <div className="flex flex-col gap-2 overflow-y-auto scrollbar-hide h-[310px]">
+      <div className="flex flex-col gap-2 overflow-y-auto table-scrollbar h-[310px]">
         {currentItems.length > 0 ? (
           currentItems.map((shipment) => (
             <ShipmentCard
