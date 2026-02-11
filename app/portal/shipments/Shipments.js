@@ -17,6 +17,7 @@ const Shipments = ({
   const [selectedShipments, setSelectedShipments] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(15);
+  const [isLoading, setIsLoading] = useState(false);
   const { setAccountCode, setSelectedAwbs, server, selectedLi, filters } =
     useContext(GlobalContext);
   const { data: session } = useSession();
@@ -25,7 +26,61 @@ const Shipments = ({
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
 
-  // Search and filter logic - SIMPLIFIED
+  // Fetch shipments based on selected tab
+  useEffect(() => {
+    setAccountCode(session?.user?.accountCode);
+
+    const fetchShipments = async () => {
+      setIsLoading(true);
+      try {
+        let url;
+        let response;
+
+        if (selectedLi === 7) {
+          // Fetch ONLY delivered shipments from EventActivity
+          url = `${server}/portal/get-delivered-shipments?accountCode=${session?.user?.accountCode}`;
+          response = await axios.get(url);
+
+          // Handle the response structure for delivered shipments
+          const shipments = response.data.shipments || [];
+          setShipmentsData(shipments);
+          setTotalShipments(response.data.total || shipments.length);
+          console.log("Delivered shipments:", shipments);
+        } else {
+          // Fetch all shipments for other tabs
+          url = `${server}/portal/get-shipments?accountCode=${session?.user?.accountCode}`;
+          response = await axios.get(url);
+
+          // Handle the response structure for regular shipments
+          const shipments =
+            response.data.shipments || response.data.shipment || [];
+          setShipmentsData(Array.isArray(shipments) ? shipments : [shipments]);
+          setTotalShipments(shipments.length || 0);
+        }
+      } catch (error) {
+        console.error(
+          "Error fetching shipments:",
+          error.response?.data || error.message,
+        );
+        setShipmentsData([]);
+        setTotalShipments(0);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (session?.user?.accountCode) {
+      fetchShipments();
+    }
+  }, [
+    server,
+    session?.user?.accountCode,
+    setAccountCode,
+    setTotalShipments,
+    selectedLi,
+  ]);
+
+  // Search and filter logic - UPDATED for delivered shipments
   const filteredShipments = useMemo(() => {
     let filtered = shipmentsData.filter((shipment) => {
       // 1. Status filtering based on selectedLi (TABS - All, Ready to Ship, Hold, etc.)
@@ -41,14 +96,16 @@ const Shipments = ({
         case 4:
           statusMatch = shipment.status === "In Transit";
           break;
-        case 5: // HOLD TAB - SHOW ALL HOLD SHIPMENTS
+        case 5: // HOLD TAB
           statusMatch = shipment.status === "Hold";
           break;
         case 6:
           statusMatch = shipment.status === "RTO";
           break;
-        case 7:
-          statusMatch = shipment.status === "Delivered";
+        case 7: // DELIVERED TAB - Already filtered from API, but keep this as fallback
+          statusMatch =
+            shipment.status === "Delivered" ||
+            shipment.status === "Shipment Delivered";
           break;
         default:
           statusMatch = true;
@@ -63,12 +120,13 @@ const Shipments = ({
         shipment.awbNo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         shipment.receiverFullName
           ?.toLowerCase()
-          .includes(searchTerm.toLowerCase());
+          .includes(searchTerm.toLowerCase()) ||
+        shipment.receiverName?.toLowerCase().includes(searchTerm.toLowerCase());
 
       if (!searchMatch) return false;
 
       // 3. Apply filters from FilterShipment panel ONLY ON "ALL" TAB
-      // ON HOLD TAB AND OTHER TABS: IGNORE ALL FILTERS FROM FILTER PANEL
+      // Skip filters for delivered tab unless you want them
       if (selectedLi === 0 || selectedLi === 1) {
         // Only apply filters when on "All" tab
 
@@ -188,7 +246,7 @@ const Shipments = ({
     });
   };
 
-  // Download functionality
+  // Download functionality - UPDATED for delivered shipments
   const downloadExcel = () => {
     // Determine which shipments to download
     const shipmentsToDownload =
@@ -209,6 +267,11 @@ const Shipments = ({
       "Created Date": shipment.createdAt
         ? new Date(shipment.createdAt).toLocaleDateString()
         : "",
+      "Delivery Date": shipment.deliveryDate
+        ? new Date(shipment.deliveryDate).toLocaleDateString()
+        : shipment.updatedAt
+          ? new Date(shipment.updatedAt).toLocaleDateString()
+          : "",
       Service: shipment.service || "",
       "Total Boxes": shipment.pcs || "",
       "Chargeble Weight": `${shipment.chargeableWt || 0} kg`,
@@ -219,13 +282,16 @@ const Shipments = ({
       "Consignor Phone": shipment.shipperPhoneNumber || "",
       "Consignor Address": shipment.shipperAddressLine1 || "",
       "Consignor City": shipment.shipperCity || "",
-      "Consignee Name": shipment.receiverFullName || "",
+      "Consignee Name":
+        shipment.receiverFullName || shipment.receiverName || "",
       "Consignee Phone": shipment.receiverPhoneNumber || "",
       "Consignee Address": shipment.receiverAddressLine1 || "",
       "Consignee City": shipment.receiverCity || "",
-      Status: shipment.status || "",
+      Status: shipment.status || "Delivered",
       "Total Amount": `₹${shipment.totalAmt || 0}`,
       "Payment Mode": shipment.paymentDetails?.mode || "Pending",
+      "Receiver Name": shipment.receiverName || "",
+      Remark: shipment.deliveredEvent?.remark || shipment.remark || "",
     }));
 
     // Create workbook and worksheet
@@ -237,9 +303,11 @@ const Shipments = ({
 
     // Generate Excel file and download
     const fileName =
-      selectedShipments.length > 0
-        ? `Selected_Shipments_${new Date().toISOString().split("T")[0]}.xlsx`
-        : `All_Shipments_${new Date().toISOString().split("T")[0]}.xlsx`;
+      selectedLi === 7
+        ? `Delivered_Shipments_${new Date().toISOString().split("T")[0]}.xlsx`
+        : selectedShipments.length > 0
+          ? `Selected_Shipments_${new Date().toISOString().split("T")[0]}.xlsx`
+          : `All_Shipments_${new Date().toISOString().split("T")[0]}.xlsx`;
 
     XLSX.writeFile(wb, fileName);
   };
@@ -249,9 +317,14 @@ const Shipments = ({
     if (onDownloadSetup) {
       onDownloadSetup(downloadExcel);
     }
-  }, [onDownloadSetup, downloadExcel]);
+  }, [
+    onDownloadSetup,
+    downloadExcel,
+    shipmentsData,
+    selectedShipments,
+    selectedLi,
+  ]);
 
-  // Rest of your existing functions remain the same...
   const handleDeleteSelected = () => {
     setShipmentsData((prevShipments) =>
       prevShipments.filter(
@@ -279,33 +352,21 @@ const Shipments = ({
   };
 
   useEffect(() => {
-    setAccountCode(session?.user?.accountCode);
-    const fetchShipments = async () => {
-      try {
-        const response = await axios.get(
-          `${server}/portal/get-shipments?accountCode=${session?.user?.accountCode}`,
-        );
-        const shipments = response.data.shipments;
-        console.log(shipments);
-        setShipmentsData(shipments);
-        setTotalShipments(shipments.length);
-      } catch (error) {
-        console.error(
-          "Error fetching shipments:",
-          error.response?.data || error.message,
-        );
-      }
-    };
-    fetchShipments();
-  }, [server, session?.user?.accountCode, setAccountCode, setTotalShipments]);
-
-  useEffect(() => {
     const selectedAWBNumbers = shipmentsData
       .filter((shipment) => selectedShipments.includes(shipment._id))
       .map((shipment) => shipment.awbNo);
 
     setSelectedAwbs(selectedAWBNumbers);
   }, [selectedShipments, shipmentsData, setSelectedAwbs]);
+
+  // Handle select all checkbox
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      setSelectedShipments(currentItems.map((shipment) => shipment._id));
+    } else {
+      setSelectedShipments([]);
+    }
+  };
 
   return (
     <div className="flex flex-col gap-2 relative">
@@ -319,15 +380,11 @@ const Shipments = ({
               type="checkbox"
               name="select-all"
               id="select-all"
-              onChange={(e) => {
-                if (e.target.checked) {
-                  setSelectedShipments(
-                    shipmentsData.map((shipment) => shipment._id),
-                  );
-                } else {
-                  setSelectedShipments([]);
-                }
-              }}
+              checked={
+                selectedShipments.length === currentItems.length &&
+                currentItems.length > 0
+              }
+              onChange={handleSelectAll}
             />
           </li>
           <li className="text-center">AWB Number</li>
@@ -342,7 +399,9 @@ const Shipments = ({
         </ul>
       </div>
       <div className="flex flex-col gap-2 overflow-y-auto table-scrollbar h-[310px]">
-        {currentItems.length > 0 ? (
+        {isLoading ? (
+          <p className="text-gray-500 text-center py-4">Loading shipments...</p>
+        ) : currentItems.length > 0 ? (
           currentItems.map((shipment) => (
             <ShipmentCard
               key={shipment._id}
@@ -355,54 +414,60 @@ const Shipments = ({
           <p className="text-gray-500 text-center py-4">
             {searchTerm
               ? "No shipments match your search."
-              : "No shipments found."}
+              : selectedLi === 7
+                ? "No delivered shipments found."
+                : "No shipments found."}
           </p>
         )}
       </div>
-      <div
-        style={{ boxShadow: "0 0 10px 1px rgba(0, 0, 0, 0.1)" }}
-        className="shadow-md flex sticky bottom-2 left-0 right-0 justify-between items-center my-4 text-[#A0AEC0] px-4 py-1 text-sm rounded-lg bg-white"
-      >
-        <div className="flex items-center">
-          <label htmlFor="itemsPerPage" className="text-[#A0AEC0] mr-2">
-            Items per page:
-          </label>
-          <select
-            id="itemsPerPage"
-            value={itemsPerPage}
-            onChange={handleItemsPerPageChange}
-            className="border border-gray-300 rounded px-2 py-1"
-          >
-            <option value="5">5</option>
-            <option value="10">10</option>
-            <option value="15">15</option>
-            <option value="20">20</option>
-          </select>
-          <span className="ml-4 text-sm">
-            Showing {indexOfFirstItem + 1}-
-            {Math.min(indexOfLastItem, filteredShipments.length)} of{" "}
-            {filteredShipments.length} shipments
-          </span>
+      {filteredShipments.length > 0 && (
+        <div
+          style={{ boxShadow: "0 0 10px 1px rgba(0, 0, 0, 0.1)" }}
+          className="shadow-md flex sticky bottom-2 left-0 right-0 justify-between items-center my-4 text-[#A0AEC0] px-4 py-1 text-sm rounded-lg bg-white"
+        >
+          <div className="flex items-center">
+            <label htmlFor="itemsPerPage" className="text-[#A0AEC0] mr-2">
+              Items per page:
+            </label>
+            <select
+              id="itemsPerPage"
+              value={itemsPerPage}
+              onChange={handleItemsPerPageChange}
+              className="border border-gray-300 rounded px-2 py-1"
+            >
+              <option value="5">5</option>
+              <option value="10">10</option>
+              <option value="15">15</option>
+              <option value="20">20</option>
+            </select>
+            <span className="ml-4 text-sm">
+              Showing {filteredShipments.length > 0 ? indexOfFirstItem + 1 : 0}-
+              {Math.min(indexOfLastItem, filteredShipments.length)} of{" "}
+              {filteredShipments.length} shipments
+            </span>
+          </div>
+          <div className="flex items-center">
+            <button
+              className="text-[#A0AEC0] px-4 py-2 rounded mr-2 disabled:opacity-50"
+              onClick={handlePrevPage}
+              disabled={currentPage === 1 || filteredShipments.length === 0}
+            >
+              Previous
+            </button>
+            <button
+              className="text-[#A0AEC0] px-4 py-2 rounded disabled:opacity-50"
+              onClick={handleNextPage}
+              disabled={
+                currentPage ===
+                  Math.ceil(filteredShipments.length / itemsPerPage) ||
+                filteredShipments.length === 0
+              }
+            >
+              Next
+            </button>
+          </div>
         </div>
-        <div className="flex items-center">
-          <button
-            className="text-[#A0AEC0] px-4 py-2 rounded mr-2 disabled:opacity-50"
-            onClick={handlePrevPage}
-            disabled={currentPage === 1}
-          >
-            Previous
-          </button>
-          <button
-            className="text-[#A0AEC0] px-4 py-2 rounded disabled:opacity-50"
-            onClick={handleNextPage}
-            disabled={
-              currentPage === Math.ceil(filteredShipments.length / itemsPerPage)
-            }
-          >
-            Next
-          </button>
-        </div>
-      </div>
+      )}
     </div>
   );
 };
