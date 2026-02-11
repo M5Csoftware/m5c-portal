@@ -14,6 +14,7 @@ import {
   ConfirmModal,
   InfoModal,
   ValidationErrorModal,
+  ZoneValidationErrorModal,
 } from "@/app/portal/component/Modal/Modals";
 
 // List of common Indian zip code prefixes (first 2 digits) for accurate validation
@@ -214,6 +215,7 @@ export default function BulkUploadPage() {
   const [showWarningModal, setShowWarningModal] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showInfoModal, setShowInfoModal] = useState(false);
+  const [showZoneValidationModal, setShowZoneValidationModal] = useState(false);
 
   const [modalData, setModalData] = useState({
     title: "",
@@ -1239,6 +1241,18 @@ export default function BulkUploadPage() {
 
         try {
           const errorData = JSON.parse(errorText);
+
+          // Check if this is a zone validation error
+          if (
+            errorData.message === "Zone validation failed" &&
+            errorData.errors
+          ) {
+            setShowZoneValidationModal(true);
+            setSectorDestinationServiceErrors(errorData.errors);
+            setLoading(false);
+            return;
+          }
+
           throw new Error(
             `Upload failed: ${errorData.message || response.status}`,
           );
@@ -1279,6 +1293,7 @@ export default function BulkUploadPage() {
           setExcelData([]);
           setFileName("");
           setValidationErrors([]);
+          setSectorDestinationServiceErrors([]);
 
           if (fileInputRef.current) {
             fileInputRef.current.value = "";
@@ -1316,6 +1331,12 @@ export default function BulkUploadPage() {
         isOpen={showValidationModal}
         onClose={() => setShowValidationModal(false)}
         validationErrors={validationErrors}
+      />
+
+      <ZoneValidationErrorModal
+        isOpen={showZoneValidationModal}
+        onClose={() => setShowZoneValidationModal(false)}
+        zoneErrors={sectorDestinationServiceErrors}
       />
 
       <SuccessModal
@@ -1366,10 +1387,10 @@ export default function BulkUploadPage() {
         cancelText="Cancel"
       />
 
-      <div className="bg-[#f8f9fa] min-h-screen max-w-[1800px]">
+      <div className="bg-[#f8f9fa]">
         <div className="p-6">
           {/* Header */}
-          <div className="flex justify-between items-center mb-3">
+          <div className="flex justify-between  items-center mb-3">
             <div className="flex flex-col gap-2">
               <h1 className="text-2xl font-bold text-[#2D3748]">
                 Bulk Upload Shipments
@@ -1394,7 +1415,7 @@ export default function BulkUploadPage() {
               )}
             </div>
 
-            <div className="flex items-end justify-end mt-4 pr-1">
+            <div className=" flex items-end justify-end mt-4 pr-1">
               <button
                 onClick={handleSampleDownload}
                 className="flex items-center justify-center gap-2 border border-[#979797] w-40 py-1.5 rounded-lg text-[#71717A] hover:bg-gray-50"
@@ -1412,78 +1433,83 @@ export default function BulkUploadPage() {
           </div>
 
           {/* Main Card */}
-          <div className="bg-white border border-[#E2E8F0] rounded-xl p-6 ">
-            <div className="flex flex-col lg:flex-row gap-6 ">
-              <div className="w-full lg:w-4/5">
-                <div
-                  className="border-2 border-dashed flex justify-center items-center gap-4 border-[#CBD5E0] rounded-lg p-6 w-full bg-[#F8FAFC]"
-                  onDragOver={handleDragOver}
-                  onDrop={handleDrop}
-                >
-                  <Image src="/bulk-upload.svg" width={20} height={20} alt="" />
-                  <div className="text-center">
-                    {fileName ? (
-                      <>
-                        <p className="text-sm text-green-600 font-medium">
-                          ✅ {fileName}
-                        </p>
-                        <p className="text-xs text-[#A0AEC0] mt-1">
-                          {rowData.length} shipments loaded
-                          {validationErrors.length > 0 && (
-                            <span className="text-red-600">
-                              {" "}
-                              ({validationErrors.length} errors)
-                            </span>
-                          )}
-                        </p>
-                      </>
-                    ) : (
-                      <>
-                        <p className="text-sm text-[#71717A]">
-                          Drag & drop your Excel file here
-                        </p>
-                        <p className="text-xs text-[#A0AEC0] mt-1">
-                          or click browse (.xlsx only)
-                        </p>
-                      </>
-                    )}
-                  </div>
-
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".xlsx,.xls"
-                    onChange={handleFileChange}
-                    className="hidden"
-                  />
+          <div className="bg-white border border-[#E2E8F0] rounded-xl p-6 max-w-screen flex gap-10">
+            <div className="w-4/5">
+              <div
+                className="border-2 border-dashed flex justify-center items-center gap-4 border-[#CBD5E0] rounded-lg p-6 w-full bg-[#F8FAFC]"
+                onDragOver={handleDragOver}
+                onDrop={handleDrop}
+              >
+                <Image src="/bulk-upload.svg" width={20} height={20} alt="" />
+                <div className="text-center">
+                  {fileName ? (
+                    <>
+                      <p className="text-sm text-green-600 font-medium">
+                        ✅ {fileName}
+                      </p>
+                      <p className="text-xs text-[#A0AEC0] mt-1">
+                        {rowData.length} shipments loaded
+                        {validationErrors.length > 0 && (
+                          <span className="text-red-600">
+                            {" "}
+                            ({validationErrors.length} zip errors)
+                          </span>
+                        )}
+                        {sectorDestinationServiceErrors.length > 0 && (
+                          <span className="text-red-600">
+                            {" "}
+                            ({sectorDestinationServiceErrors.length} zone
+                            errors)
+                          </span>
+                        )}
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-sm text-[#71717A]">
+                        Drag & drop your Excel file here
+                      </p>
+                      <p className="text-xs text-[#A0AEC0] mt-1">
+                        or click browse (.xlsx only)
+                      </p>
+                    </>
+                  )}
                 </div>
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+              </div>
+            </div>
+
+            <div className="w-1/5 flex flex-col gap-3 font-bold">
+              <div className="flex items-start gap-4 w-full">
+                <button
+                  onClick={handleBrowseClick}
+                  className="w-40 py-1.5 rounded-lg text-[--primary-color] bg-white border-[1px] border-[var(--primary-color)] hover:opacity-90"
+                >
+                  Browse
+                </button>
+                <button
+                  onClick={handleCancel}
+                  className="w-40 py-1.5 rounded-lg border border-[#979797] text-[#71717A] hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
               </div>
 
-              <div className="w-full lg:w-1/5 flex flex-col sm:flex-row lg:flex-col gap-3 font-bold">
-                <div className="flex flex-col sm:flex-row lg:flex-col gap-3 w-full">
-                  <button
-                    onClick={handleBrowseClick}
-                    className="w-full py-1.5 rounded-lg text-[--primary-color] bg-white border-[1px] border-[var(--primary-color)] hover:opacity-90"
-                  >
-                    Browse
-                  </button>
-                  <button
-                    onClick={handleCancel}
-                    className="w-full py-1.5 rounded-lg border border-[#979797] text-[#71717A] hover:bg-gray-50"
-                  >
-                    Cancel
-                  </button>
-                </div>
-
-                <div className="w-full">
-                  <button
-                    onClick={handleUpload}
-                    disabled={loading || rowData.length === 0 || hasAnyErrors}
-                    className="w-full py-1.5 rounded-lg bg-[var(--primary-color)] text-white hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {loading ? "Uploading..." : "Upload"}
-                  </button>
-                </div>
+              <div className="flex items-start gap-4 w-full">
+                <button
+                  onClick={handleUpload}
+                  disabled={loading || rowData.length === 0 || hasAnyErrors}
+                  className="w-[98%] py-1.5 rounded-lg bg-[var(--primary-color)] text-white hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? "Uploading..." : "Upload"}
+                </button>
               </div>
             </div>
           </div>
@@ -1527,20 +1553,77 @@ export default function BulkUploadPage() {
               </div>
             </div>
           )}
-        </div>
 
-        {/* Table Section */}
-        <div className="bg-white py-4 rounded-xl border-[1px] mx-6 overflow-hidden">
-          <div className="px-4 bg-[#F8FAFC] overflow-x-auto">
-            <div className="min-w-[1200px]">
-              <TableWithSorting
-                register={register}
-                setValue={setValue}
-                columns={bulkUploadColumns}
-                rowData={rowData}
-              />
+          {/* Zone Validation Errors Display */}
+          {sectorDestinationServiceErrors.length > 0 && (
+            <div
+              className="rounded-md p-4 mt-4 border-2"
+              style={{
+                backgroundColor: "#FEF3C7",
+                borderColor: "#F59E0B",
+              }}
+            >
+              <div className="flex items-start">
+                <div className="flex-1">
+                  <h3
+                    className="font-bold text-lg mb-2 flex items-center"
+                    style={{ color: "#92400E" }}
+                  >
+                    ZONE CONFIGURATION ERRORS -{" "}
+                    {sectorDestinationServiceErrors.length} Shipments
+                  </h3>
+                  <div className="bg-white rounded p-3 mb-3 border border-amber-300">
+                    <p className="text-sm mb-2" style={{ color: "#B45309" }}>
+                      The following sector-destination-service combinations do
+                      not exist in the zone matrix. Please check your Excel file
+                      and update the values.
+                    </p>
+                    <div className="max-h-40 overflow-y-auto">
+                      <table className="min-w-full text-xs">
+                        <thead className="bg-amber-50">
+                          <tr>
+                            <th className="px-2 py-1 text-left">AWB</th>
+                            <th className="px-2 py-1 text-left">Sector</th>
+                            <th className="px-2 py-1 text-left">Destination</th>
+                            <th className="px-2 py-1 text-left">Service</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {sectorDestinationServiceErrors.map((error, idx) => (
+                            <tr key={idx} className="border-b border-amber-100">
+                              <td className="px-2 py-1">{error.awbNo}</td>
+                              <td className="px-2 py-1">{error.sector}</td>
+                              <td className="px-2 py-1">{error.destination}</td>
+                              <td className="px-2 py-1">{error.service}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                  <span
+                    className="text-sm font-semibold mb-1"
+                    style={{ color: "#92400E" }}
+                  >
+                    ⚠️ Action Required: Fix these combinations in your Excel
+                    file and re-upload.
+                  </span>
+                </div>
+              </div>
             </div>
-          </div>
+          )}
+        </div>
+      </div>
+
+      <div className="bg-white py-4 max-w-[1800px] rounded-xl border-[1px] mx-6">
+        <div className="px-4 bg-[#F8FAFC]">
+          <TableWithSorting
+            register={register}
+            setValue={setValue}
+            columns={bulkUploadColumns}
+            rowData={rowData}
+            className="max-w-[90%]"
+          />
         </div>
       </div>
     </>

@@ -20,7 +20,8 @@ function ChangePassword() {
     const newPassword = watch('newPassword');
 
     return (
-        <div className="max-w-lg p-4 rounded-md text-sm">
+        <div className="max-w-lg p-4 rounded-md pt-0 text-sm">
+            <h1 className='text-2xl font-bold text-gray-800 mb-10'>Change Your Profile Password</h1>
             <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-10">
                 <div className="flex flex-col gap-6">
                     <InputField

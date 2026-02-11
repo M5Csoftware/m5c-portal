@@ -153,7 +153,7 @@ export default function PortalLayout({ children }) {
 
   return (
     <FormDataProvider>
-      <div className="flex overflow-x-clip">
+      <div className="flex overflow-x-clip ">
         <Sidebar />
         <div className="bg-[#F8F9FA] relative min-h-dvh max-h-vh flex-grow">
           <div className="sticky top-0 bg-[#F8F9FA] z-50">
