@@ -1366,10 +1366,10 @@ export default function BulkUploadPage() {
         cancelText="Cancel"
       />
 
-      <div className="bg-[#f8f9fa]">
+      <div className="bg-[#f8f9fa] min-h-screen max-w-[1800px]">
         <div className="p-6">
           {/* Header */}
-          <div className="flex justify-between  items-center mb-3">
+          <div className="flex justify-between items-center mb-3">
             <div className="flex flex-col gap-2">
               <h1 className="text-2xl font-bold text-[#2D3748]">
                 Bulk Upload Shipments
@@ -1394,7 +1394,7 @@ export default function BulkUploadPage() {
               )}
             </div>
 
-            <div className=" flex items-end justify-end mt-4 pr-1">
+            <div className="flex items-end justify-end mt-4 pr-1">
               <button
                 onClick={handleSampleDownload}
                 className="flex items-center justify-center gap-2 border border-[#979797] w-40 py-1.5 rounded-lg text-[#71717A] hover:bg-gray-50"
@@ -1412,76 +1412,78 @@ export default function BulkUploadPage() {
           </div>
 
           {/* Main Card */}
-          <div className="bg-white border border-[#E2E8F0] rounded-xl p-6 max-w-screen flex gap-10">
-            <div className="w-4/5">
-              <div
-                className="border-2 border-dashed flex justify-center items-center gap-4 border-[#CBD5E0] rounded-lg p-6 w-full bg-[#F8FAFC]"
-                onDragOver={handleDragOver}
-                onDrop={handleDrop}
-              >
-                <Image src="/bulk-upload.svg" width={20} height={20} alt="" />
-                <div className="text-center">
-                  {fileName ? (
-                    <>
-                      <p className="text-sm text-green-600 font-medium">
-                        ✅ {fileName}
-                      </p>
-                      <p className="text-xs text-[#A0AEC0] mt-1">
-                        {rowData.length} shipments loaded
-                        {validationErrors.length > 0 && (
-                          <span className="text-red-600">
-                            {" "}
-                            ({validationErrors.length} errors)
-                          </span>
-                        )}
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <p className="text-sm text-[#71717A]">
-                        Drag & drop your Excel file here
-                      </p>
-                      <p className="text-xs text-[#A0AEC0] mt-1">
-                        or click browse (.xlsx only)
-                      </p>
-                    </>
-                  )}
+          <div className="bg-white border border-[#E2E8F0] rounded-xl p-6 ">
+            <div className="flex flex-col lg:flex-row gap-6 ">
+              <div className="w-full lg:w-4/5">
+                <div
+                  className="border-2 border-dashed flex justify-center items-center gap-4 border-[#CBD5E0] rounded-lg p-6 w-full bg-[#F8FAFC]"
+                  onDragOver={handleDragOver}
+                  onDrop={handleDrop}
+                >
+                  <Image src="/bulk-upload.svg" width={20} height={20} alt="" />
+                  <div className="text-center">
+                    {fileName ? (
+                      <>
+                        <p className="text-sm text-green-600 font-medium">
+                          ✅ {fileName}
+                        </p>
+                        <p className="text-xs text-[#A0AEC0] mt-1">
+                          {rowData.length} shipments loaded
+                          {validationErrors.length > 0 && (
+                            <span className="text-red-600">
+                              {" "}
+                              ({validationErrors.length} errors)
+                            </span>
+                          )}
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-sm text-[#71717A]">
+                          Drag & drop your Excel file here
+                        </p>
+                        <p className="text-xs text-[#A0AEC0] mt-1">
+                          or click browse (.xlsx only)
+                        </p>
+                      </>
+                    )}
+                  </div>
+
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".xlsx,.xls"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                </div>
+              </div>
+
+              <div className="w-full lg:w-1/5 flex flex-col sm:flex-row lg:flex-col gap-3 font-bold">
+                <div className="flex flex-col sm:flex-row lg:flex-col gap-3 w-full">
+                  <button
+                    onClick={handleBrowseClick}
+                    className="w-full py-1.5 rounded-lg text-[--primary-color] bg-white border-[1px] border-[var(--primary-color)] hover:opacity-90"
+                  >
+                    Browse
+                  </button>
+                  <button
+                    onClick={handleCancel}
+                    className="w-full py-1.5 rounded-lg border border-[#979797] text-[#71717A] hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
                 </div>
 
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".xlsx,.xls"
-                  onChange={handleFileChange}
-                  className="hidden"
-                />
-              </div>
-            </div>
-
-            <div className="w-1/5 flex flex-col gap-3 font-bold">
-              <div className="flex items-start gap-4 w-full">
-                <button
-                  onClick={handleBrowseClick}
-                  className="w-40 py-1.5 rounded-lg text-[--primary-color] bg-white border-[1px] border-[var(--primary-color)] hover:opacity-90"
-                >
-                  Browse
-                </button>
-                <button
-                  onClick={handleCancel}
-                  className="w-40 py-1.5 rounded-lg border border-[#979797] text-[#71717A] hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-              </div>
-
-              <div className="flex items-start gap-4 w-full">
-                <button
-                  onClick={handleUpload}
-                  disabled={loading || rowData.length === 0 || hasAnyErrors}
-                  className="w-[98%] py-1.5 rounded-lg bg-[var(--primary-color)] text-white hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading ? "Uploading..." : "Upload"}
-                </button>
+                <div className="w-full">
+                  <button
+                    onClick={handleUpload}
+                    disabled={loading || rowData.length === 0 || hasAnyErrors}
+                    className="w-full py-1.5 rounded-lg bg-[var(--primary-color)] text-white hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {loading ? "Uploading..." : "Upload"}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -1526,17 +1528,19 @@ export default function BulkUploadPage() {
             </div>
           )}
         </div>
-      </div>
 
-      <div className="bg-white py-4 max-w-[1800px] rounded-xl border-[1px] mx-6">
-        <div className="px-4 bg-[#F8FAFC]">
-          <TableWithSorting
-            register={register}
-            setValue={setValue}
-            columns={bulkUploadColumns}
-            rowData={rowData}
-            className="max-w-[90%]"
-          />
+        {/* Table Section */}
+        <div className="bg-white py-4 rounded-xl border-[1px] mx-6 overflow-hidden">
+          <div className="px-4 bg-[#F8FAFC] overflow-x-auto">
+            <div className="min-w-[1200px]">
+              <TableWithSorting
+                register={register}
+                setValue={setValue}
+                columns={bulkUploadColumns}
+                rowData={rowData}
+              />
+            </div>
+          </div>
         </div>
       </div>
     </>
