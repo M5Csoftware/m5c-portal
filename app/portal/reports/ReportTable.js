@@ -169,7 +169,7 @@ const ReportTable = ({
   return (
     <div className="w-full">
       {/* Scrollable Table Container */}
-      <div className="overflow-x-auto table-scrollbar w-[91vw]">
+      <div className="overflow-x-auto overflow-y-auto table-scrollbar w-[91vw]">
         <div className="min-w-max">
           {/* Header */}
           <ul className="flex sticky top-0 bg-white border border-[#E2E8F0] rounded-[4px] drop-shadow-sm p-4 text-[#A0AEC0] text-sm font-semibold items-center text-center">
