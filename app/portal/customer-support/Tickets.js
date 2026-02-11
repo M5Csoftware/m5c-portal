@@ -6,7 +6,8 @@ import axios from "axios";
 import { GlobalContext } from "../GlobalContext";
 import { useSession } from "next-auth/react";
 
-const Tickets = ({ statusFilter, dateRange }) => {
+const Tickets = ({ statusFilter, dateRange, searchTerm }) => {
+  // ADDED searchTerm prop
   const [selectedtickets, setSelectedtickets] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(15);
@@ -37,6 +38,7 @@ const Tickets = ({ statusFilter, dateRange }) => {
           console.log("Processed tickets:", allTickets);
           console.log("Status filter:", statusFilter);
           console.log("Date range:", dateRange);
+          console.log("Search term:", searchTerm); // ADDED
 
           let filteredTickets = allTickets;
 
@@ -64,16 +66,40 @@ const Tickets = ({ statusFilter, dateRange }) => {
               const isInRange =
                 ticketDate >= startDate && ticketDate <= endDate;
 
-              console.log(`Ticket ${ticket.displayTicketId}:`, {
-                ticketDate: ticketDate.toLocaleDateString(),
-                startDate: startDate.toLocaleDateString(),
-                endDate: endDate.toLocaleDateString(),
-                isInRange,
-              });
-
               return isInRange;
             });
             console.log(`Filtered by date range:`, filteredTickets);
+          }
+
+          // ADDED: Apply search filter
+          if (searchTerm && searchTerm.trim() !== "") {
+            const searchLower = searchTerm.toLowerCase().trim();
+
+            filteredTickets = filteredTickets.filter((ticket) => {
+              // Define all searchable fields in your ticket data
+              const searchableFields = [
+                ticket.ticketId || "",
+                ticket.displayTicketId || "",
+                ticket.awbNo || "",
+                ticket.subCategory || "",
+                ticket.status || "",
+                ticket.priority || "",
+                ticket.issueType || "",
+                ticket.description || "",
+                ticket.comments || "",
+              ];
+
+              // Check if any field contains the search term
+              return searchableFields.some((field) => {
+                if (typeof field === "string") {
+                  return field.toLowerCase().includes(searchLower);
+                } else if (typeof field === "number") {
+                  return field.toString().includes(searchLower);
+                }
+                return false;
+              });
+            });
+            console.log(`Filtered by search "${searchTerm}":`, filteredTickets);
           }
 
           console.log(
@@ -99,6 +125,7 @@ const Tickets = ({ statusFilter, dateRange }) => {
   }, [
     statusFilter,
     dateRange,
+    searchTerm, // ADDED to dependencies
     ticketRefreshTrigger,
     session?.user?.accountCode,
     server,
@@ -113,7 +140,7 @@ const Tickets = ({ statusFilter, dateRange }) => {
   // Reset to page 1 when data changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [ticketsData.length, statusFilter, dateRange]);
+  }, [ticketsData.length, statusFilter, dateRange, searchTerm]); // ADDED searchTerm
 
   // Checkbox logic
   const handleCheckboxChange = (id) => {
@@ -178,15 +205,42 @@ const Tickets = ({ statusFilter, dateRange }) => {
 
   return (
     <div className="flex flex-col gap-2">
-      {/* Debug info */}
+      {/* Debug info - Updated */}
       <div className="text-xs text-gray-500 p-2 bg-gray-100 rounded">
         Total Tickets: {ticketsData.length} | Showing: {currentItems.length} |
         Page: {currentPage}/{Math.ceil(ticketsData.length / itemsPerPage) || 1}{" "}
-        | Filter: {statusFilter || "All"} | Date Range:{" "}
+        | Filter: {statusFilter || "All"} |
+        {searchTerm ? ` Search: "${searchTerm}" | ` : " "}
+        Date Range:{" "}
         {dateRange
           ? `${new Date(dateRange.startDate).toLocaleDateString()} - ${new Date(dateRange.endDate).toLocaleDateString()}`
           : "All Time"}
       </div>
+
+      {/* Search Results Header */}
+      {searchTerm && ticketsData.length > 0 && (
+        <div className="bg-blue-50 border-l-4 border-blue-500 p-3 rounded">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <svg
+                className="w-5 h-5 text-blue-500 mr-2"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              <span className="text-sm text-blue-700">
+                Found <strong>{ticketsData.length}</strong> tickets matching "
+                <strong>{searchTerm}</strong>"
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Header */}
       <div>
@@ -211,7 +265,7 @@ const Tickets = ({ statusFilter, dateRange }) => {
       </div>
 
       {/* Ticket Cards */}
-      <div className="flex flex-col gap-2 text-sm h-[180px] overflow-x-auto scrollbar-hide">
+      <div className="flex flex-col gap-2 text-sm h-[180px] overflow-x-auto overflow-y-auto table-scrollbar">
         {currentItems.length > 0 ? (
           currentItems.map((ticket) => (
             <TicketCard
@@ -219,16 +273,19 @@ const Tickets = ({ statusFilter, dateRange }) => {
               ticketData={ticket}
               selected={selectedtickets.includes(ticket._id)}
               onCheckboxChange={handleCheckboxChange}
+              searchTerm={searchTerm} // Pass search term for highlighting
             />
           ))
         ) : (
           <div className="text-center py-8 text-gray-500 bg-white border rounded">
             {ticketsData.length === 0
-              ? statusFilter && statusFilter !== "All"
-                ? `No ${statusFilter} tickets found${dateRange ? " in the selected date range" : ""}`
-                : dateRange
-                  ? "No tickets found in the selected date range"
-                  : "No tickets found"
+              ? searchTerm
+                ? `No tickets found for "${searchTerm}"${statusFilter ? ` with status "${statusFilter}"` : ""}${dateRange ? " in the selected date range" : ""}`
+                : statusFilter && statusFilter !== "All"
+                  ? `No ${statusFilter} tickets found${dateRange ? " in the selected date range" : ""}`
+                  : dateRange
+                    ? "No tickets found in the selected date range"
+                    : "No tickets found"
               : "No tickets on this page. Try going to the first page."}
           </div>
         )}
@@ -256,6 +313,7 @@ const Tickets = ({ statusFilter, dateRange }) => {
               Showing {indexOfFirstItem + 1}-
               {Math.min(indexOfLastItem, ticketsData.length)} of{" "}
               {ticketsData.length} tickets
+              {searchTerm && ` matching "${searchTerm}"`}
             </span>
           </div>
           <div className="flex items-center">
