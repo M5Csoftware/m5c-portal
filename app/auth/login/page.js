@@ -656,7 +656,7 @@ export default function LoginPage() {
 
                 <div className="text-center">
                   <p className="text-sm text-gray-500">
-                    Didn't receive OTP?{" "}
+                    Did not receive OTP?{" "}
                     <button
                       onClick={handleResendOtp}
                       disabled={recoverLoading}
