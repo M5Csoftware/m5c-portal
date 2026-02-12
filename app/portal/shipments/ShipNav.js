@@ -189,7 +189,7 @@ const ShipNav = ({
 
   return (
     <>
-      <div className="sticky top-[106px] bg-[#f8f9fa]">
+      <div className="sticky top-[106px] bg-[#f8f9fa] z-40">
         <div className="flex w-full justify-between items-baseline">
           <div className="w-full">
             <div className="flex justify-between">
@@ -388,7 +388,7 @@ const ShipNav = ({
               {showDatePicker && (
                 <div
                   ref={datePickerRef}
-                  className="absolute z-50 top-full left-0 mt-2 bg-white shadow-lg rounded-md overflow-hidden border border-[#E2E8F0] custom-calendar"
+                  className="absolute z-40 top-full left-0 mt-2 bg-white shadow-lg rounded-md overflow-hidden border border-[#E2E8F0] custom-calendar"
                 >
                   <DateRangePicker
                     ranges={dateRange}
