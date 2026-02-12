@@ -679,7 +679,7 @@ const Navbar = () => {
         </div>
 
         {/* Notification and Profile */}
-        <div className="flex gap-2 items-center">
+        <div className="flex gap-2 items-center z-50">
           <NotificationModal />
           <Link
             href="../../portal/profile"
