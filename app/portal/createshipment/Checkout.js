@@ -1,15 +1,20 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useContext } from "react";
 import Image from "next/image";
+import axios from "axios";
+import { GlobalContext } from "../GlobalContext";
+import { useSession } from "next-auth/react";
 
-function Checkout({ 
-  step, 
-  onPrev, 
-  selectedServiceLocal, 
-  filteredServicesWithRates, 
-  destination, 
-  destinationFlag, 
+function Checkout({
+  step,
+  onPrev,
+  selectedServiceLocal,
+  filteredServicesWithRates,
+  destination,
+  destinationFlag,
   isEditMode,
-  watch 
+  watch,
+  creditLimitError,
+  isShipmentOnHold,
 }) {
   const [summary, setSummary] = useState({
     service: "",
@@ -20,34 +25,82 @@ function Checkout({
     basicAmt: 0,
     grandTotal: 0,
     cgstAmt: 0,
-    sgstAmt: 0
+    sgstAmt: 0,
   });
+
+  const [currentBalance, setCurrentBalance] = useState(0);
+  const [currentCredit, setCurrentCredit] = useState(0);
+  const [loadingBalance, setLoadingBalance] = useState(false);
+  const [balanceVersion, setBalanceVersion] = useState(0);
+  const [hasOutstanding, setHasOutstanding] = useState(false);
+  const [outstandingAmount, setOutstandingAmount] = useState(0);
+
+  const { server } = useContext(GlobalContext);
+  const { data: session } = useSession();
 
   // Watch form values for display
   const chargeableWt = watch("chargeableWt") || 0;
   const totalPcs = watch("boxes")?.length || 0;
 
-  // ✅ FIXED: GST percentages (9% each = 18% total)
   const cgstPercent = 9;
   const sgstPercent = 9;
 
+  // Fetch current balance
   useEffect(() => {
-    console.log("Checkout - selectedServiceLocal:", selectedServiceLocal);
-    console.log("Checkout - filteredServicesWithRates:", filteredServicesWithRates);
+    const fetchBalance = async () => {
+      if (!session?.user?.accountCode) return;
 
-    if (!selectedServiceLocal || !filteredServicesWithRates || filteredServicesWithRates.length === 0) {
-      console.log("Checkout - No service selected or no rates available");
+      setLoadingBalance(true);
+      try {
+        const response = await axios.get(
+          `${server}/portal/update-balance?accountCode=${session?.user?.accountCode}`
+        );
+
+        if (response.data.success) {
+          setCurrentBalance(Number(response.data.data.leftOverBalance) || 0);
+          setCurrentCredit(Number(response.data.data.creditLimit) || 0);
+          setHasOutstanding(response.data.data.hasOutstanding || false);
+          setOutstandingAmount(Number(response.data.data.outstandingAmount) || 0);
+        }
+      } catch (error) {
+        console.error("Error fetching balance:", error);
+      } finally {
+        setLoadingBalance(false);
+      }
+    };
+
+    fetchBalance();
+  }, [session?.user?.accountCode, server, balanceVersion]);
+
+  // Expose refresh method to parent
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.refreshBalance = () => {
+        setBalanceVersion(prev => prev + 1);
+      };
+    }
+    
+    return () => {
+      if (typeof window !== 'undefined') {
+        delete window.refreshBalance;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (
+      !selectedServiceLocal ||
+      !filteredServicesWithRates ||
+      filteredServicesWithRates.length === 0
+    ) {
       return;
     }
 
     const matchingObject = filteredServicesWithRates.find(
-      item => item.service === selectedServiceLocal
+      (item) => item.service === selectedServiceLocal
     );
 
     if (matchingObject) {
-      console.log("Checkout - Matched Object:", matchingObject);
-      
-      // ✅ FIX: Convert string values to numbers for calculations
       setSummary({
         service: matchingObject.service || "",
         zone: matchingObject.zone || "",
@@ -63,8 +116,6 @@ function Checkout({
         isAustraliaShipment: matchingObject.isAustraliaShipment || false,
       });
     } else {
-      console.log("Checkout - No matching service found");
-      // Reset to default if no match
       setSummary({
         service: "",
         zone: "",
@@ -74,10 +125,16 @@ function Checkout({
         basicAmt: 0,
         grandTotal: 0,
         cgstAmt: 0,
-        sgstAmt: 0
+        sgstAmt: 0,
       });
     }
   }, [selectedServiceLocal, filteredServicesWithRates]);
+
+  // Calculate remaining balance after shipment
+  const remainingBalance = currentBalance - summary.grandTotal;
+  const hasInsufficientBalance = remainingBalance < 0 && (currentBalance + currentCredit) < summary.grandTotal;
+  const isLowBalance = currentBalance > 0 && currentBalance < summary.grandTotal;
+  const willUseCredit = currentBalance < summary.grandTotal && currentBalance + currentCredit >= summary.grandTotal;
 
   return (
     <div className="bg-white rounded-3xl p-10 flex flex-col gap-2">
@@ -107,7 +164,7 @@ function Checkout({
 
       <div
         className={`flex flex-col gap-5 overflow-hidden transition-max-height duration-500 ease-in-out ${
-          step === 6 ? "max-h-[1000px]" : "max-h-0"
+          step === 6 ? "max-h-[2000px]" : "max-h-0"
         }`}
       >
         <div className="text-xs bg-gradient-to-br from-white to-gray-50 p-8 rounded-2xl border border-gray-200 w-full mx-auto">
@@ -121,49 +178,147 @@ function Checkout({
             </div>
           </div>
 
-          {/* Service Details Card */}
-          {/* {summary.service && (
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
-              <div className="flex items-center justify-between">
+          {/* Shipment On Hold Warning */}
+          {isShipmentOnHold && (
+            <div className="bg-yellow-50 border border-yellow-300 rounded-xl p-4 mb-6">
+              <div className="flex items-start gap-3">
+                <svg className="w-5 h-5 text-yellow-600 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
                 <div>
-                  <p className="text-sm font-semibold text-gray-700 mb-1">
-                    Selected Service
-                  </p>
-                  <p className="text-lg font-bold text-[var(--primary-color)]">
-                    {summary.service}
-                  </p>
-                  <p className="text-xs text-gray-600 mt-1">
-                    Shipper: {summary.shipper}
-                    {summary.zone && ` • Zone: ${summary.zone}`}
-                    {(summary.isCanadaShipment || summary.isAustraliaShipment) && (
-                      <span className="ml-2 bg-blue-100 px-2 py-0.5 rounded">
-                        Postal Code Based
-                      </span>
-                    )}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs text-gray-600">Chargeable Weight</p>
-                  <p className="text-lg font-bold text-gray-800">
-                    {chargeableWt} kg
-                  </p>
-                  <p className="text-xs text-gray-600 mt-1">
-                    {totalPcs} {totalPcs === 1 ? "Piece" : "Pieces"}
+                  <p className="font-semibold text-yellow-800">Shipment on Hold</p>
+                  <p className="text-yellow-700 text-xs mt-1">
+                    This shipment has been placed on hold due to insufficient credit. 
+                    Please recharge your account to release the shipment.
                   </p>
                 </div>
               </div>
             </div>
-          )} */}
+          )}
+
+          {/* Credit Limit Error */}
+          {creditLimitError && !isShipmentOnHold && (
+            <div className="bg-red-50 border border-red-300 rounded-xl p-4 mb-6">
+              <div className="flex items-start gap-3">
+                <svg className="w-5 h-5 text-red-600 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+                <div>
+                  <p className="font-semibold text-red-800">Credit Limit Exceeded</p>
+                  <p className="text-red-700 text-xs mt-1">
+                    {creditLimitError}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Balance Display */}
+          <div className={`bg-gradient-to-r rounded-xl p-4 mb-6 ${
+            hasOutstanding 
+              ? 'from-red-50 to-orange-50 border border-red-200' 
+              : 'from-blue-50 to-indigo-50 border border-blue-200'
+          }`}>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-gray-700 mb-1">
+                  {hasOutstanding ? 'Outstanding Balance' : 'Current Balance'}
+                </p>
+                <p className={`text-lg font-bold ${
+                  hasOutstanding ? 'text-red-600' : 'text-blue-600'
+                }`}>
+                  {loadingBalance
+                    ? "Loading..."
+                    : hasOutstanding 
+                      ? `-₹${outstandingAmount.toFixed(2)}`
+                      : `₹${currentBalance.toFixed(2)}`}
+                </p>
+                {currentCredit > 0 && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Available Credit: ₹{currentCredit.toFixed(2)}
+                  </p>
+                )}
+              </div>
+              <div className="text-right">
+                <p className="text-sm font-semibold text-gray-700 mb-1">
+                  Balance After Shipment
+                </p>
+                <p
+                  className={`text-lg font-bold ${
+                    isShipmentOnHold 
+                      ? "text-yellow-600"
+                      : hasInsufficientBalance 
+                        ? "text-red-600" 
+                        : "text-green-600"
+                  }`}
+                >
+                  {isShipmentOnHold 
+                    ? "On Hold"
+                    : `₹${remainingBalance.toFixed(2)}`}
+                </p>
+              </div>
+            </div>
+            
+            {/* Low Balance Warning */}
+            {isLowBalance && !isShipmentOnHold && !hasInsufficientBalance && (
+              <div className="mt-3 p-2 bg-yellow-100 rounded text-yellow-700 text-xs font-semibold flex items-center gap-2">
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+                ⚠️ Your current balance is low. Remaining ₹{(summary.grandTotal - currentBalance).toFixed(2)} will be deducted from your credit limit.
+              </div>
+            )}
+            
+            {/* Will Use Credit */}
+            {willUseCredit && !isShipmentOnHold && !hasInsufficientBalance && (
+              <div className="mt-3 p-2 bg-purple-100 rounded text-purple-700 text-xs font-semibold flex items-center gap-2">
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z" />
+                  <path fillRule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clipRule="evenodd" />
+                </svg>
+                💳 Credit will be used for this transaction.
+              </div>
+            )}
+            
+            {/* Insufficient Balance */}
+            {hasInsufficientBalance && !isShipmentOnHold && (
+              <div className="mt-3 p-2 bg-red-100 rounded text-red-700 text-xs font-semibold flex items-center gap-2">
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+                ⚠️ Insufficient balance/credit. Your shipment will be placed on hold.
+              </div>
+            )}
+          </div>
+
+          {/* Outstanding Balance Warning */}
+          {hasOutstanding && !isShipmentOnHold && (
+            <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 mb-6">
+              <div className="flex items-start gap-3">
+                <svg className="w-5 h-5 text-orange-600 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+                <div>
+                  <p className="font-semibold text-orange-800">Outstanding Balance</p>
+                  <p className="text-orange-700 text-xs mt-1">
+                    You have an outstanding balance of ₹{outstandingAmount.toFixed(2)}. 
+                    This amount will be adjusted first from your payment.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Rewards Section */}
           <div className="bg-red-100 rounded-xl p-4 mb-6 border border-[var(--primary-color)]">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
                 <Image src="/m5c.svg" width={35} height={35} alt="Coins" />
-
                 <div>
                   <p className="font-semibold text-gray-900">0 M5Coins</p>
-                  <p className="text-xs text-gray-500">Apply coins for discount</p>
+                  <p className="text-xs text-gray-500">
+                    Apply coins for discount
+                  </p>
                 </div>
               </div>
               <button
@@ -175,7 +330,7 @@ function Checkout({
             </div>
           </div>
 
-          {/* Pricing Breakdown - ✅ FIXED: Now properly displays values */}
+          {/* Pricing Breakdown */}
           <div className="space-y-4 mb-6">
             <div className="flex justify-between items-center py-2 border-b border-gray-100">
               <span className="text-gray-600">Basic Amount</span>
@@ -218,11 +373,15 @@ function Checkout({
           </div>
 
           {/* Total */}
-          <div className="bg-gradient-to-r from-[var(--primary-color)] to-red-600 rounded-xl p-4 mb-6">
+          <div className={`bg-gradient-to-r rounded-xl p-4 mb-6 ${
+            isShipmentOnHold 
+              ? 'from-yellow-600 to-yellow-500'
+              : 'from-[var(--primary-color)] to-red-600'
+          }`}>
             <div className="flex justify-between items-center">
               <div>
                 <span className="text-white font-semibold text-lg">
-                  Total Amount
+                  {isShipmentOnHold ? 'Total Amount (On Hold)' : 'Total Amount'}
                 </span>
                 <p className="text-white text-xs opacity-90 mt-1">
                   Including all taxes
@@ -234,38 +393,47 @@ function Checkout({
             </div>
           </div>
 
-          {/* Summary Stats */}
-          {/* {summary.service && (
-            <div className="grid grid-cols-3 gap-4 mb-6">
-              <div className="bg-gray-50 rounded-lg p-3 text-center">
-                <p className="text-xs text-gray-600 mb-1">Rate Type</p>
-                <p className="font-semibold text-gray-800">
-                  {summary.type === "B" ? "Per Kg" : "Slab Rate"}
-                </p>
+          {/* Shipment Details Summary */}
+          <div className="bg-gray-50 rounded-xl p-4 mb-6 border border-gray-200">
+            <h3 className="font-semibold text-gray-700 mb-3">Shipment Details</h3>
+            <div className="grid grid-cols-2 gap-4 text-xs">
+              <div>
+                <p className="text-gray-500">Destination</p>
+                <p className="font-medium">{destination || 'N/A'}</p>
               </div>
-              <div className="bg-gray-50 rounded-lg p-3 text-center">
-                <p className="text-xs text-gray-600 mb-1">Base Rate</p>
-                <p className="font-semibold text-gray-800">
-                  ₹{summary.rate.toFixed(2)}
-                </p>
+              <div>
+                <p className="text-gray-500">Chargeable Weight</p>
+                <p className="font-medium">{chargeableWt} kg</p>
               </div>
-              <div className="bg-gray-50 rounded-lg p-3 text-center">
-                <p className="text-xs text-gray-600 mb-1">Destination</p>
-                <p className="font-semibold text-gray-800">
-                  {destination || "N/A"}
-                </p>
+              <div>
+                <p className="text-gray-500">Total Pieces</p>
+                <p className="font-medium">{totalPcs}</p>
+              </div>
+              <div>
+                <p className="text-gray-500">Service</p>
+                <p className="font-medium">{summary.service || 'Not Selected'}</p>
               </div>
             </div>
-          )} */}
+          </div>
 
           {/* CTA Button */}
           <div className="flex justify-end">
             <button
-              className="bg-[var(--primary-color)] text-white font-bold py-4 px-6 rounded-xl hover:bg-red-600 flex items-center justify-center space-x-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className={`font-bold py-4 px-6 rounded-xl flex items-center justify-center space-x-2 transition-colors ${
+                isShipmentOnHold
+                  ? 'bg-yellow-600 text-white hover:bg-yellow-700'
+                  : 'bg-[var(--primary-color)] text-white hover:bg-red-600'
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
               type="submit"
               disabled={!summary.service}
             >
-              <span>{isEditMode ? "Update Shipment" : "Create Shipment"}</span>
+              <span>
+                {isShipmentOnHold 
+                  ? 'Shipment on Hold' 
+                  : isEditMode 
+                    ? 'Update Shipment' 
+                    : 'Create Shipment'}
+              </span>
               <svg
                 className="w-5 h-5"
                 fill="none"

@@ -1,5 +1,5 @@
 "use client";
-import React, { use, useContext, useEffect, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import ShipperDetail from "./ShipperDetail";
 import ReceiverDetail from "./ReceiverDetail";
@@ -13,7 +13,7 @@ import NotificationFlag from "../component/NotificationFlag";
 import { GlobalContext } from "../GlobalContext";
 import { useSession } from "next-auth/react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Layers3Icon, Upload } from "lucide-react";
+import { Layers3Icon } from "lucide-react";
 
 const MultiStepForm = () => {
   const [step, setStep] = useState(1);
@@ -23,15 +23,17 @@ const MultiStepForm = () => {
   const [selectedSector, setSelectedSector] = useState("");
   const [selectedServiceLocal, setSelectedServiceLocal] = useState(null);
   const [successAwbNo, setSuccessAwbNo] = useState("");
-  const [filteredServicesWithRates, setFilteredServicesWithRates] = useState(
-    [],
-  );
+  const [filteredServicesWithRates, setFilteredServicesWithRates] = useState([]);
   const [zones, setZones] = useState([]);
   const [refetch, setRefetch] = useState(false);
   const [totalActualWt, setTotalActualWt] = useState(0.0);
   const [totalVolumetricWt, setTotalVolumetricWt] = useState(0.0);
   const [chargeableWt, setChargeableWt] = useState(0.0);
   const [visibleFlag, setVisibleFlag] = useState(false);
+  const [creditLimitError, setCreditLimitError] = useState("");
+  const [isShipmentOnHold, setIsShipmentOnHold] = useState(false);
+  const [holdMessage, setHoldMessage] = useState("");
+  
   const searchParams = useSearchParams();
   const router = useRouter();
   const editAwb = searchParams.get("editAwb");
@@ -131,7 +133,7 @@ const MultiStepForm = () => {
     const fetchZones = async () => {
       try {
         const res = await axios.get(
-          `${server}/zones?sector=${selectedSectorCode || ""}`,
+          `${server}/zones?sector=${selectedSectorCode || ""}`
         );
         setZones(res.data);
         console.log("Fetched zones:", res.data);
@@ -140,11 +142,15 @@ const MultiStepForm = () => {
       }
     };
     fetchZones();
-  }, [watch("sector")]);
+  }, [watch("sector"), server]);
 
   // Form submission
   const onSubmit = async (data) => {
     try {
+      setCreditLimitError("");
+      setIsShipmentOnHold(false);
+      setHoldMessage("");
+
       if (isEditMode) {
         // PUT update existing shipment
         console.log(data);
@@ -153,10 +159,15 @@ const MultiStepForm = () => {
           {
             ...data,
             source: "Portal",
-          },
+          }
         );
 
-        alert("Shipment Updated Successfully!");
+        if (response.data.isHold) {
+          setIsShipmentOnHold(true);
+          setHoldMessage(response.data.message || "Shipment updated but placed on hold due to insufficient credit");
+        }
+
+        alert(response.data.message || "Shipment Updated Successfully!");
         console.log("Updated:", response.data);
 
         // Redirect to shipments page
@@ -174,28 +185,100 @@ const MultiStepForm = () => {
         chargeableWt: chargeableWt,
       };
 
+      // Get the shipment amount from the selected service
+      const selectedRate = filteredServicesWithRates.find(
+        (r) => r.service === selectedServiceLocal
+      );
+
+      if (!selectedRate) {
+        alert("Please select a service before creating shipment");
+        return;
+      }
+
+      const shipmentAmount = Number(selectedRate.grandTotal) || 0;
+
+      // Check and update balance BEFORE creating shipment
+      try {
+        console.log("Updating balance for amount:", shipmentAmount);
+        const balanceResponse = await axios.post(`${server}/portal/update-balance`, {
+          accountCode: session?.user?.accountCode,
+          shipmentAmount: shipmentAmount,
+        });
+
+        if (!balanceResponse.data.success) {
+          alert(balanceResponse.data.message);
+          return;
+        }
+
+        console.log("Balance updated successfully:", balanceResponse.data.data);
+        
+        // Refresh balance in Checkout component
+        if (typeof window !== 'undefined' && window.refreshBalance) {
+          window.refreshBalance();
+        }
+      } catch (balanceError) {
+        console.error("Balance update error:", balanceError);
+
+        if (balanceError.response?.data?.message) {
+          // Show credit limit exceeded message
+          if (balanceError.response.data.message.includes("Insufficient")) {
+            setCreditLimitError("⚠️ Credit Limit Exceeded! Your shipment will be placed on hold.");
+            // Allow the shipment creation to continue - it will be placed on hold
+          } else {
+            alert(balanceError.response.data.message);
+            return;
+          }
+        } else {
+          alert("Failed to update balance. Please try again.");
+          return;
+        }
+      }
+
+      // Continue with shipment creation (even if balance update failed due to credit limit)
+      console.log("Creating shipment with payload:", payload);
+      
       const newShipment = await axios.post(
         `${server}/portal/create-shipment`,
-        payload,
+        payload
       );
 
       const successAwb = newShipment.data.awbNo;
       console.log("Shipment Created", successAwb);
+      
+      // Check if shipment was placed on hold
+      if (newShipment.data.isHold) {
+        setIsShipmentOnHold(true);
+        setHoldMessage(newShipment.data.message || "Shipment created but placed on hold due to insufficient credit");
+        setCreditLimitError("⚠️ " + (newShipment.data.message || "Credit Limit Exceeded! Shipment placed on hold."));
+      }
+      
       setSuccessAwbNo(successAwb);
 
-      reset();
-      setValue("accountCode", session?.user?.accountCode);
-      setStep(1);
+      // Don't reset the form if on hold - keep the data visible
+      if (!newShipment.data.isHold) {
+        reset();
+        setValue("accountCode", session?.user?.accountCode);
+        setStep(1);
+      }
+      
       setVisibleFlag(true);
 
       setTimeout(() => {
         setVisibleFlag(false);
-        // Redirect to shipments page
-        router.push("/portal/shipments");
-      }, 2000);
+        // Only redirect if not on hold, or after showing hold message
+        if (!newShipment.data.isHold) {
+          router.push("/portal/shipments");
+        }
+      }, 3000);
+      
     } catch (error) {
       console.error("Error Creating/Updating shipment:", error);
-      alert("Something went wrong!");
+      
+      if (error.response?.data?.error) {
+        alert(`Error: ${error.response.data.error}`);
+      } else {
+        alert("Something went wrong! Please try again.");
+      }
     }
   };
 
@@ -238,13 +321,11 @@ const MultiStepForm = () => {
     }
   }, [totalActualWt, totalVolumetricWt]);
 
-  // ✅ REMOVED: Duplicate fetchServicesWithRates logic - now handled in SelectService component
-
   // Update form values when service is selected
   useEffect(() => {
     if (selectedServiceLocal && filteredServicesWithRates.length > 0) {
       const selectedRate = filteredServicesWithRates.find(
-        (r) => r.service === selectedServiceLocal,
+        (r) => r.service === selectedServiceLocal
       );
 
       if (selectedRate) {
@@ -274,6 +355,39 @@ const MultiStepForm = () => {
             <h1 className="font-bold text-2xl text-[#18181B]">
               Create Shipment
             </h1>
+
+            {/* Credit Limit Error Message */}
+            {creditLimitError && (
+              <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-md shadow-sm">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <svg className="h-5 w-5 text-red-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm text-red-700 font-medium">{creditLimitError}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Shipment On Hold Message */}
+            {isShipmentOnHold && (
+              <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded-md shadow-sm">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <svg className="h-5 w-5 text-yellow-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm text-yellow-700 font-medium">{holdMessage || "Shipment is on hold due to insufficient credit"}</p>
+                    <p className="text-xs text-yellow-600 mt-1">AWB Number: {successAwbNo}</p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Breadcrumbs */}
             <ul className="flex text-xs gap-2 text-[#979797] w-fit rounded-md">
@@ -309,7 +423,7 @@ const MultiStepForm = () => {
           <div>
             <button
               onClick={() => router.push("/portal/bulkupload")}
-              className="p-1 px-4 flex gap-1 items-center justify-center border-gray-400 border-[2px] border-opacity-75 rounded-lg bg-slate-100 text-gray-500 hover:bg-[var(--primary-color)] hover:text-white hover:border-[var(--primary-color)] transition-all duration-300 ease-in-out font-bold text-sm tracking-wide "
+              className="p-1 px-4 flex gap-1 items-center justify-center border-gray-400 border-[2px] border-opacity-75 rounded-lg bg-slate-100 text-gray-500 hover:bg-[var(--primary-color)] hover:text-white hover:border-[var(--primary-color)] transition-all duration-300 ease-in-out font-bold text-sm tracking-wide"
             >
               <Layers3Icon size={18} />
               Bulk Upload
@@ -398,6 +512,8 @@ const MultiStepForm = () => {
             destinationFlag={destinationFlag}
             isEditMode={isEditMode}
             trigger={trigger}
+            creditLimitError={creditLimitError}
+            isShipmentOnHold={isShipmentOnHold}
           />
         </form>
       </div>
@@ -408,8 +524,8 @@ const MultiStepForm = () => {
     <div className="relative flex justify-center">
       <div className="w-full max-w-[80vw]">
         <NotificationFlag
-          message={"Shipment Created!"}
-          subMessage={`AWB No. ${successAwbNo}`}
+          message={isShipmentOnHold ? "Shipment Created (On Hold)!" : "Shipment Created!"}
+          subMessage={`AWB No. ${successAwbNo} ${isShipmentOnHold ? "- On Hold" : ""}`}
           visible={visibleFlag}
           setVisible={setVisibleFlag}
         />
