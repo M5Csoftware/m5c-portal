@@ -36,83 +36,91 @@ const sidebarItems = [
     route: "/portal",
     category: "Main",
     icon: "/dashboard.svg",
-    description: "Overview and analytics"
+    description: "Overview and analytics",
   },
   {
     title: "Shipments",
     route: "/portal/shipments",
     category: "Main",
     icon: "/shipments.svg",
-    description: "Manage all shipments"
+    description: "Manage all shipments",
   },
   {
     title: "Reports",
     route: "/portal/reports",
     category: "Main",
     icon: "/reports.svg",
-    description: "View reports and analytics"
+    description: "View reports and analytics",
   },
   {
     title: "Address Book",
     route: "/portal/address-book",
     category: "Main",
     icon: "/address-book.svg",
-    description: "Manage saved addresses"
+    description: "Manage saved addresses",
   },
   {
     title: "Account",
     route: "/portal/account",
     category: "Main",
     icon: "/account-ledger.svg",
-    description: "Account ledger and balance"
+    description: "Account ledger and balance",
   },
   {
     title: "Tools",
     route: "#",
     category: "Main",
     icon: "/tools.svg",
-    description: "Various utility tools"
+    description: "Various utility tools",
   },
   {
     title: "Rate Calculator",
     route: "/portal/tools/rate-calculator",
     category: "Tools",
     icon: "/cust-support.svg",
-    description: "Calculate shipping rates"
+    description: "Calculate shipping rates",
   },
   {
     title: "Volume Weight Calculator",
     route: "/portal/tools/volume-weight",
     category: "Tools",
     icon: "/cust-support.svg",
-    description: "Calculate volume weight"
+    description: "Calculate volume weight",
   },
   {
     title: "Customer Support",
     route: "/portal/customer-support",
     category: "Main",
     icon: "/cust-support.svg",
-    description: "Get help and support"
+    description: "Get help and support",
   },
   {
     title: "Settings",
     route: "/portal/settings",
     category: "Main",
     icon: "/settings.svg",
-    description: "Account settings"
+    description: "Account settings",
   },
 ];
 
-const SearchModal = ({ isOpen, onClose, searchTerm, onItemSelect }) => {
+const SearchModal = ({
+  isOpen,
+  onClose,
+  searchTerm,
+  onItemSelect,
+  onSearchChange,
+}) => {
   const modalRef = useRef(null);
+  const modalSearchInputRef = useRef(null);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const itemsRef = useRef([]);
 
   // Filter items based on search term
-  const filteredItems = sidebarItems.filter(item =>
-    item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.category.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredItems = sidebarItems.filter(
+    (item) =>
+      item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.category.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   // Group by first letter
@@ -128,7 +136,7 @@ const SearchModal = ({ isOpen, onClose, searchTerm, onItemSelect }) => {
   const sortedLetters = Object.keys(groupedItems).sort();
 
   // Flatten items for keyboard navigation
-  const flatItems = sortedLetters.flatMap(letter => groupedItems[letter]);
+  const flatItems = sortedLetters.flatMap((letter) => groupedItems[letter]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -140,6 +148,10 @@ const SearchModal = ({ isOpen, onClose, searchTerm, onItemSelect }) => {
     if (isOpen) {
       document.addEventListener("mousedown", handleClickOutside);
       setSelectedIndex(0);
+      // Auto-focus the modal search input when modal opens
+      setTimeout(() => {
+        modalSearchInputRef.current?.focus();
+      }, 100);
     }
 
     return () => {
@@ -150,8 +162,8 @@ const SearchModal = ({ isOpen, onClose, searchTerm, onItemSelect }) => {
   useEffect(() => {
     if (itemsRef.current[selectedIndex]) {
       itemsRef.current[selectedIndex].scrollIntoView({
-        behavior: 'smooth',
-        block: 'nearest'
+        behavior: "smooth",
+        block: "nearest",
       });
     }
   }, [selectedIndex]);
@@ -160,25 +172,25 @@ const SearchModal = ({ isOpen, onClose, searchTerm, onItemSelect }) => {
     if (!isOpen) return;
 
     switch (e.key) {
-      case 'ArrowDown':
+      case "ArrowDown":
         e.preventDefault();
-        setSelectedIndex(prev =>
-          prev < flatItems.length - 1 ? prev + 1 : 0
+        setSelectedIndex((prev) =>
+          prev < flatItems.length - 1 ? prev + 1 : 0,
         );
         break;
-      case 'ArrowUp':
+      case "ArrowUp":
         e.preventDefault();
-        setSelectedIndex(prev =>
-          prev > 0 ? prev - 1 : flatItems.length - 1
+        setSelectedIndex((prev) =>
+          prev > 0 ? prev - 1 : flatItems.length - 1,
         );
         break;
-      case 'Enter':
+      case "Enter":
         e.preventDefault();
         if (flatItems[selectedIndex]) {
           handleItemClick(flatItems[selectedIndex]);
         }
         break;
-      case 'Escape':
+      case "Escape":
         e.preventDefault();
         onClose();
         break;
@@ -213,8 +225,46 @@ const SearchModal = ({ isOpen, onClose, searchTerm, onItemSelect }) => {
                 onClick={onClose}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors duration-200"
               >
-                <Image width={20} height={20} src="/close-button.svg" alt="Close" />
+                <Image
+                  width={20}
+                  height={20}
+                  src="/close-button.svg"
+                  alt="Close"
+                />
               </button>
+            </div>
+
+            {/* Modal Search Input - Synced with Navbar Search */}
+            <div className="flex items-center gap-2 bg-white px-4 py-2.5 rounded-lg border-2 border-[var(--primary-color)] shadow-lg mb-4">
+              <Image
+                width={20}
+                height={20}
+                src="/search_action.svg"
+                alt="Search"
+                className="text-gray-400"
+              />
+              <input
+                ref={modalSearchInputRef}
+                type="text"
+                placeholder="Search for pages, tools, or features..."
+                className="bg-transparent outline-none text-[#2D3748] w-full placeholder-gray-500 text-sm"
+                value={searchTerm}
+                onChange={(e) => onSearchChange(e.target.value)}
+                onKeyDown={handleKeyDown}
+              />
+              {searchTerm && (
+                <button
+                  onClick={() => onSearchChange("")}
+                  className="hover:bg-gray-100 rounded transition-colors p-1"
+                >
+                  <Image
+                    width={15}
+                    height={15}
+                    src="/close-button.svg"
+                    alt="Clear"
+                  />
+                </button>
+              )}
             </div>
 
             {/* Search Stats */}
@@ -243,7 +293,9 @@ const SearchModal = ({ isOpen, onClose, searchTerm, onItemSelect }) => {
                   No results found
                 </h4>
                 <p className="text-gray-500 text-sm">
-                  Try searching for &quot;Dashboard&quot;, &quot;Shipments&quot;, &quot;Reports&quot;, or other section names
+                  Try searching for &quot;Dashboard&quot;,
+                  &quot;Shipments&quot;, &quot;Reports&quot;, or other section
+                  names
                 </p>
               </div>
             ) : (
@@ -268,40 +320,56 @@ const SearchModal = ({ isOpen, onClose, searchTerm, onItemSelect }) => {
                     {/* Items Grid */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 ml-14">
                       {groupedItems[letter].map((item, itemIndex) => {
-                        const flatIndex = sortedLetters
-                          .slice(0, letterIndex)
-                          .reduce((acc, l) => acc + groupedItems[l].length, 0) + itemIndex;
+                        const flatIndex =
+                          sortedLetters
+                            .slice(0, letterIndex)
+                            .reduce(
+                              (acc, l) => acc + groupedItems[l].length,
+                              0,
+                            ) + itemIndex;
 
                         const isSelected = flatIndex === selectedIndex;
 
                         return (
                           <div
                             key={`${letter}-${itemIndex}`}
-                            ref={el => itemsRef.current[flatIndex] = el}
+                            ref={(el) => (itemsRef.current[flatIndex] = el)}
                             onClick={() => handleItemClick(item)}
-                            className={`p-4 rounded-xl border-2 transition-all duration-200 cursor-pointer group ${isSelected
-                              ? 'border-[var(--primary-color)] bg-blue-50 shadow-md'
-                              : 'border-gray-200 hover:border-[var(--primary-color)] hover:bg-blue-50'
-                              }`}
+                            className={`p-4 rounded-xl border-2 transition-all duration-200 cursor-pointer group ${
+                              isSelected
+                                ? "border-[var(--primary-color)] bg-blue-50 shadow-md"
+                                : "border-gray-200 hover:border-[var(--primary-color)] hover:bg-blue-50"
+                            }`}
                           >
                             <div className="flex items-start gap-3">
-                              <div className={`p-2 rounded-lg ${isSelected
-                                ? 'bg-[var(--primary-color)]'
-                                : 'bg-gray-200'
-                                } transition-colors`}>
+                              <div
+                                className={`p-2 rounded-lg ${
+                                  isSelected
+                                    ? "bg-[var(--primary-color)]"
+                                    : "bg-gray-200"
+                                } transition-colors`}
+                              >
                                 <Image
                                   width={16}
                                   height={16}
                                   src={item.icon}
                                   alt={item.title}
-                                  className={`${isSelected ? 'filter brightness-0 invert' : ''
-                                    }`}
+                                  className={`${
+                                    isSelected
+                                      ? "filter brightness-0 invert"
+                                      : ""
+                                  }`}
                                 />
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-1">
-                                  <h5 className={`font-semibold truncate ${isSelected ? 'text-[var(--primary-color)]' : 'text-gray-800'
-                                    }`}>
+                                  <h5
+                                    className={`font-semibold truncate ${
+                                      isSelected
+                                        ? "text-[var(--primary-color)]"
+                                        : "text-gray-800"
+                                    }`}
+                                  >
                                     {item.title}
                                   </h5>
                                   {item.category === "Tools" && (
@@ -328,8 +396,11 @@ const SearchModal = ({ isOpen, onClose, searchTerm, onItemSelect }) => {
                                 height={16}
                                 src="/arrow-right.svg"
                                 alt="Go"
-                                className={`opacity-0 transition-opacity ${isSelected ? 'opacity-100' : 'group-hover:opacity-100'
-                                  }`}
+                                className={`opacity-0 transition-opacity ${
+                                  isSelected
+                                    ? "opacity-100"
+                                    : "group-hover:opacity-100"
+                                }`}
                               />
                             </div>
                           </div>
@@ -359,8 +430,8 @@ const SearchModal = ({ isOpen, onClose, searchTerm, onItemSelect }) => {
 
 // Helper function to format currency
 const formatCurrency = (amount) => {
-  return new Intl.NumberFormat('en-IN', {
-    style: 'decimal',
+  return new Intl.NumberFormat("en-IN", {
+    style: "decimal",
     maximumFractionDigits: 0,
   }).format(amount);
 };
@@ -384,7 +455,8 @@ const Navbar = () => {
   const router = useRouter();
 
   // Get accountCode from session if not in GlobalContext
-  const finalAccountCode = accountCode || session?.user?.accountCode || session?.user?.email;
+  const finalAccountCode =
+    accountCode || session?.user?.accountCode || session?.user?.email;
 
   // Track if balance has been fetched
   const balanceFetchedRef = useRef(false);
@@ -393,34 +465,37 @@ const Navbar = () => {
   // Fetch balance function
   const fetchBalance = async () => {
     if (!finalAccountCode || !server) {
-      console.error('No account code or server available');
+      console.error("No account code or server available");
       setBalanceLoading(false);
       return;
     }
 
     // Prevent multiple simultaneous fetches
     if (isRefreshingRef.current) {
-      console.log('Balance fetch already in progress, skipping...');
+      console.log("Balance fetch already in progress, skipping...");
       return;
     }
 
     try {
       isRefreshingRef.current = true;
       setBalanceLoading(true);
-      console.log('Fetching balance from:', `${server}/payment/balance?accountCode=${finalAccountCode}`);
-      
-      const response = await axios.get(
-        `${server}/payment/balance?accountCode=${finalAccountCode}`
+      console.log(
+        "Fetching balance from:",
+        `${server}/payment/balance?accountCode=${finalAccountCode}`,
       );
-      
-      console.log('Balance response:', response.data);
-      
+
+      const response = await axios.get(
+        `${server}/payment/balance?accountCode=${finalAccountCode}`,
+      );
+
+      console.log("Balance response:", response.data);
+
       if (response.data.success) {
         setBalance(response.data.balance || 0);
         balanceFetchedRef.current = true;
       }
     } catch (error) {
-      console.error('Error fetching balance:', error);
+      console.error("Error fetching balance:", error);
       setBalance(0);
     } finally {
       setBalanceLoading(false);
@@ -438,29 +513,29 @@ const Navbar = () => {
   // Listen for payment success event only
   useEffect(() => {
     const handlePaymentSuccess = () => {
-      console.log('Payment success event received, refreshing balance...');
+      console.log("Payment success event received, refreshing balance...");
       setTimeout(() => {
         fetchBalance();
       }, 1000); // Small delay to ensure backend has updated
     };
 
     // Listen for custom event
-    window.addEventListener('paymentSuccess', handlePaymentSuccess);
+    window.addEventListener("paymentSuccess", handlePaymentSuccess);
 
     // Listen for storage event (for cross-tab communication)
     const handleStorageChange = (e) => {
-      if (e.key === 'paymentSuccess') {
+      if (e.key === "paymentSuccess") {
         setTimeout(() => {
           fetchBalance();
         }, 1000);
-        localStorage.removeItem('paymentSuccess');
+        localStorage.removeItem("paymentSuccess");
       }
     };
-    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener("storage", handleStorageChange);
 
     return () => {
-      window.removeEventListener('paymentSuccess', handlePaymentSuccess);
-      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener("paymentSuccess", handlePaymentSuccess);
+      window.removeEventListener("storage", handleStorageChange);
     };
   }, [finalAccountCode, server]);
 
@@ -482,6 +557,13 @@ const Navbar = () => {
     }
   }, [searchTerm, isSearchFocused]);
 
+  // Keep search focused while modal is open
+  useEffect(() => {
+    if (showSearchModal && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [showSearchModal]);
+
   const handleSearchItemSelect = (item) => {
     if (item.route && item.route !== "#") {
       router.push(item.route);
@@ -497,16 +579,24 @@ const Navbar = () => {
       setShowSearchModal(true);
     } else if (e.key === "Escape") {
       setShowSearchModal(false);
+      setIsSearchFocused(false);
       searchInputRef.current?.blur();
     }
   };
 
-  const handleSearchBlur = () => {
-    setTimeout(() => {
-      if (!showSearchModal) {
-        setIsSearchFocused(false);
-      }
-    }, 2000);
+  const handleSearchFocus = () => {
+    setIsSearchFocused(true);
+    if (searchTerm.length > 0) {
+      setShowSearchModal(true);
+    }
+  };
+
+  const handleModalClose = () => {
+    setShowSearchModal(false);
+    // Keep the input focused so user can continue typing
+    if (searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
   };
 
   return (
@@ -515,10 +605,11 @@ const Navbar = () => {
         {/* Quick Action Button */}
         <div className="relative">
           <button
-            className={`cursor-pointer px-4 py-2.5 flex gap-2 text-sm ${isQuickActionActive
-              ? "text-white bg-[var(--primary-color)]"
-              : "bg-[#E2E8F0] hover:bg-[#dbe3ee]"
-              } transition-all rounded-lg flex items-center`}
+            className={`cursor-pointer px-4 py-2.5 flex gap-2 text-sm ${
+              isQuickActionActive
+                ? "text-white bg-[var(--primary-color)]"
+                : "bg-[#E2E8F0] hover:bg-[#dbe3ee]"
+            } transition-all rounded-lg flex items-center`}
             onClick={() => setIsQuickActionActive(!isQuickActionActive)}
           >
             <Image
@@ -601,7 +692,9 @@ const Navbar = () => {
                 <div>
                   <p className="text-xs text-gray-600">Balance</p>
                   <p className="text-sm font-semibold text-gray-800">
-                    {balanceLoading ? 'Loading...' : `₹${formatCurrency(balance)}`}
+                    {balanceLoading
+                      ? "Loading..."
+                      : `₹${formatCurrency(balance)}`}
                   </p>
                 </div>
               </div>
@@ -616,7 +709,9 @@ const Navbar = () => {
                 </div>
                 <div>
                   <p className="text-xs text-gray-600">Credit Limit</p>
-                  <p className="text-sm font-semibold text-gray-800">₹{formatCurrency(creditLimit)}</p>
+                  <p className="text-sm font-semibold text-gray-800">
+                    ₹{formatCurrency(creditLimit)}
+                  </p>
                 </div>
               </div>
               <div className="flex gap-3 items-center">
@@ -630,7 +725,9 @@ const Navbar = () => {
                 </div>
                 <div>
                   <p className="text-xs text-gray-600">M5Coins</p>
-                  <p className="text-sm font-semibold text-gray-800">{m5coins}</p>
+                  <p className="text-sm font-semibold text-gray-800">
+                    {m5coins}
+                  </p>
                 </div>
               </div>
             </div>
@@ -639,8 +736,13 @@ const Navbar = () => {
 
         {/* Enhanced Search Input */}
         <div className="relative flex">
-          <div className={`flex items-center gap-2 bg-white px-4 py-2.5 rounded-lg border-2 transition-all duration-200 ${isSearchFocused ? 'border-[var(--primary-color)] shadow-lg' : 'border-gray-200 hover:border-gray-300'
-            }`}>
+          <div
+            className={`flex items-center gap-2 bg-white px-4 py-2.5 rounded-lg border-2 transition-all duration-200 ${
+              isSearchFocused
+                ? "border-[var(--primary-color)] shadow-lg"
+                : "border-gray-200 hover:border-gray-300"
+            }`}
+          >
             <Image
               width={20}
               height={20}
@@ -656,15 +758,19 @@ const Navbar = () => {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               onKeyDown={handleKeyDown}
-              onFocus={() => setIsSearchFocused(true)}
-              onBlur={handleSearchBlur}
+              onFocus={handleSearchFocus}
             />
             {searchTerm && (
               <button
                 onClick={() => setSearchTerm("")}
                 className="hover:bg-gray-100 rounded transition-colors"
               >
-                <Image width={15} height={15} src="/close-button.svg" alt="Clear" />
+                <Image
+                  width={15}
+                  height={15}
+                  src="/close-button.svg"
+                  alt="Clear"
+                />
               </button>
             )}
           </div>
@@ -672,14 +778,15 @@ const Navbar = () => {
           {/* Enhanced Search Modal */}
           <SearchModal
             isOpen={showSearchModal}
-            onClose={() => setShowSearchModal(false)}
+            onClose={handleModalClose}
             searchTerm={searchTerm}
             onItemSelect={handleSearchItemSelect}
+            onSearchChange={setSearchTerm}
           />
         </div>
 
         {/* Notification and Profile */}
-        <div className="flex gap-2 items-center">
+        <div className="flex gap-2 items-center z-50">
           <NotificationModal />
           <Link
             href="../../portal/profile"
@@ -696,10 +803,7 @@ const Navbar = () => {
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
           onClick={() => setShowAwbInput(false)}
         >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-lg"
-          >
+          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-lg">
             <AwbInput
               onClose={() => setShowAwbInput(false)}
               setIsQuickActionActive={setIsQuickActionActive}
