@@ -19,6 +19,7 @@ function KYC() {
   const [verificationType, setVerificationType] = useState(null);
   const [kycData, setKycData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isVerificationComplete, setIsVerificationComplete] = useState(false);
 
   // Fetch existing KYC data on mount
   useEffect(() => {
@@ -27,7 +28,7 @@ function KYC() {
 
       try {
         const response = await axios.get(
-          `${server}/portal/kyc/upload-document?accountCode=${session.user.accountCode}`
+          `${server}/portal/kyc/upload-document?accountCode=${session.user.accountCode}`,
         );
 
         if (response.data.success && response.data.data) {
@@ -46,8 +47,16 @@ function KYC() {
           }
 
           // Determine which step to show based on status
-          if (kyc.status === "verified" || kyc.status === "rejected" || kyc.status === "under_review") {
+          if (
+            kyc.status === "verified" ||
+            kyc.status === "rejected" ||
+            kyc.status === "under_review"
+          ) {
             setStep(4); // Show verification status
+            // Mark as complete if verified
+            if (kyc.status === "verified") {
+              setIsVerificationComplete(true);
+            }
           } else if (kyc.documents && kyc.documents.length > 0) {
             setStep(3); // Show document verification
           } else if (kyc.selfieImageUrl) {
@@ -78,6 +87,8 @@ function KYC() {
           field: "kycCompleted",
           value: true,
         });
+        // Mark verification as complete for DigiLocker (instant verification)
+        setIsVerificationComplete(true);
       } catch (error) {
         console.error("Error updating onboarding:", error);
       }
@@ -127,7 +138,7 @@ function KYC() {
         <VerificationStatus
           accountCode={session?.user?.accountCode}
           verificationType={verificationType}
-          onComplete={() => window.location.href = "/dashboard"}
+          onComplete={() => (window.location.href = "/dashboard")}
         />
       ),
       label: "Verification Status",
@@ -140,38 +151,48 @@ function KYC() {
       <div className="relative flex items-center border rounded-[25px] px-11 py-6 max-w-[100vw] bg-[#FFFFFF]">
         <div className="absolute left-20 right-24 border-t-2 border-dashed border-gray-500 transform -translate-y-1/2 mb-6" />
         <div className="flex justify-between w-full">
-          {steps.map((stepObj, index) => (
-            <div
-              key={index}
-              className={`flex flex-col items-center ${step === index + 1 ? "font-semibold" : "text-gray-500"
+          {steps.map((stepObj, index) => {
+            // Determine if this step is completed
+            const isStepCompleted =
+              step > index + 1 ||
+              (step === 4 && index === 3 && isVerificationComplete);
+
+            return (
+              <div
+                key={index}
+                className={`flex flex-col items-center ${
+                  step === index + 1 ? "font-semibold" : "text-gray-500"
                 } ${index < step ? "cursor-pointer" : "cursor-default"}`}
-              onClick={() => index < step && setStep(index + 1)}
-              aria-current={step === index + 1 ? "step" : undefined}
-              aria-label={`Step ${index + 1}: ${stepObj.label}`}
-            >
-              <div className="relative w-9 h-9">
-                <Image
-                  className={`absolute inset-0 transition-opacity duration-500 ${step > index + 1 ? "opacity-0" : "opacity-100"
+                onClick={() => index < step && setStep(index + 1)}
+                aria-current={step === index + 1 ? "step" : undefined}
+                aria-label={`Step ${index + 1}: ${stepObj.label}`}
+              >
+                <div className="relative w-9 h-9">
+                  <Image
+                    className={`absolute inset-0 transition-opacity duration-500 ${
+                      isStepCompleted ? "opacity-0" : "opacity-100"
                     }`}
-                  src={`/create-shipment/${index + 1}.svg`}
-                  alt={`Step ${index + 1}`}
-                  width={36}
-                  height={36}
-                />
-                <Image
-                  className={`absolute inset-0 transition-opacity duration-500 ${step > index + 1 ? "opacity-100" : "opacity-0"
+                    src={`/create-shipment/${index + 1}.svg`}
+                    alt={`Step ${index + 1}`}
+                    width={36}
+                    height={36}
+                  />
+                  <Image
+                    className={`absolute inset-0 transition-opacity duration-500 ${
+                      isStepCompleted ? "opacity-100" : "opacity-0"
                     }`}
-                  src="/create-shipment/done-red.svg"
-                  alt={`Step ${index + 1} Completed`}
-                  width={36}
-                  height={36}
-                />
+                    src="/create-shipment/done-red.svg"
+                    alt={`Step ${index + 1} Completed`}
+                    width={36}
+                    height={36}
+                  />
+                </div>
+                <span className="text-sm font-semibold mt-2">
+                  {stepObj.label}
+                </span>
               </div>
-              <span className="text-sm font-semibold mt-2">
-                {stepObj.label}
-              </span>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
