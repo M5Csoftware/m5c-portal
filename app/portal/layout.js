@@ -64,7 +64,7 @@ export default function PortalLayout({ children }) {
 
       try {
         const res = await axios.get(
-          `${server}/portal/auth/register?id=${session.user.id}`
+          `${server}/portal/auth/register?id=${session.user.id}`,
         );
         const user = res.data;
 
@@ -86,7 +86,7 @@ export default function PortalLayout({ children }) {
       } catch (err) {
         console.error(
           "Failed to fetch onboarding progress:",
-          err.response?.data?.error || err.message
+          err.response?.data?.error || err.message,
         );
       }
     };
@@ -152,36 +152,40 @@ export default function PortalLayout({ children }) {
   }
 
   return (
-    <FormDataProvider>
-      <div className="flex overflow-x-clip ">
-        <Sidebar />
-        <div className="bg-[#F8F9FA] relative min-h-dvh max-h-vh flex-grow">
-          <div className="sticky top-0 bg-[#F8F9FA] z-50">
-            <Navbar />
+    <div className="">
+      <FormDataProvider>
+        <div className="flex ">
+          <Sidebar />
+          <div className="bg-[#F8F9FA] relative w-[96vw] min-h-dvh max-h-vh flex flex-col">
+            <div className="sticky top-0 bg-[#F8F9FA]  z-50">
+              <div>
+                <Navbar />
+              </div>
+            </div>
+            <div className="relative">{children}</div>
+            <div className="bottom-4 right-4 fixed">
+              <ChatBot />
+            </div>
           </div>
-          <div className="relative">{children}</div>
-          <div className="bottom-4 right-4 fixed">
-            <ChatBot />
-          </div>
+          {walletOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+              <Wallet />
+            </div>
+          )}
+          {showOnboarding && <OnboardingModal />}
+
+          {/* Cookie Banner */}
+          <CookieBanner
+            onAcceptAll={handleAcceptAllCookies}
+            onRejectAll={handleRejectAllCookies}
+            onManageSettings={handleManageSettings}
+            onClose={handleCloseBanner}
+          />
+
+          {/* Uncomment to enable debug panel for testing */}
+          {/* <CookieDebugPanel /> */}
         </div>
-        {walletOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-            <Wallet />
-          </div>
-        )}
-        {showOnboarding && <OnboardingModal />}
-
-        {/* Cookie Banner */}
-        <CookieBanner
-          onAcceptAll={handleAcceptAllCookies}
-          onRejectAll={handleRejectAllCookies}
-          onManageSettings={handleManageSettings}
-          onClose={handleCloseBanner}
-        />
-
-        {/* Uncomment to enable debug panel for testing */}
-        {/* <CookieDebugPanel /> */}
-      </div>
-    </FormDataProvider>
+      </FormDataProvider>
+    </div>
   );
 }
