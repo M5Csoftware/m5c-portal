@@ -43,6 +43,59 @@ const Page = () => {
   const balanceFetchedRef = useRef(false);
   const isRefreshingRef = useRef(false);
 
+  const [analyticsStats, setAnalyticsStats] = useState({
+    total: 0,
+    delivered: 0,
+    pending: 0,
+    rto: 0,
+  });
+
+  // Replace the existing useEffect for fetching shipment count with this:
+  useEffect(() => {
+    const fetchShipmentData = async () => {
+      if (!finalAccountCode || !server) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+
+        // Fetch basic shipment count
+        const shipmentResponse = await fetch(
+          `${server}/portal/get-shipments?accountCode=${finalAccountCode}`,
+        );
+
+        if (shipmentResponse.ok) {
+          const data = await shipmentResponse.json();
+          if (data.shipments && Array.isArray(data.shipments)) {
+            setShipmentCount(data.shipments.length);
+          }
+        }
+
+        // Fetch analytics stats based on current duration
+        const analyticsResponse = await fetch(
+          `${server}/portal/shipment-analytics?accountCode=${finalAccountCode}&duration=${activeDuration}`,
+        );
+
+        if (analyticsResponse.ok) {
+          const analyticsData = await analyticsResponse.json();
+          if (analyticsData.success && analyticsData.stats) {
+            setAnalyticsStats(analyticsData.stats);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching shipment data:", error);
+        setShipmentCount(0);
+        setAnalyticsStats({ total: 0, delivered: 0, pending: 0, rto: 0 });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchShipmentData();
+  }, [finalAccountCode, server, activeDuration]);
+
   // Fetch balance function
   const fetchBalance = async () => {
     if (!finalAccountCode || !server) {
@@ -338,10 +391,12 @@ const Page = () => {
                   <button
                     className="bg-[var(--primary-color)] py-2 px-3 rounded-md disabled:opacity-50"
                     onClick={handlePrevClick}
-                    disabled={holdShipmentsData.length < 1 || currentReasonIndex === 0}
+                    disabled={
+                      holdShipmentsData.length < 1 || currentReasonIndex === 0
+                    }
                   >
                     <Image
-                      width={10} 
+                      width={10}
                       height={10}
                       src="/left_arrow_white.svg"
                       alt="left_arrow_white"
@@ -350,7 +405,9 @@ const Page = () => {
                   <button
                     className="bg-[var(--primary-color)] py-2 px-3 rounded-md disabled:opacity-50"
                     onClick={handleNextClick}
-                    disabled={currentReasonIndex === holdShipmentsData.length - 1}
+                    disabled={
+                      currentReasonIndex === holdShipmentsData.length - 1
+                    }
                   >
                     <Image
                       width={10}
@@ -462,13 +519,10 @@ const Page = () => {
 
           {/* Graph Status Cards - Always visible */}
           <div className="flex gap-4 justify-between">
-            <GraphStatus label="Total Shipments" no={shipmentCount} />
-            <GraphStatus
-              label="Delivered"
-              no={shipmentCount > 0 ? "18" : "0"}
-            />
-            <GraphStatus label="Pending" no={shipmentCount > 0 ? "3" : "0"} />
-            <GraphStatus label="RTO" no={shipmentCount > 0 ? "1" : "0"} />
+            <GraphStatus label="Total Shipments" no={analyticsStats.total} />
+            <GraphStatus label="Delivered" no={analyticsStats.delivered} />
+            <GraphStatus label="Pending" no={analyticsStats.pending} />
+            <GraphStatus label="RTO" no={analyticsStats.rto} />
           </div>
         </div>
       </div>
