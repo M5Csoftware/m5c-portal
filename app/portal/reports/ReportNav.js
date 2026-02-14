@@ -433,18 +433,30 @@ const Report = () => {
       (key) => selectedRows[key],
     );
 
+    // Determine which data to download
+    let dataToDownload;
+    let recordCount;
+
     if (selectedIndices.length === 0) {
-      alert("Please select at least one row to download");
+      // No rows selected - download all filtered data
+      dataToDownload = filteredReportData;
+      recordCount = filteredReportData.length;
+    } else {
+      // Rows selected - download only selected rows
+      dataToDownload = selectedIndices.map(
+        (index) => filteredReportData[parseInt(index)],
+      );
+      recordCount = selectedIndices.length;
+    }
+
+    // Check if there's data to download
+    if (recordCount === 0) {
+      alert("No data available to download");
       return;
     }
 
-    // Get the selected data
-    const selectedData = selectedIndices.map(
-      (index) => filteredReportData[parseInt(index)],
-    );
-
     // Prepare data for Excel
-    const excelData = selectedData.map((row) => {
+    const excelData = dataToDownload.map((row) => {
       const rowData = {};
       tableHeaders.forEach((header) => {
         rowData[header] = row[header] || "";
@@ -468,12 +480,12 @@ const Report = () => {
     XLSX.writeFile(workbook, filename);
 
     console.log(
-      `✅ Downloaded ${selectedIndices.length} records to ${filename}`,
+      `✅ Downloaded ${recordCount} records to ${filename}`,
     );
 
     // Show success notification
     const successToast = document.createElement("div");
-    successToast.textContent = `✅ Downloaded ${selectedIndices.length} records successfully!`;
+    successToast.textContent = `✅ Downloaded ${recordCount} records successfully!`;
     successToast.style.cssText =
       "position:fixed;top:20px;right:20px;background:#10b981;color:#fff;padding:12px 24px;border-radius:8px;z-index:9999;font-family:Arial;box-shadow:0 4px 12px rgba(0,0,0,0.15);";
     document.body.appendChild(successToast);

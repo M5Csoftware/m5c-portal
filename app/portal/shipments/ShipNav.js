@@ -16,6 +16,7 @@ const ShipNav = ({
   onDownload,
   selectedCount = 0,
   onSearch,
+  onDateRangeChange, // NEW: Callback to pass date range to parent
 }) => {
   const {
     setFilterShipmentWindow,
@@ -81,6 +82,13 @@ const ShipNav = ({
     };
   }, []);
 
+  // NEW: Pass date range to parent whenever it changes
+  useEffect(() => {
+    if (onDateRangeChange) {
+      onDateRangeChange(dateRange);
+    }
+  }, [dateRange, onDateRangeChange]);
+
   const handleLiClick = (index) => {
     setSelectedLi(index);
   };
@@ -89,9 +97,6 @@ const ShipNav = ({
     setFilterShipmentWindow(true);
   };
 
-  // const handleBulkUpload = () => {
-  //   setShowUploadModal(true);
-  // };
   const handleBulkUpload = () => {
     router.push("/portal/bulkupload");
   };
@@ -102,6 +107,8 @@ const ShipNav = ({
 
   const handleDateChange = (item) => {
     setDateRange([item.selection]);
+    // Optionally close the picker after selection
+    // setShowDatePicker(false);
   };
 
   // Function to download the sample file
@@ -177,6 +184,28 @@ const ShipNav = ({
     customQuarterRange,
     customFinancialYearRange,
   ];
+
+  // Format date range for display
+  const formatDateRange = () => {
+    const start = dateRange[0].startDate;
+    const end = dateRange[0].endDate;
+    
+    // Check if it's the default "Last 30 Days"
+    const defaultStart = new Date(new Date().setDate(new Date().getDate() - 30));
+    const today = new Date();
+    
+    if (
+      start.toDateString() === defaultStart.toDateString() &&
+      end.toDateString() === today.toDateString()
+    ) {
+      return "Last 30 Days";
+    }
+    
+    // Otherwise show the custom range
+    const startStr = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const endStr = end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    return `${startStr} - ${endStr}`;
+  };
 
   useEffect(() => {
     const tab = searchParams.get("tab");
@@ -376,7 +405,7 @@ const ShipNav = ({
                 onClick={toggleDatePicker}
                 className="flex justify-between gap-2 items-center border border-gray-300 px-4 py-2 rounded-lg bg-white hover:bg-gray-50"
               >
-                <span className="text-[#2d3748]">Last 30 Days</span>
+                <span className="text-[#2d3748]">{formatDateRange()}</span>
                 <Image
                   width={20}
                   height={20}
