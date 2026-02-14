@@ -15,6 +15,7 @@ import {
   InfoModal,
   ValidationErrorModal,
   ZoneValidationErrorModal,
+  SectorDestinationValidationModal,
 } from "@/app/portal/component/Modal/Modals";
 
 // List of common Indian zip code prefixes (first 2 digits) for accurate validation
@@ -216,6 +217,8 @@ export default function BulkUploadPage() {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [showZoneValidationModal, setShowZoneValidationModal] = useState(false);
+  const [showSectorDestinationModal, setShowSectorDestinationModal] =
+    useState(false);
 
   const [modalData, setModalData] = useState({
     title: "",
@@ -807,7 +810,7 @@ export default function BulkUploadPage() {
     { key: "csb", label: "CSB" },
   ];
 
-  // ===== SAMPLE FILE DOWNLOAD (LOGIC ONLY)
+  // ===== SAMPLE FILE DOWNLOAD
   const handleSampleDownload = () => {
     const link = document.createElement("a");
     link.href = "/portal-bulkUpload.xlsx";
@@ -817,7 +820,7 @@ export default function BulkUploadPage() {
     document.body.removeChild(link);
   };
 
-  // ===== BROWSE CLICK (LOGIC ONLY)
+  // ===== BROWSE CLICK
   const handleBrowseClick = () => {
     fileInputRef.current?.click();
   };
@@ -836,7 +839,7 @@ export default function BulkUploadPage() {
         awbNo: shipment.awbNo || `PORTAL-${Date.now()}`,
         sector: (shipment.sector || "").toUpperCase().trim(),
         destination: (shipment.destination || "").toUpperCase().trim(),
-        service: (shipment.service || "").toUpperCase().trim(), // This is CRITICAL
+        service: (shipment.service || "").toUpperCase().trim(),
         chargeableWt:
           Number(shipment.chargeableWt) || Number(shipment.totalActualWt) || 0,
         pcs: Number(shipment.pcs) || 1,
@@ -930,16 +933,59 @@ export default function BulkUploadPage() {
       }
     } catch (error) {
       console.error("❌ Server rate calculation failed:", error.message);
-      throw error; // Re-throw the error to be handled by the caller
+      throw error;
     }
   };
 
-  const handleExcelFile = (file) => {
+  // NEW: Validate sector-destination-service combinations
+  const validateSectorDestinationService = async (excelRows) => {
+    try {
+      console.log("🔍 Validating sector-destination-service combinations...");
+
+      const response = await fetch(
+        `${server}/bulk-upload/validate-sector-destination`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ shipments: excelRows }),
+        },
+      );
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        console.log("❌ Validation failed:", data);
+        return {
+          isValid: false,
+          errors: data.validationErrors || [],
+          totalTriplets: data.totalTriplets || 0,
+          invalidTriplets: data.invalidTriplets || 0,
+        };
+      }
+
+      console.log("✅ All combinations are valid");
+      return {
+        isValid: true,
+        errors: [],
+        totalTriplets: data.totalTriplets || 0,
+        validTriplets: data.validTriplets || 0,
+      };
+    } catch (error) {
+      console.error("❌ Validation error:", error);
+      throw error;
+    }
+  };
+
+  // UPDATED: Handle Excel file with comprehensive validation
+  
+  const handleExcelFile = async (file) => {
     if (!file) return;
 
     const reader = new FileReader();
 
-    reader.onload = (evt) => {
+    reader.onload = async (evt) => {
       const data = new Uint8Array(evt.target.result);
       const workbook = XLSX.read(data, { type: "array" });
       const sheetName = workbook.SheetNames[0];
@@ -947,14 +993,16 @@ export default function BulkUploadPage() {
 
       const excelRows = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
 
-      // Check for validation errors immediately
-      const validationErrorsFound = [];
+      console.log("📊 Excel file parsed:", excelRows.length, "rows");
 
+      // STEP 1: ZIP CODE VALIDATION
+      console.log("🔍 STEP 1: Validating zip codes...");
+      const zipValidationErrors = [];
       excelRows.forEach((row, index) => {
         const zipcode = row.ConsigneeZipcode?.toString().trim() || "";
         const validation = validateReceiverZipCode(zipcode);
         if (!validation.isValid) {
-          validationErrorsFound.push({
+          zipValidationErrors.push({
             row: index + 2,
             zipcode: zipcode,
             message: validation.message,
@@ -962,29 +1010,152 @@ export default function BulkUploadPage() {
           });
         }
       });
+      setValidationErrors(zipValidationErrors);
+      console.log(
+        `✅ Zip validation complete: ${zipValidationErrors.length} errors found`,
+      );
 
-      setValidationErrors(validationErrorsFound);
+      // STEP 2: SECTOR-DESTINATION-SERVICE VALIDATION (BEFORE ANYTHING ELSE!)
+      console.log(
+        "🔍 STEP 2: Validating sector-destination-service combinations...",
+      );
 
-      // Show validation results using modal
-      if (validationErrorsFound.length > 0) {
+      try {
+        const sdsValidation = await validateSectorDestinationService(excelRows);
+
+        console.log("📋 SDS Validation Result:", {
+          isValid: sdsValidation.isValid,
+          totalTriplets: sdsValidation.totalTriplets,
+          invalidTriplets: sdsValidation.invalidTriplets,
+          errorsCount: sdsValidation.errors?.length,
+        });
+
+        if (!sdsValidation.isValid) {
+          console.log(
+            "❌ CRITICAL: Sector-Destination-Service validation FAILED!",
+          );
+          console.log("🔍 Raw errors from API:", sdsValidation.errors);
+
+          // Transform errors to ensure they have the right structure
+          const transformedErrors = sdsValidation.errors.map((error) => {
+            console.log("🔍 Processing error:", error);
+            return {
+              sector: error.sector || "N/A",
+              destination: error.destination || "N/A",
+              service: error.service || "N/A",
+              rowIndices: error.rowIndices || [],
+              message:
+                error.message ||
+                "Invalid combination - not found in zone matrix",
+            };
+          });
+
+          console.log("✅ Transformed errors:", transformedErrors);
+
+          setSectorDestinationServiceErrors(transformedErrors);
+          setShowSectorDestinationModal(true);
+
+          setModalData({
+            title: "File Loaded with Configuration Errors",
+            message: `${sdsValidation.invalidTriplets} invalid sector-destination-service combinations detected!`,
+            errors: [
+              `Total combinations checked: ${sdsValidation.totalTriplets}`,
+              `❌ Invalid combinations: ${sdsValidation.invalidTriplets}`,
+              `✅ Valid combinations: ${sdsValidation.validTriplets || sdsValidation.totalTriplets - sdsValidation.invalidTriplets}`,
+              "",
+              "⚠️ These combinations do NOT exist in your zone matrix:",
+              "Please review the detailed modal for specific combinations.",
+            ],
+          });
+          setShowErrorModal(true);
+
+          // Still load data for review (so user can see what's wrong in the table)
+          const mappedRows = excelRows.map((row, index) => {
+            const transformed = transformExcelToShipment(row, index);
+            return {
+              origin: row.Origin,
+              sector: row.Sector,
+              destination: row.Destination,
+              service: row.ServiceName,
+              goodstype: row.GoodsType,
+              pcs: row.PCS,
+              totalActualWt: transformed.totalActualWt || row.ActualWeight,
+              totalVolWt: transformed.totalVolWt || row.VolumeWeight,
+              chargeableWt: transformed.chargeableWt || row.ChargeableWeight,
+              totalInvoiceValue: row.InvoiceValue,
+              currency: row.InvoiceCurrency,
+              contentDisplay: row.ShipmentContent,
+              receiverFullName: row.ConsigneeName,
+              receiverPhoneNumber: row.ConsigneeTelephone,
+              receiverEmail: row.ConsigneeEmailId,
+              receiverCity: row.ConsigneeCity,
+              receiverState: row.ConsigneeState,
+              receiverPincode: row.ConsigneeZipcode,
+              shipperFullName: row.ConsignorName,
+              shipperPhoneNumber: row.ConsignorTelephone,
+              shipperKycType: row.ConsignorKycType,
+              shipperKycNumber: row.ConsignorKycNo,
+              reference: row.ReferenceNo,
+              csb: row.CSB,
+            };
+          });
+
+          setExcelData(excelRows);
+          setRowData(mappedRows);
+
+          console.log(
+            "🛑 STOPPING HERE - File loaded but has validation errors",
+          );
+          return; // STOP HERE - Don't proceed to success
+        }
+
+        console.log(
+          "✅ All sector-destination-service combinations are VALID!",
+        );
+      } catch (error) {
+        console.error("❌ Validation API request failed:", error);
+        setModalData({
+          title: "Validation Error",
+          message: "Failed to validate sector-destination-service combinations",
+          errors: [
+            error.message,
+            "",
+            "This usually means:",
+            "• The validation API is not responding",
+            "• Network connection issue",
+            "• Server error",
+            "",
+            "Please try again or contact support.",
+          ],
+        });
+        setShowErrorModal(true);
+        return; // Stop processing
+      }
+
+      // STEP 3: SHOW SUCCESS OR ZIP ERRORS
+      if (zipValidationErrors.length > 0) {
+        console.log("⚠️ Showing zip validation modal");
         setShowValidationModal(true);
       } else {
+        console.log("🎉 All validations passed!");
         setModalData({
           title: "File Loaded Successfully",
-          message: `Excel file loaded successfully!`,
+          message: `Excel file loaded and validated successfully!`,
           details: [
-            `${excelRows.length} shipments found`,
-            "All receiver zip codes are valid international codes",
+            `✅ ${excelRows.length} shipments found`,
+            `✅ All receiver zip codes are valid international codes`,
+            `✅ All sector-destination-service combinations exist in zone matrix`,
+            "",
+            "Ready to upload!",
           ],
         });
         setShowSuccessModal(true);
       }
 
-      // For table display, keep simple mapping
+      // STEP 4: Map data for table display (only if no critical errors)
+      console.log("📊 Mapping data for table display...");
       const mappedRows = excelRows.map((row, index) => {
         const transformed = transformExcelToShipment(row, index);
-
-        // For table display, show calculated values
         return {
           origin: row.Origin,
           sector: row.Sector,
@@ -998,19 +1169,16 @@ export default function BulkUploadPage() {
           totalInvoiceValue: row.InvoiceValue,
           currency: row.InvoiceCurrency,
           contentDisplay: row.ShipmentContent,
-
           receiverFullName: row.ConsigneeName,
           receiverPhoneNumber: row.ConsigneeTelephone,
           receiverEmail: row.ConsigneeEmailId,
           receiverCity: row.ConsigneeCity,
           receiverState: row.ConsigneeState,
           receiverPincode: row.ConsigneeZipcode,
-
           shipperFullName: row.ConsignorName,
           shipperPhoneNumber: row.ConsignorTelephone,
           shipperKycType: row.ConsignorKycType,
           shipperKycNumber: row.ConsignorKycNo,
-
           reference: row.ReferenceNo,
           csb: row.CSB,
         };
@@ -1018,12 +1186,12 @@ export default function BulkUploadPage() {
 
       setExcelData(excelRows);
       setRowData(mappedRows);
+      console.log("✅ File processing complete!");
     };
 
     reader.readAsArrayBuffer(file);
   };
 
-  // ===== LOAD EXCEL → TABLE (LOGIC ONLY)
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -1054,7 +1222,7 @@ export default function BulkUploadPage() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  // ===== UPLOAD TO DATABASE
+  // UPDATED: Upload handler blocks on sector-destination-service errors
   const handleUpload = async () => {
     if (excelData.length === 0) {
       setModalData({
@@ -1066,7 +1234,7 @@ export default function BulkUploadPage() {
       return;
     }
 
-    // Block if there are validation errors
+    // Block if ZIP code errors
     if (validationErrors.length > 0) {
       const indianZipCount = validationErrors.filter(
         (err) => err.isIndianZip,
@@ -1091,6 +1259,26 @@ export default function BulkUploadPage() {
           "",
           "We only accept international zip codes (UK, USA, Canada, Australia, Europe)",
         ].filter(Boolean),
+      });
+      setShowErrorModal(true);
+      return;
+    }
+
+    // Block if SECTOR-DESTINATION-SERVICE errors
+    if (sectorDestinationServiceErrors.length > 0) {
+      setModalData({
+        title: "Cannot Proceed - Invalid Combinations",
+        message:
+          "Your file contains invalid sector-destination-service combinations.",
+        errors: [
+          `Total errors: ${sectorDestinationServiceErrors.length}`,
+          "",
+          "Action Required:",
+          "1. Review the error details in the configuration error modal",
+          "2. Fix the invalid combinations in your Excel file",
+          "3. Ensure Sector, Destination, and ServiceName match your zone matrix",
+          "4. Re-upload the corrected file",
+        ],
       });
       setShowErrorModal(true);
       return;
@@ -1169,7 +1357,6 @@ export default function BulkUploadPage() {
       ).length;
 
       if (zeroAmountCount > 0) {
-        // Show confirmation modal
         setModalData({
           title: "Zero Amount Shipments Detected",
           message: `${zeroAmountCount} shipments have ₹0 amounts. This might be because of missing zone configuration, missing service tariff, or invalid service/destination combination.`,
@@ -1204,7 +1391,6 @@ export default function BulkUploadPage() {
     try {
       setLoading(true);
 
-      // STEP 2: Prepare final payload
       const currentAccountCode = getAccountCode();
       const uploadPayload = {
         shipments: shipmentsWithRates,
@@ -1219,7 +1405,6 @@ export default function BulkUploadPage() {
         accountCode: currentAccountCode,
       });
 
-      // STEP 3: UPLOAD TO DATABASE
       const response = await fetch(`${server}/bulk-upload/portal`, {
         method: "POST",
         headers: {
@@ -1228,7 +1413,6 @@ export default function BulkUploadPage() {
         body: JSON.stringify(uploadPayload),
       });
 
-      // Log response status
       console.log(
         "📡 Upload response status:",
         response.status,
@@ -1242,7 +1426,6 @@ export default function BulkUploadPage() {
         try {
           const errorData = JSON.parse(errorText);
 
-          // Check if this is a zone validation error
           if (
             errorData.message === "Zone validation failed" &&
             errorData.errors
@@ -1288,7 +1471,6 @@ export default function BulkUploadPage() {
         setShowSuccessModal(true);
 
         if (newRecords > 0) {
-          // Clear all data after successful upload
           setRowData([]);
           setExcelData([]);
           setFileName("");
@@ -1326,7 +1508,7 @@ export default function BulkUploadPage() {
 
   return (
     <>
-      {/* Modals */}
+      {/* MODALS */}
       <ValidationErrorModal
         isOpen={showValidationModal}
         onClose={() => setShowValidationModal(false)}
@@ -1337,6 +1519,12 @@ export default function BulkUploadPage() {
         isOpen={showZoneValidationModal}
         onClose={() => setShowZoneValidationModal(false)}
         zoneErrors={sectorDestinationServiceErrors}
+      />
+
+      <SectorDestinationValidationModal
+        isOpen={showSectorDestinationModal}
+        onClose={() => setShowSectorDestinationModal(false)}
+        validationErrors={sectorDestinationServiceErrors}
       />
 
       <SuccessModal
@@ -1390,7 +1578,7 @@ export default function BulkUploadPage() {
       <div className="bg-[#f8f9fa]">
         <div className="p-6">
           {/* Header */}
-          <div className="flex justify-between  items-center mb-3">
+          <div className="flex justify-between items-center mb-3">
             <div className="flex flex-col gap-2">
               <h1 className="text-2xl font-bold text-[#2D3748]">
                 Bulk Upload Shipments
@@ -1398,7 +1586,6 @@ export default function BulkUploadPage() {
               <p className="tracking-wide text-[#A0AEC0]">
                 Upload multiple shipments using Excel file
               </p>
-              {/* Show current account code */}
               {accountCode && (
                 <div className="mt-2 p-2 bg-blue-50 rounded-md">
                   <p className="text-sm text-blue-700">
@@ -1415,7 +1602,7 @@ export default function BulkUploadPage() {
               )}
             </div>
 
-            <div className=" flex items-end justify-end mt-4 pr-1">
+            <div className="flex items-end justify-end mt-4 pr-1">
               <button
                 onClick={handleSampleDownload}
                 className="flex items-center justify-center gap-2 border border-[#979797] w-40 py-1.5 rounded-lg text-[#71717A] hover:bg-gray-50"
@@ -1458,7 +1645,7 @@ export default function BulkUploadPage() {
                         {sectorDestinationServiceErrors.length > 0 && (
                           <span className="text-red-600">
                             {" "}
-                            ({sectorDestinationServiceErrors.length} zone
+                            ({sectorDestinationServiceErrors.length} config
                             errors)
                           </span>
                         )}
@@ -1514,7 +1701,7 @@ export default function BulkUploadPage() {
             </div>
           </div>
 
-          {/* Validation Errors Display */}
+          {/* Zip Code Validation Errors Display */}
           {validationErrors.length > 0 && (
             <div
               className="rounded-md p-4 mt-4 border-2"
@@ -1529,7 +1716,7 @@ export default function BulkUploadPage() {
                     className="font-bold text-lg mb-2 flex items-center"
                     style={{ color: "#991B1B" }}
                   >
-                    INVALID ZIP CODES - {validationErrors.length} Shipments
+                    ❌ INVALID ZIP CODES - {validationErrors.length} Shipments
                     Blocked
                   </h3>
                   <div className="bg-white rounded p-3 mb-3 border border-red-300">
@@ -1543,7 +1730,7 @@ export default function BulkUploadPage() {
                     style={{ color: "#991B1B" }}
                   >
                     ⚠️ Action Required: Fix these {validationErrors.length}{" "}
-                    shipments in your Excel file:
+                    shipments in your Excel file
                   </span>
                   <span className="text-xs ml-1" style={{ color: "#DC2626" }}>
                     These shipments will be automatically filtered out and NOT
@@ -1554,7 +1741,7 @@ export default function BulkUploadPage() {
             </div>
           )}
 
-          {/* Zone Validation Errors Display */}
+          {/* Sector-Destination-Service Validation Errors Display */}
           {sectorDestinationServiceErrors.length > 0 && (
             <div
               className="rounded-md p-4 mt-4 border-2"
@@ -1569,45 +1756,36 @@ export default function BulkUploadPage() {
                     className="font-bold text-lg mb-2 flex items-center"
                     style={{ color: "#92400E" }}
                   >
-                    ZONE CONFIGURATION ERRORS -{" "}
-                    {sectorDestinationServiceErrors.length} Shipments
+                    ⚠️ INVALID SECTOR-DESTINATION-SERVICE COMBINATIONS -{" "}
+                    {sectorDestinationServiceErrors.length} Issues Found
                   </h3>
                   <div className="bg-white rounded p-3 mb-3 border border-amber-300">
                     <p className="text-sm mb-2" style={{ color: "#B45309" }}>
-                      The following sector-destination-service combinations do
-                      not exist in the zone matrix. Please check your Excel file
-                      and update the values.
+                      The following combinations don't exist in your zone
+                      configuration. Click "View Details" in the modal above for
+                      specific combinations and fix instructions.
                     </p>
-                    <div className="max-h-40 overflow-y-auto">
-                      <table className="min-w-full text-xs">
-                        <thead className="bg-amber-50">
-                          <tr>
-                            <th className="px-2 py-1 text-left">AWB</th>
-                            <th className="px-2 py-1 text-left">Sector</th>
-                            <th className="px-2 py-1 text-left">Destination</th>
-                            <th className="px-2 py-1 text-left">Service</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {sectorDestinationServiceErrors.map((error, idx) => (
-                            <tr key={idx} className="border-b border-amber-100">
-                              <td className="px-2 py-1">{error.awbNo}</td>
-                              <td className="px-2 py-1">{error.sector}</td>
-                              <td className="px-2 py-1">{error.destination}</td>
-                              <td className="px-2 py-1">{error.service}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
                   </div>
                   <span
                     className="text-sm font-semibold mb-1"
                     style={{ color: "#92400E" }}
                   >
-                    ⚠️ Action Required: Fix these combinations in your Excel
-                    file and re-upload.
+                    📋 Action Required:
                   </span>
+                  <ul
+                    className="text-xs ml-6 mt-2 list-disc"
+                    style={{ color: "#92400E" }}
+                  >
+                    <li>
+                      Review the detailed error modal for specific combinations
+                    </li>
+                    <li>Update your Excel file with valid combinations</li>
+                    <li>
+                      Ensure values match your zone matrix exactly
+                      (case-sensitive)
+                    </li>
+                    <li>Re-upload the corrected file</li>
+                  </ul>
                 </div>
               </div>
             </div>
