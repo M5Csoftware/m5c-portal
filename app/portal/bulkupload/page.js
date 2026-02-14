@@ -979,7 +979,7 @@ export default function BulkUploadPage() {
   };
 
   // UPDATED: Handle Excel file with comprehensive validation
-  
+
   const handleExcelFile = async (file) => {
     if (!file) return;
 
@@ -1761,9 +1761,10 @@ export default function BulkUploadPage() {
                   </h3>
                   <div className="bg-white rounded p-3 mb-3 border border-amber-300">
                     <p className="text-sm mb-2" style={{ color: "#B45309" }}>
-                      The following combinations don't exist in your zone
-                      configuration. Click "View Details" in the modal above for
-                      specific combinations and fix instructions.
+                      The following combinations don&apos;t exist in your zone
+                      configuration. Click <strong>View Details</strong> in the
+                      modal above for specific combinations and fix
+                      instructions.
                     </p>
                   </div>
                   <span
