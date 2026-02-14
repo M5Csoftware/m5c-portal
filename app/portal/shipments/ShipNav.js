@@ -188,283 +188,285 @@ const ShipNav = ({
   }, []);
 
   return (
-    <>
-      <div className="sticky top-[106px] bg-[#f8f9fa] z-40">
-        <div className="flex w-full justify-between items-baseline">
-          <div className="w-full">
-            <div className="flex justify-between">
-              <ul className="list-none flex gap-6">
-                <li
-                  style={{ cursor: "pointer", fontSize: "14px" }}
-                  className={
-                    selectedLi === 0
-                      ? "text-[var(--primary-color)] "
-                      : "text-[#A0AEC0]"
-                  }
-                  onClick={() => handleLiClick(0)}
-                >
-                  All
-                </li>
-                <li
-                  style={{ cursor: "pointer", fontSize: "14px" }}
-                  className={
-                    selectedLi === 1
-                      ? "text-[var(--primary-color)]"
-                      : "text-[#A0AEC0]"
-                  }
-                  onClick={() => handleLiClick(1)}
-                >
-                  Latest
-                </li>
-                <li
-                  style={{ cursor: "pointer", fontSize: "14px" }}
-                  className={
-                    selectedLi === 2
-                      ? "text-[var(--primary-color)]"
-                      : "text-[#A0AEC0]"
-                  }
-                  onClick={() => handleLiClick(2)}
-                >
-                  Ready to Ship
-                </li>
-                <li
-                  style={{ cursor: "pointer", fontSize: "14px" }}
-                  className={
-                    selectedLi === 3
-                      ? "text-[var(--primary-color)]"
-                      : "text-[#A0AEC0]"
-                  }
-                  onClick={() => handleLiClick(3)}
-                >
-                  Manifest
-                </li>
-                <li
-                  style={{ cursor: "pointer", fontSize: "14px" }}
-                  className={
-                    selectedLi === 4
-                      ? "text-[var(--primary-color)]"
-                      : "text-[#A0AEC0]"
-                  }
-                  onClick={() => handleLiClick(4)}
-                >
-                  In Transit
-                </li>
-                <li
-                  style={{ cursor: "pointer", fontSize: "14px" }}
-                  className={
-                    selectedLi === 5
-                      ? "text-[var(--primary-color)]"
-                      : "text-[#A0AEC0]"
-                  }
-                  onClick={() => handleLiClick(5)}
-                >
-                  Hold Shipment
-                </li>
-                <li
-                  style={{ cursor: "pointer", fontSize: "14px" }}
-                  className={
-                    selectedLi === 6
-                      ? "text-[var(--primary-color)]"
-                      : "text-[#A0AEC0]"
-                  }
-                  onClick={() => handleLiClick(6)}
-                >
-                  RTO
-                </li>
-                <li
-                  style={{ cursor: "pointer", fontSize: "14px" }}
-                  className={
-                    selectedLi === 7
-                      ? "text-[var(--primary-color)]"
-                      : "text-[#A0AEC0]"
-                  }
-                  onClick={() => handleLiClick(7)}
-                >
-                  Delivered
-                </li>
-              </ul>
-            </div>
-
-            <div className="relative mt-1">
-              <Image
-                className=""
-                layout="responsive"
-                width={1000}
-                height={24}
-                src={"/line-address.svg"}
-                alt="Line"
-              />
-              <div
-                ref={lineRef}
-                className="transition-all duration-400 rounded-t-lg absolute bottom-[1px] bg-[var(--primary-color)]"
-                style={{ width: lineWidth, height: "3px", left: lineLeft }}
-              ></div>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 text-[#A0AEC0]">
-            <div className="flex w-fit">
-              <button
-                onClick={handleBulkUpload}
-                className="flex items-center justify-center border-2 bg-white border-[#979797] w-12 h-9 px-2 rounded-lg hover:bg-gray-50"
-                title="Bulk Upload"
-              >
-                <Image
-                  width={20}
-                  height={20}
-                  src="/bulk-upload.svg"
-                  alt="bulk upload"
-                />
-              </button>
-            </div>
-            <div className="flex">
-              <Link href="./createshipment">
-                <button className="border-2 bg-white border-[#979797] py-1 h-9 w-40 text-[#71717A] px-2 rounded-lg hover:bg-gray-50">
-                  <div className="flex gap-2">
-                    <Image
-                      width={20}
-                      height={20}
-                      src="/create-shipment-plus.svg"
-                      alt="create shipment"
-                    />
-                    <span className="text-sm">Create Shipment</span>
-                  </div>
-                </button>
-              </Link>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-6 text-[#A0AEC0] mt-2">
-          <div className="flex items-center justify-between">
-            <div className="flex gap-2 relative">
-              {selectedLi == 3 && (
-                <div className="flex w-[250px] h-[45px] border border-gray-300 rounded-lg overflow-hidden">
-                  <button
-                    onClick={() => setStatusFilter("All")}
-                    className={`flex-1 text-center transition-all duration-200 m-1 rounded-lg ${
-                      statusFilter === "All"
-                        ? "bg-gray-200 text-black"
-                        : "text-black hover:bg-gray-200"
-                    }`}
+    
+      <div>
+        <div className=" bg-[#f8f9fa] z-10">
+          <div className="flex w-full justify-between items-baseline">
+            <div className="w-full">
+              <div className="flex justify-between">
+                <ul className="list-none flex gap-6">
+                  <li
+                    style={{ cursor: "pointer", fontSize: "14px" }}
+                    className={
+                      selectedLi === 0
+                        ? "text-[var(--primary-color)] "
+                        : "text-[#A0AEC0]"
+                    }
+                    onClick={() => handleLiClick(0)}
                   >
                     All
-                  </button>
-                  <button
-                    onClick={() => setStatusFilter("Drop")}
-                    className={`flex-1 text-center transition-all duration-200 m-1 rounded-lg ${
-                      statusFilter === "Drop"
-                        ? "bg-gray-200 text-black"
-                        : "text-black hover:bg-gray-200"
-                    }`}
+                  </li>
+                  <li
+                    style={{ cursor: "pointer", fontSize: "14px" }}
+                    className={
+                      selectedLi === 1
+                        ? "text-[var(--primary-color)]"
+                        : "text-[#A0AEC0]"
+                    }
+                    onClick={() => handleLiClick(1)}
                   >
-                    Drop
-                  </button>
-                  <button
-                    onClick={() => setStatusFilter("Pickup")}
-                    className={`flex-1 text-center transition-all duration-200 m-1 rounded-lg ${
-                      statusFilter === "Pickup"
-                        ? "bg-gray-200 text-black"
-                        : "text-black hover:bg-gray-200"
-                    }`}
+                    Latest
+                  </li>
+                  <li
+                    style={{ cursor: "pointer", fontSize: "14px" }}
+                    className={
+                      selectedLi === 2
+                        ? "text-[var(--primary-color)]"
+                        : "text-[#A0AEC0]"
+                    }
+                    onClick={() => handleLiClick(2)}
                   >
-                    Pickup
-                  </button>
-                </div>
-              )}
+                    Ready to Ship
+                  </li>
+                  <li
+                    style={{ cursor: "pointer", fontSize: "14px" }}
+                    className={
+                      selectedLi === 3
+                        ? "text-[var(--primary-color)]"
+                        : "text-[#A0AEC0]"
+                    }
+                    onClick={() => handleLiClick(3)}
+                  >
+                    Manifest
+                  </li>
+                  <li
+                    style={{ cursor: "pointer", fontSize: "14px" }}
+                    className={
+                      selectedLi === 4
+                        ? "text-[var(--primary-color)]"
+                        : "text-[#A0AEC0]"
+                    }
+                    onClick={() => handleLiClick(4)}
+                  >
+                    In Transit
+                  </li>
+                  <li
+                    style={{ cursor: "pointer", fontSize: "14px" }}
+                    className={
+                      selectedLi === 5
+                        ? "text-[var(--primary-color)]"
+                        : "text-[#A0AEC0]"
+                    }
+                    onClick={() => handleLiClick(5)}
+                  >
+                    Hold Shipment
+                  </li>
+                  <li
+                    style={{ cursor: "pointer", fontSize: "14px" }}
+                    className={
+                      selectedLi === 6
+                        ? "text-[var(--primary-color)]"
+                        : "text-[#A0AEC0]"
+                    }
+                    onClick={() => handleLiClick(6)}
+                  >
+                    RTO
+                  </li>
+                  <li
+                    style={{ cursor: "pointer", fontSize: "14px" }}
+                    className={
+                      selectedLi === 7
+                        ? "text-[var(--primary-color)]"
+                        : "text-[#A0AEC0]"
+                    }
+                    onClick={() => handleLiClick(7)}
+                  >
+                    Delivered
+                  </li>
+                </ul>
+              </div>
 
-              <button
-                onClick={toggleDatePicker}
-                className="flex justify-between gap-2 items-center border border-gray-300 px-4 py-2 rounded-lg bg-white hover:bg-gray-50"
-              >
-                <span className="text-[#2d3748]">Last 30 Days</span>
-                <Image
-                  width={20}
-                  height={20}
-                  src="/calendar.svg"
-                  alt="calendar_icon"
-                />
-              </button>
-
-              {showDatePicker && (
-                <div
-                  ref={datePickerRef}
-                  className="absolute z-40 top-full left-0 mt-2 bg-white shadow-lg rounded-md overflow-hidden border border-[#E2E8F0] custom-calendar"
-                >
-                  <DateRangePicker
-                    ranges={dateRange}
-                    staticRanges={staticRanges}
-                    onChange={handleDateChange}
-                    classNames={{
-                      dateRangePickerWrapper: "custom-calendar",
-                    }}
-                  />
-                </div>
-              )}
-            </div>
-
-            <div className="flex gap-3 relative">
-              <div className="rounded-md flex items-center gap-2 bg-[#F1F0F5] px-[11px] py-[6px]">
+              <div className="relative mt-1">
                 <Image
                   className=""
-                  width={20}
-                  height={20}
-                  src="/search.svg"
-                  alt="Search"
+                  layout="responsive"
+                  width={1000}
+                  height={24}
+                  src={"/line-address.svg"}
+                  alt="Line"
                 />
-                <input
-                  className="bg-transparent text-[#71717A] outline-none"
-                  type="text"
-                  placeholder="Search"
-                  value={searchValue}
-                  onChange={handleSearchChange}
-                />
+                <div
+                  ref={lineRef}
+                  className="transition-all duration-400 rounded-t-lg absolute bottom-[1px] bg-[var(--primary-color)]"
+                  style={{ width: lineWidth, height: "3px", left: lineLeft }}
+                ></div>
               </div>
-              <div className="flex">
+            </div>
+            <div className="flex items-center gap-3 text-[#A0AEC0]">
+              <div className="flex w-fit">
                 <button
-                  onClick={handleDownloadClick}
-                  className="border-2 bg-white border-[#979797] py-1 h-9 w-40 text-[#71717A] px-2 rounded-lg hover:bg-gray-50"
-                >
-                  <div className="flex gap-4">
-                    <Image
-                      width={20}
-                      height={20}
-                      src="/arrow-right.svg"
-                      alt="download_all"
-                      className="rotate-90"
-                    />
-                    <span className="text-sm">
-                      {selectedCount > 0
-                        ? `Download (${selectedCount})`
-                        : "Download All"}
-                    </span>
-                  </div>
-                </button>
-              </div>
-              <div className="flex gap-3">
-                <button
-                  onClick={handleFilter}
-                  type="button"
-                  className="flex gap-[10px] items-center border border-[#979797] py-[6px] px-[11px] rounded-md bg-white hover:bg-gray-50"
+                  onClick={handleBulkUpload}
+                  className="flex items-center justify-center border-2 bg-white border-[#979797] w-12 h-9 px-2 rounded-lg hover:bg-gray-50"
+                  title="Bulk Upload"
                 >
                   <Image
-                    className="w-fit"
-                    width={24}
-                    height={24}
-                    src="/filters.svg"
-                    alt="Filters"
+                    width={20}
+                    height={20}
+                    src="/bulk-upload.svg"
+                    alt="bulk upload"
                   />
-                  <span className="text-[#2D3748] text-sm">Filters</span>
                 </button>
+              </div>
+              <div className="flex">
+                <Link href="./createshipment">
+                  <button className="border-2 bg-white border-[#979797] py-1 h-9 w-40 text-[#71717A] px-2 rounded-lg hover:bg-gray-50">
+                    <div className="flex gap-2">
+                      <Image
+                        width={20}
+                        height={20}
+                        src="/create-shipment-plus.svg"
+                        alt="create shipment"
+                      />
+                      <span className="text-sm">Create Shipment</span>
+                    </div>
+                  </button>
+                </Link>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-6 text-[#A0AEC0] mt-2">
+            <div className="flex items-center justify-between">
+              <div className="flex gap-2 relative">
+                {selectedLi == 3 && (
+                  <div className="flex w-[250px] h-[45px] border border-gray-300 rounded-lg overflow-hidden">
+                    <button
+                      onClick={() => setStatusFilter("All")}
+                      className={`flex-1 text-center transition-all duration-200 m-1 rounded-lg ${
+                        statusFilter === "All"
+                          ? "bg-gray-200 text-black"
+                          : "text-black hover:bg-gray-200"
+                      }`}
+                    >
+                      All
+                    </button>
+                    <button
+                      onClick={() => setStatusFilter("Drop")}
+                      className={`flex-1 text-center transition-all duration-200 m-1 rounded-lg ${
+                        statusFilter === "Drop"
+                          ? "bg-gray-200 text-black"
+                          : "text-black hover:bg-gray-200"
+                      }`}
+                    >
+                      Drop
+                    </button>
+                    <button
+                      onClick={() => setStatusFilter("Pickup")}
+                      className={`flex-1 text-center transition-all duration-200 m-1 rounded-lg ${
+                        statusFilter === "Pickup"
+                          ? "bg-gray-200 text-black"
+                          : "text-black hover:bg-gray-200"
+                      }`}
+                    >
+                      Pickup
+                    </button>
+                  </div>
+                )}
+
+                <button
+                  onClick={toggleDatePicker}
+                  className="flex justify-between gap-2 items-center border border-gray-300 px-4 py-2 rounded-lg bg-white hover:bg-gray-50"
+                >
+                  <span className="text-[#2d3748]">Last 30 Days</span>
+                  <Image
+                    width={20}
+                    height={20}
+                    src="/calendar.svg"
+                    alt="calendar_icon"
+                  />
+                </button>
+
+                {showDatePicker && (
+                  <div
+                    ref={datePickerRef}
+                    className="absolute z-40 top-full left-0 mt-2 bg-white shadow-lg rounded-md overflow-hidden border border-[#E2E8F0] custom-calendar"
+                  >
+                    <DateRangePicker
+                      ranges={dateRange}
+                      staticRanges={staticRanges}
+                      onChange={handleDateChange}
+                      classNames={{
+                        dateRangePickerWrapper: "custom-calendar",
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-3 relative">
+                <div className="rounded-md flex items-center gap-2 bg-[#F1F0F5] px-[11px] py-[6px]">
+                  <Image
+                    className=""
+                    width={20}
+                    height={20}
+                    src="/search.svg"
+                    alt="Search"
+                  />
+                  <input
+                    className="bg-transparent text-[#71717A] outline-none"
+                    type="text"
+                    placeholder="Search"
+                    value={searchValue}
+                    onChange={handleSearchChange}
+                  />
+                </div>
+                <div className="flex">
+                  <button
+                    onClick={handleDownloadClick}
+                    className="border-2 bg-white border-[#979797] py-1 h-9 w-40 text-[#71717A] px-2 rounded-lg hover:bg-gray-50"
+                  >
+                    <div className="flex gap-4">
+                      <Image
+                        width={20}
+                        height={20}
+                        src="/arrow-right.svg"
+                        alt="download_all"
+                        className="rotate-90"
+                      />
+                      <span className="text-sm">
+                        {selectedCount > 0
+                          ? `Download (${selectedCount})`
+                          : "Download All"}
+                      </span>
+                    </div>
+                  </button>
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleFilter}
+                    type="button"
+                    className="flex gap-[10px] items-center border border-[#979797] py-[6px] px-[11px] rounded-md bg-white hover:bg-gray-50"
+                  >
+                    <Image
+                      className="w-fit"
+                      width={24}
+                      height={24}
+                      src="/filters.svg"
+                      alt="Filters"
+                    />
+                    <span className="text-[#2D3748] text-sm">Filters</span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {showUploadModal && (
-        <UploadModal onClose={() => setShowUploadModal(false)} />
-      )}
-    </>
+        {showUploadModal && (
+          <UploadModal onClose={() => setShowUploadModal(false)} />
+        )}
+      </div>
+  
   );
 };
 
