@@ -24,7 +24,9 @@ const TicketCard = ({ ticketData, selected, onCheckboxChange }) => {
   const [showMenu, setShowMenu] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [menuPosition, setMenuPosition] = useState({ top: 0, right: 0 });
   const menuRef = useRef(null);
+  const buttonRef = useRef(null);
   const {
     server,
     setTicketRefreshTrigger,
@@ -49,6 +51,17 @@ const TicketCard = ({ ticketData, selected, onCheckboxChange }) => {
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
+  }, [showMenu]);
+
+  // Calculate menu position when opening
+  useEffect(() => {
+    if (showMenu && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setMenuPosition({
+        top: rect.top - 10, // Position above the button with some spacing
+        right: window.innerWidth - rect.right,
+      });
+    }
   }, [showMenu]);
 
   const handleResolve = async () => {
@@ -132,114 +145,124 @@ const TicketCard = ({ ticketData, selected, onCheckboxChange }) => {
   };
 
   return (
-    <div
-      className={`bg-white ${selected ? "bg-gray-100" : ""} text-[#71717A] relative`}
-    >
-      <ul className="flex justify-between bg-white border border-[#E2E8F0] rounded-[4px] shipment-detail-ul p-4 text-[#A0AEC0] text-sm items-center ticket-detail-ul">
-        <li style={{ width: "0px" }}>
-          <input
-            type="checkbox"
-            name="shipment-detail"
-            id={_id}
-            checked={selected}
-            onChange={() => onCheckboxChange(_id)}
-            className="cursor-pointer"
-          />
-        </li>
-        <li className="flex flex-col gap-1">
-          <div className="font-medium text-gray-800">{displayId}</div>
-          <div>
-            {priorityStatus === "Prioritized" && (
-              <span className="px-2 py-1 text-xs font-semibold text-green-600 bg-green-100 rounded-md">
-                {priorityStatus}
+    <>
+      <div
+        className={`bg-white ${selected ? "bg-gray-100" : ""} text-[#71717A] relative`}
+      >
+        <ul className="flex justify-between bg-white border border-[#E2E8F0] rounded-[4px] shipment-detail-ul p-4 text-[#A0AEC0] text-sm items-center ticket-detail-ul">
+          <li style={{ width: "0px" }}>
+            <input
+              type="checkbox"
+              name="shipment-detail"
+              id={_id}
+              checked={selected}
+              onChange={() => onCheckboxChange(_id)}
+              className="cursor-pointer"
+            />
+          </li>
+          <li className="flex flex-col gap-1">
+            <div className="font-medium text-gray-800">{displayId}</div>
+            <div>
+              {priorityStatus === "Prioritized" && (
+                <span className="px-2 py-1 text-xs font-semibold text-green-600 bg-green-100 rounded-md">
+                  {priorityStatus}
+                </span>
+              )}
+            </div>
+          </li>
+
+          <li className="font-medium">{awbNumber || "N/A"}</li>
+          <li className="">{subCategory || "N/A"}</li>
+          <li className="">
+            {status === "Resolved" ? (
+              <span className="px-4 py-1 text-xs font-semibold text-green-600 bg-green-100 rounded-md">
+                {status}
+              </span>
+            ) : (
+              <span
+                className={`px-4 py-1 text-xs font-semibold rounded-md ${
+                  status === "Open"
+                    ? "text-blue-600 bg-blue-100"
+                    : status === "Pending"
+                      ? "text-yellow-600 bg-yellow-100"
+                      : "text-gray-600 bg-gray-100"
+                }`}
+              >
+                {status || "Unknown"}
               </span>
             )}
-          </div>
-        </li>
+          </li>
 
-        <li className="font-medium">{awbNumber || "N/A"}</li>
-        <li className="">{subCategory || "N/A"}</li>
-        <li className="">
-          {status === "Resolved" ? (
-            <span className="px-4 py-1 text-xs font-semibold text-green-600 bg-green-100 rounded-md">
-              {status}
-            </span>
-          ) : (
-            <span
-              className={`px-4 py-1 text-xs font-semibold rounded-md ${
-                status === "Open"
-                  ? "text-blue-600 bg-blue-100"
-                  : status === "Pending"
-                    ? "text-yellow-600 bg-yellow-100"
-                    : "text-gray-600 bg-gray-100"
-              }`}
+          <li className="">{formatDate(updatedAt)}</li>
+          <li className="">{formatDate(resolutionDate)}</li>
+          <li>
+            <button
+              ref={buttonRef}
+              onClick={() => setShowMenu(!showMenu)}
+              className="p-1 hover:bg-gray-100 rounded"
             >
-              {status || "Unknown"}
-            </span>
-          )}
-        </li>
+              <Image
+                src="/customer-support/option.svg"
+                alt="Options"
+                width={4}
+                height={4}
+                className="cursor-pointer select-none"
+              />
+            </button>
+          </li>
+        </ul>
+      </div>
 
-        <li className="">{formatDate(updatedAt)}</li>
-        <li className="">{formatDate(resolutionDate)}</li>
-        <li className="flex flex-col cursor-pointer gap-2 items-center end relative">
+      {/* Dropdown menu rendered outside table with fixed positioning */}
+      {showMenu && (
+        <div
+          ref={menuRef}
+          className="fixed bg-white border border-gray-300 rounded shadow-xl w-48 p-2 text-black"
+          style={{
+            top: `${menuPosition.top}px`,
+            right: `${menuPosition.right}px`,
+            transform: 'translateY(-100%)',
+            zIndex: 9999,
+          }}
+        >
           <button
-            onClick={() => setShowMenu(!showMenu)}
-            className="p-1 hover:bg-gray-100 rounded"
+            onClick={handleResolve}
+            disabled={status === "Resolved" || loading}
+            className="block w-full text-left px-3 py-2 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed rounded text-sm"
           >
-            <Image
-              src="/customer-support/option.svg"
-              alt="Options"
-              width={4}
-              height={4}
-              className="cursor-pointer select-none"
-            />
+            {loading ? "Processing..." : "Resolve Issue"}
+          </button>
+          <button
+            onClick={() => {
+              setUpdateTicketRemark(true);
+              setSelectedTicket(ticketData);
+              setRaiseTicketWindow(true);
+              setShowMenu(false);
+            }}
+            disabled={status === "Resolved"}
+            className="block w-full text-left px-3 py-2 hover:bg-gray-100 disabled:opacity-50 rounded text-sm"
+          >
+            Update Remarks
           </button>
 
-          {showMenu && (
-            <div
-              ref={menuRef}
-              className="absolute right-0 top-8 bg-white border rounded shadow-lg w-48 p-2 z-10 text-black"
-            >
-              <button
-                onClick={handleResolve}
-                disabled={status === "Resolved" || loading}
-                className="block w-full text-left px-3 py-2 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? "Processing..." : "Resolve Issue"}
-              </button>
-              <button
-                onClick={() => {
-                  setUpdateTicketRemark(true);
-                  setSelectedTicket(ticketData);
-                  setRaiseTicketWindow(true);
-                  setShowMenu(false);
-                }}
-                disabled={status === "Resolved"}
-                className="block w-full text-left px-3 py-2 hover:bg-gray-100 disabled:opacity-50"
-              >
-                Update Remarks
-              </button>
-
-              <button
-                onClick={confirmIncreasePriority}
-                disabled={
-                  status === "Resolved" || priorityStatus === "Prioritized"
-                }
-                className="block w-full text-left px-3 py-2 hover:bg-gray-100 disabled:opacity-50"
-              >
-                Prioritize Ticket
-              </button>
-              <hr className="my-1" />
-              <button
-                onClick={() => setShowDeleteModal(true)}
-                className="block w-full text-left px-3 py-2 hover:bg-red-100 text-red-600"
-              >
-                Delete Ticket
-              </button>
-            </div>
-          )}
-        </li>
-      </ul>
+          <button
+            onClick={confirmIncreasePriority}
+            disabled={
+              status === "Resolved" || priorityStatus === "Prioritized"
+            }
+            className="block w-full text-left px-3 py-2 hover:bg-gray-100 disabled:opacity-50 rounded text-sm"
+          >
+            Prioritize Ticket
+          </button>
+          <hr className="my-1" />
+          <button
+            onClick={() => setShowDeleteModal(true)}
+            className="block w-full text-left px-3 py-2 hover:bg-red-100 text-red-600 rounded text-sm"
+          >
+            Delete Ticket
+          </button>
+        </div>
+      )}
 
       {showDeleteModal && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
@@ -268,7 +291,7 @@ const TicketCard = ({ ticketData, selected, onCheckboxChange }) => {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 };
 

@@ -8,7 +8,6 @@ import RedCheckbox from "@/app/components/RedCheckbox";
 import KycUploadModal from "../address-book/KycUploadModal";
 import { useFormData } from "./FormDataContext";
 
-
 const ShipperDetail = ({
   register,
   errors,
@@ -28,6 +27,7 @@ const ShipperDetail = ({
   const { data: session } = useSession();
   const [showKycModal, setShowKycModal] = useState(false);
   const [kycUploaded, setKycUploaded] = useState(false);
+  const [uploadedImages, setUploadedImages] = useState({ front: null, back: null });
 
   const { formData } = useFormData();
 
@@ -62,7 +62,6 @@ const ShipperDetail = ({
     onNext();
   };
 
-
   const addAddress = async () => {
     const values = getValues();
 
@@ -86,10 +85,9 @@ const ShipperDetail = ({
       // KYC Fields
       kycType: values.shipperKycType,
       kycNumber: values.shipperKycNumber,
-      kycFrontUrl: values.shipperKycFrontUrl,   // ✔ ADD THIS
-      kycBackUrl: values.shipperKycBackUrl,     // ✔ ADD THIS
+      kycFrontUrl: values.shipperKycFrontUrl,
+      kycBackUrl: values.shipperKycBackUrl,
     };
-
 
     console.log(payload)
 
@@ -106,7 +104,6 @@ const ShipperDetail = ({
       console.log("Failed to add address.");
     }
   };
-
 
   useEffect(() => {
     // Fetch shipper addresses from the API
@@ -141,6 +138,19 @@ const ShipperDetail = ({
         setValue("shipperEmail", selectedAddress.email);
         setValue("shipperKycType", selectedAddress.kycType);
         setValue("shipperKycNumber", selectedAddress.kycNumber);
+        
+        // Also set KYC URLs if they exist in the address book
+        if (selectedAddress.kycFrontUrl) {
+          setValue("shipperKycFrontUrl", selectedAddress.kycFrontUrl);
+          setUploadedImages(prev => ({ ...prev, front: selectedAddress.kycFrontUrl }));
+        }
+        if (selectedAddress.kycBackUrl) {
+          setValue("shipperKycBackUrl", selectedAddress.kycBackUrl);
+          setUploadedImages(prev => ({ ...prev, back: selectedAddress.kycBackUrl }));
+        }
+        if (selectedAddress.kycFrontUrl || selectedAddress.kycBackUrl) {
+          setKycUploaded(true);
+        }
       }
     }
   }, [selectedAddressId, shipperAddresses, setValue]);
@@ -151,10 +161,9 @@ const ShipperDetail = ({
     }
   };
 
-
   return (
     <div className="bg-white rounded-3xl p-10">
-      <div className="flex gap-2  items-center">
+      <div className="flex gap-2 items-center">
         <div className="relative w-9 h-9">
           <Image
             className={`absolute left-0 right-0 top-0 bottom-0 transition-opacity duration-500 ${step <= 2 ? "opacity-100" : "opacity-0"
@@ -173,7 +182,7 @@ const ShipperDetail = ({
             height={36}
           />
         </div>
-        <h2 className="text-base px-2 font-bold ">Shipper Details</h2>
+        <h2 className="text-base px-2 font-bold">Shipper Details</h2>
       </div>
       <div
         className={`flex gap-2 items-start overflow-hidden transition-max-height duration-500 ease-in-out ${step === 2 ? "max-h-[700px]" : "max-h-0"
@@ -186,26 +195,24 @@ const ShipperDetail = ({
           width={36}
           height={36}
         />
-        <div className="w-full text-xs" >
+        <div className="w-full text-xs">
           <div className="py-2 px-2 gap-4 flex flex-col items-center">
-
-            <div className="flex w-full justify-end"> {saveToBook ? (
-              <div className="flex gap-2 items-center text-red-600" onClick={() => { setSaveToBook(false); }}>
-                <Image src={`/create-shipment/done-red.svg`} alt='check' width={15} height={15} />
-                <p className="text-xs font-semibold">Saved to Address Book</p>
-              </div>
-
-            ) : (
-              <RedCheckbox
-                id="saveToBook"
-                register={register}
-                setValue={setValue}
-                isChecked={saveToBook}
-                setChecked={setSaveToBook}
-                label="Add to Address Book"
-              />
-            )
-            }
+            <div className="flex w-full justify-end">
+              {saveToBook ? (
+                <div className="flex gap-2 items-center text-red-600" onClick={() => { setSaveToBook(false); }}>
+                  <Image src={`/create-shipment/done-red.svg`} alt='check' width={15} height={15} />
+                  <p className="text-xs font-semibold">Saved to Address Book</p>
+                </div>
+              ) : (
+                <RedCheckbox
+                  id="saveToBook"
+                  register={register}
+                  setValue={setValue}
+                  isChecked={saveToBook}
+                  setChecked={setSaveToBook}
+                  label="Add to Address Book"
+                />
+              )}
             </div>
 
             <div className="items-center w-full flex justify-between gap-6">
@@ -215,7 +222,7 @@ const ShipperDetail = ({
                     required: "Shipper name is required",
                   })}
                   placeholder="Full Name"
-                  className="w-full border border-[#979797] block outline-none mb-2  rounded-md h-12 px-6 py-4"
+                  className="w-full border border-[#979797] block outline-none mb-2 rounded-md h-12 px-6 py-4"
                 />
                 {errors.shipperFullName && (
                   <span className="text-red-600">
@@ -228,7 +235,7 @@ const ShipperDetail = ({
                   onClick={() => {
                     setAddressDropOpen(!addressDropOpen);
                   }}
-                  className="bg-[var(--primary-color)] flex gap-2   font-bold text-white h-12 px-6 py-4 mb-2 rounded-md items-center justify-center"
+                  className="bg-[var(--primary-color)] flex gap-2 font-bold text-white h-12 px-6 py-4 mb-2 rounded-md items-center justify-center"
                 >
                   <div className="bg-white rounded-lg size-6 flex justify-center items-center">
                     <Image
@@ -245,8 +252,8 @@ const ShipperDetail = ({
                     <AddressPicker
                       Addresses={shipperAddresses}
                       selectedAdd={(address) => {
-                        setValue("shipperAddress", address._id); // Set the selected address ID in the form
-                        setAddressDropOpen(false); // Close the AddressPicker
+                        setValue("shipperAddress", address._id);
+                        setAddressDropOpen(false);
                       }}
                       onClose={() => setAddressDropOpen(false)}
                       type={`shipper`}
@@ -266,7 +273,7 @@ const ShipperDetail = ({
                     },
                   })}
                   placeholder="Phone Number"
-                  className="block  border mb-2 border-[#979797] outline-none rounded-md h-12 px-6 py-4 w-full"
+                  className="block border mb-2 border-[#979797] outline-none rounded-md h-12 px-6 py-4 w-full"
                 />
                 {errors.shipperPhoneNumber && (
                   <span className="text-red-600">
@@ -285,7 +292,7 @@ const ShipperDetail = ({
                     },
                   })}
                   placeholder="Email"
-                  className="block  border mb-2 border-[#979797] outline-none rounded-md h-12 px-6 py-4 w-full"
+                  className="block border mb-2 border-[#979797] outline-none rounded-md h-12 px-6 py-4 w-full"
                 />
                 {errors.shipperEmail && (
                   <span className="text-red-600">
@@ -299,7 +306,7 @@ const ShipperDetail = ({
                 required: "Address is required",
               })}
               placeholder="Address Line 1"
-              className="block  border mb-2 border-[#979797] outline-none rounded-md h-12 px-6 py-4 w-full"
+              className="block border mb-2 border-[#979797] outline-none rounded-md h-12 px-6 py-4 w-full"
             />
             {errors.shipperAddressLine1 && (
               <span className="text-red-600 w-full">
@@ -309,7 +316,7 @@ const ShipperDetail = ({
             <input
               {...register("shipperAddressLine2")}
               placeholder="Address Line 2 (optional)"
-              className="block  border mb-2 border-[#979797] outline-none rounded-md h-12 px-6 py-4 w-full"
+              className="block border mb-2 border-[#979797] outline-none rounded-md h-12 px-6 py-4 w-full"
             />
             {errors.shipperAddressLine2 && (
               <span className="text-red-600">
@@ -318,11 +325,10 @@ const ShipperDetail = ({
             )}
             <div className="flex gap-6 items-center w-full">
               <div className="w-full">
-
                 <input
                   {...register("shipperCountry", { required: "Country is required" })}
                   placeholder="Country"
-                  className="block  border mb-2 border-[#979797] outline-none rounded-md h-12 px-6 py-4 w-full"
+                  className="block border mb-2 border-[#979797] outline-none rounded-md h-12 px-6 py-4 w-full"
                 />
                 {errors.shipperCountry && (
                   <span className="text-red-600">
@@ -332,14 +338,13 @@ const ShipperDetail = ({
               </div>
 
               <div className="w-full">
-
                 <input
                   {...register("shipperPincode", {
                     required: "Pincode is required",
                     pattern: { value: /^[0-9]{4,10}$/, message: "Invalid pincode" }
                   })}
                   placeholder="Pincode"
-                  className="block  border mb-2 border-[#979797] outline-none rounded-md h-12 px-6 py-4 w-full"
+                  className="block border mb-2 border-[#979797] outline-none rounded-md h-12 px-6 py-4 w-full"
                 />
                 {errors.shipperPincode && (
                   <span className="text-red-600">
@@ -353,7 +358,7 @@ const ShipperDetail = ({
                 <input
                   {...register("shipperCity", { required: "City is required" })}
                   placeholder="City"
-                  className="block  border mb-2 border-[#979797] outline-none rounded-md h-12 px-6 py-4 w-full"
+                  className="block border mb-2 border-[#979797] outline-none rounded-md h-12 px-6 py-4 w-full"
                 />
                 {errors.shipperCity && (
                   <span className="text-red-600">
@@ -365,7 +370,7 @@ const ShipperDetail = ({
                 <input
                   {...register("shipperState", { required: "State is required" })}
                   placeholder="State"
-                  className="block  border mb-2 border-[#979797] outline-none rounded-md h-12 px-6 py-4 w-full"
+                  className="block border mb-2 border-[#979797] outline-none rounded-md h-12 px-6 py-4 w-full"
                 />
                 {errors.shipperState && (
                   <span className="text-red-600">
@@ -385,14 +390,14 @@ const ShipperDetail = ({
                     className="block mb-2 outline-none border-[#979797] border rounded-md h-12 px-6 py-4 w-full"
                   >
                     <option value="">Select KYC Type</option>
-                    <option value="Aadhaar">GSTIN (Normal)</option>
-                    <option value="Aadhaar">GSTIN (Govt Entities)</option>
-                    <option value="Aadhaar">GSTIN (Diplomats)</option>
+                    <option value="GSTIN_Normal">GSTIN (Normal)</option>
+                    <option value="GSTIN_Govt">GSTIN (Govt Entities)</option>
+                    <option value="GSTIN_Diplomats">GSTIN (Diplomats)</option>
                     <option value="Aadhaar">Aadhaar Number</option>
                     <option value="PAN">PAN Number</option>
-                    <option value="Passport">TAN Number</option>
+                    <option value="TAN">TAN Number</option>
                     <option value="Passport">Passport Number</option>
-                    <option value="Driving License">Voter Id</option>
+                    <option value="VoterId">Voter Id</option>
                   </select>
                 </div>
 
@@ -410,6 +415,7 @@ const ShipperDetail = ({
                   )}
                 </div>
               </div>
+              
               {/* Hidden URLs */}
               <input type="hidden" {...register("shipperKycFrontUrl")} />
               <input type="hidden" {...register("shipperKycBackUrl")} />
@@ -419,7 +425,7 @@ const ShipperDetail = ({
                 type="button"
                 onClick={() => setShowKycModal(true)}
                 className="cursor-pointer border border-[var(--primary-color)] text-[var(--primary-color)]
-               rounded-md h-12 w-full font-bold flex items-center justify-center gap-2 mb-2"
+               rounded-md h-12 w-full font-bold flex items-center justify-center gap-2 mb-2 relative"
               >
                 <div className="rounded-lg shadow-sm p-1">
                   <Image
@@ -429,9 +435,47 @@ const ShipperDetail = ({
                     height={14}
                   />
                 </div>
-                <span>{kycUploaded ? "Uploaded" : "Upload KYC Photo"}</span>
+                <span>
+                  {kycUploaded 
+                    ? (uploadedImages.front && uploadedImages.back 
+                      ? "KYC Uploaded ✓" 
+                      : "Upload KYC Photo")
+                    : "Upload KYC Photo"}
+                </span>
               </button>
             </div>
+
+            {/* Display Uploaded Images Preview */}
+            {kycUploaded && (uploadedImages.front || uploadedImages.back) && (
+              <div className="w-full flex gap-4 mt-2">
+                {uploadedImages.front && (
+                  <div className="flex-1 border rounded-md p-2">
+                    <p className="text-xs font-semibold mb-1">Front Side:</p>
+                    <div className="relative h-20 w-full">
+                      <Image
+                        src={uploadedImages.front}
+                        alt="KYC Front"
+                        fill
+                        className="object-contain rounded"
+                      />
+                    </div>
+                  </div>
+                )}
+                {uploadedImages.back && (
+                  <div className="flex-1 border rounded-md p-2">
+                    <p className="text-xs font-semibold mb-1">Back Side:</p>
+                    <div className="relative h-20 w-full">
+                      <Image
+                        src={uploadedImages.back}
+                        alt="KYC Back"
+                        fill
+                        className="object-contain rounded"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* KYC MODAL */}
             {showKycModal && (
@@ -441,11 +485,11 @@ const ShipperDetail = ({
                 onUploaded={({ kycFrontUrl, kycBackUrl }) => {
                   setValue("shipperKycFrontUrl", kycFrontUrl);
                   setValue("shipperKycBackUrl", kycBackUrl);
+                  setUploadedImages({ front: kycFrontUrl, back: kycBackUrl });
                   setKycUploaded(true);
                 }}
               />
             )}
-
           </div>
           <div className="flex justify-end">
             <div className="flex gap-4">
@@ -463,12 +507,11 @@ const ShipperDetail = ({
               >
                 Next
               </button>
-
             </div>
           </div>
         </div>
-      </div >
-    </div >
+      </div>
+    </div>
   );
 };
 

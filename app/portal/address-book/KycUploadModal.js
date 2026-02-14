@@ -9,13 +9,32 @@ const KycUploadModal = ({ onClose, onUploaded, accountCode }) => {
     const [frontFile, setFrontFile] = useState(null);
     const [backFile, setBackFile] = useState(null);
     const [uploading, setUploading] = useState(false);
+    const [error, setError] = useState("");
     const { server } = useContext(GlobalContext);
+
+    // Function to check if files are the same
+    const areFilesSame = (file1, file2) => {
+        if (!file1 || !file2) return false;
+        
+        // Compare by name and size
+        if (file1.name === file2.name && file1.size === file2.size) {
+            return true;
+        }
+        
+        // Optional: Compare by last modified date if available
+        if (file1.lastModified === file2.lastModified) {
+            return true;
+        }
+        
+        return false;
+    };
 
     // FRONT DROPZONE
     const onDropFront = useCallback((acceptedFiles) => {
         const file = acceptedFiles[0];
         setFrontFile(file);
         setFrontPreview(URL.createObjectURL(file));
+        setError(""); // Clear error when new file is selected
     }, []);
 
     // BACK DROPZONE
@@ -23,13 +42,24 @@ const KycUploadModal = ({ onClose, onUploaded, accountCode }) => {
         const file = acceptedFiles[0];
         setBackFile(file);
         setBackPreview(URL.createObjectURL(file));
+        setError(""); // Clear error when new file is selected
     }, []);
 
     const { getRootProps: getFrontRootProps, getInputProps: getFrontInputProps } =
-        useDropzone({ onDrop: onDropFront, accept: "image/*" });
+        useDropzone({ 
+            onDrop: onDropFront, 
+            accept: {
+                'image/*': ['.jpeg', '.jpg', '.png', '.webp']
+            }
+        });
 
     const { getRootProps: getBackRootProps, getInputProps: getBackInputProps } =
-        useDropzone({ onDrop: onDropBack, accept: "image/*" });
+        useDropzone({ 
+            onDrop: onDropBack, 
+            accept: {
+                'image/*': ['.jpeg', '.jpg', '.png', '.webp']
+            }
+        });
 
     /**
      * UPLOAD TO BACKEND → CLOUDINARY
@@ -47,8 +77,21 @@ const KycUploadModal = ({ onClose, onUploaded, accountCode }) => {
     };
 
     const handleUpload = async () => {
+        // Check if both files are selected
+        if (!frontFile || !backFile) {
+            setError("Please select both front and back images");
+            return;
+        }
+
+        // Check if front and back images are the same
+        if (areFilesSame(frontFile, backFile)) {
+            setError("Same photo not allowed. Front and back images must be different.");
+            return;
+        }
+
         try {
             setUploading(true);
+            setError("");
 
             const result = await uploadToBackend();
 
@@ -60,7 +103,7 @@ const KycUploadModal = ({ onClose, onUploaded, accountCode }) => {
             onClose();
         } catch (error) {
             console.error("KYC upload error:", error);
-            alert("Error uploading KYC images");
+            setError(error.response?.data?.message || "Error uploading KYC images");
         } finally {
             setUploading(false);
         }
@@ -96,6 +139,21 @@ const KycUploadModal = ({ onClose, onUploaded, accountCode }) => {
 
                 {/* Content */}
                 <div className="px-6 py-6 space-y-6 max-h-[60vh] overflow-y-auto">
+                    {/* Error Message */}
+                    {error && (
+                        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+                            <div className="flex items-start space-x-3">
+                                <svg className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <div>
+                                    <p className="text-sm font-medium text-red-800">Upload Error</p>
+                                    <p className="text-xs text-red-600 mt-1">{error}</p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Front Side */}
                     <div className="space-y-3">
                         <div className="flex items-center justify-between">
@@ -212,6 +270,7 @@ const KycUploadModal = ({ onClose, onUploaded, accountCode }) => {
                                     <li>• Ensure all text is clearly visible</li>
                                     <li>• File size should be less than 5MB</li>
                                     <li>• Image should be well-lit and not blurry</li>
+                                    <li className="font-semibold">• Front and back images must be different</li>
                                 </ul>
                             </div>
                         </div>
