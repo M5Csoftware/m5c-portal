@@ -12,6 +12,7 @@ const Shipments = ({
   searchTerm,
   onDownloadSetup,
   onSelectedCountChange,
+  dateRange,
 }) => {
   const [shipmentsData, setShipmentsData] = useState([]);
   const [selectedShipments, setSelectedShipments] = useState([]);
@@ -26,7 +27,7 @@ const Shipments = ({
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
 
-  // Fetch shipments based on selected tab
+  // Fetch shipments based on selected tab and date range
   useEffect(() => {
     setAccountCode(session?.user?.accountCode);
 
@@ -35,33 +36,87 @@ const Shipments = ({
       try {
         let url;
         let response;
+        let type;
 
-        if (selectedLi === 7) {
-          // Fetch ONLY delivered shipments from EventActivity
-          url = `${server}/portal/get-delivered-shipments?accountCode=${session?.user?.accountCode}`;
+        // Determine the type based on selectedLi
+        switch (selectedLi) {
+          case 0:
+            type = "all";
+            break;
+          case 1:
+            type = "latest";
+            break;
+          case 2:
+            type = "ready-to-ship";
+            break;
+          case 3:
+            type = "manifest";
+            break;
+          case 4:
+            type = "intransit";
+            break;
+          case 5:
+            type = "hold";
+            break;
+          case 6:
+            type = "rto";
+            break;
+          case 7:
+            type = "delivered";
+            break;
+          default:
+            type = "all";
+        }
+
+        // For tabs that use the getAllShipments endpoint
+        if ([0, 1, 4, 5, 6, 7].includes(selectedLi)) {
+          url = `${server}/portal/get-delivered-shipments?accountCode=${session?.user?.accountCode}&type=${type}`;
+          
+          // Add date range for applicable tabs (not for Latest tab)
+          if (selectedLi !== 1) {
+            const startDate = dateRange?.[0]?.startDate?.toISOString();
+            const endDate = dateRange?.[0]?.endDate?.toISOString();
+            
+            if (startDate) url += `&startDate=${startDate}`;
+            if (endDate) url += `&endDate=${endDate}`;
+          }
+          
           response = await axios.get(url);
-
-          // Handle the response structure for delivered shipments
+          
           const shipments = response.data.shipments || [];
           setShipmentsData(shipments);
           setTotalShipments(response.data.total || shipments.length);
-          console.log("Delivered shipments:", shipments);
-        } else {
-          // Fetch all shipments for other tabs
+          console.log(`${type} shipments:`, shipments.length);
+        } 
+        // For Ready to Ship and Manifest tabs (use regular get-shipments)
+        else {
           url = `${server}/portal/get-shipments?accountCode=${session?.user?.accountCode}`;
+          
+          // Add date range filter
+          const startDate = dateRange?.[0]?.startDate?.toISOString();
+          const endDate = dateRange?.[0]?.endDate?.toISOString();
+          
+          if (startDate) url += `&startDate=${startDate}`;
+          if (endDate) url += `&endDate=${endDate}`;
+          
           response = await axios.get(url);
-
-          // Handle the response structure for regular shipments
-          const shipments =
-            response.data.shipments || response.data.shipment || [];
-          setShipmentsData(Array.isArray(shipments) ? shipments : [shipments]);
-          setTotalShipments(shipments.length || 0);
+          
+          let shipments = response.data.shipments || response.data.shipment || [];
+          shipments = Array.isArray(shipments) ? shipments : [shipments];
+          
+          // Additional filtering for specific tabs
+          if (selectedLi === 2) { // Ready to Ship
+            shipments = shipments.filter(s => s.status === "Ready to Ship");
+          } else if (selectedLi === 3) { // Manifest
+            shipments = shipments.filter(s => s.manifestNo != null);
+          }
+          
+          setShipmentsData(shipments);
+          setTotalShipments(shipments.length);
+          console.log(`${type} shipments:`, shipments.length);
         }
       } catch (error) {
-        console.error(
-          "Error fetching shipments:",
-          error.response?.data || error.message,
-        );
+        console.error("Error fetching shipments:", error.response?.data || error.message);
         setShipmentsData([]);
         setTotalShipments(0);
       } finally {
@@ -78,40 +133,41 @@ const Shipments = ({
     setAccountCode,
     setTotalShipments,
     selectedLi,
+    dateRange,
   ]);
 
-  // Search and filter logic - UPDATED for delivered shipments
+  // Search and filter logic
   const filteredShipments = useMemo(() => {
     let filtered = shipmentsData.filter((shipment) => {
-      // 1. Status filtering based on selectedLi (TABS - All, Ready to Ship, Hold, etc.)
+      // 1. Status filtering based on selectedLi (TABS)
       let statusMatch = true;
       switch (selectedLi) {
         case 0: // All
-        case 1: // maybe same as All?
+        case 1: // Latest
           statusMatch = true;
           break;
-        case 2:
+        case 2: // Ready to Ship
           statusMatch = shipment.status === "Ready to Ship";
           break;
-        case 4:
+        case 3: // Manifest - show all shipments with manifestNo
+          statusMatch = shipment.manifestNo != null;
+          break;
+        case 4: // In Transit
           statusMatch = shipment.status === "In Transit";
           break;
         case 5: // HOLD TAB
           statusMatch = shipment.status === "Hold";
           break;
-        case 6:
+        case 6: // RTO
           statusMatch = shipment.status === "RTO";
           break;
-        case 7: // DELIVERED TAB - Already filtered from API, but keep this as fallback
-          statusMatch =
-            shipment.status === "Delivered" ||
-            shipment.status === "Shipment Delivered";
+        case 7: // DELIVERED TAB
+          statusMatch = shipment.status === "Delivered";
           break;
         default:
           statusMatch = true;
       }
 
-      // If the tab filter doesn't match, skip this shipment
       if (!statusMatch) return false;
 
       // 2. Search filtering
@@ -121,15 +177,14 @@ const Shipments = ({
         shipment.receiverFullName
           ?.toLowerCase()
           .includes(searchTerm.toLowerCase()) ||
-        shipment.receiverName?.toLowerCase().includes(searchTerm.toLowerCase());
+        shipment.receiverName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        shipment.shipperFullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        shipment.shipperName?.toLowerCase().includes(searchTerm.toLowerCase());
 
       if (!searchMatch) return false;
 
-      // 3. Apply filters from FilterShipment panel ONLY ON "ALL" TAB
-      // Skip filters for delivered tab unless you want them
+      // 3. Apply filters from FilterShipment panel ONLY on "ALL" and "Latest" TAB
       if (selectedLi === 0 || selectedLi === 1) {
-        // Only apply filters when on "All" tab
-
         // Filter by type (All, Invoiced, New)
         if (filters.filterType !== "All") {
           if (filters.filterType === "Invoiced" && !shipment.invoiced) {
@@ -217,7 +272,6 @@ const Shipments = ({
         }
       }
 
-      // All filters passed!
       return true;
     });
 
@@ -246,7 +300,7 @@ const Shipments = ({
     });
   };
 
-  // Download functionality - UPDATED for delivered shipments
+  // Download functionality
   const downloadExcel = () => {
     // Determine which shipments to download
     const shipmentsToDownload =
@@ -274,7 +328,7 @@ const Shipments = ({
           : "",
       Service: shipment.service || "",
       "Total Boxes": shipment.pcs || "",
-      "Chargeble Weight": `${shipment.chargeableWt || 0} kg`,
+      "Chargeable Weight": `${shipment.chargeableWt || 0} kg`,
       "Actual Weight": `${shipment.totalActualWt || 0} kg`,
       "Volume Weight": `${shipment.totalVolWt || 0} kg`,
       "Invoice Value": `₹${shipment.totalInvoiceValue || 0}`,
@@ -287,11 +341,14 @@ const Shipments = ({
       "Consignee Phone": shipment.receiverPhoneNumber || "",
       "Consignee Address": shipment.receiverAddressLine1 || "",
       "Consignee City": shipment.receiverCity || "",
-      Status: shipment.status || "Delivered",
+      Status: shipment.status || "",
       "Total Amount": `₹${shipment.totalAmt || 0}`,
       "Payment Mode": shipment.paymentDetails?.mode || "Pending",
       "Receiver Name": shipment.receiverName || "",
-      Remark: shipment.deliveredEvent?.remark || shipment.remark || "",
+      Remark: shipment.deliveredEvent?.remark || shipment.eventInfo?.remark || shipment.remark || "",
+      "Manifest Number": shipment.manifestNo || "",
+      "Run Number": shipment.runNo || "",
+      "Club Number": shipment.clubNo || "",
     }));
 
     // Create workbook and worksheet
@@ -302,12 +359,10 @@ const Shipments = ({
     XLSX.utils.book_append_sheet(wb, ws, "Shipments");
 
     // Generate Excel file and download
-    const fileName =
-      selectedLi === 7
-        ? `Delivered_Shipments_${new Date().toISOString().split("T")[0]}.xlsx`
-        : selectedShipments.length > 0
-          ? `Selected_Shipments_${new Date().toISOString().split("T")[0]}.xlsx`
-          : `All_Shipments_${new Date().toISOString().split("T")[0]}.xlsx`;
+    const tabNames = ["All", "Latest", "Ready_to_Ship", "Manifest", "In_Transit", "Hold", "RTO", "Delivered"];
+    const fileName = selectedShipments.length > 0
+      ? `Selected_Shipments_${tabNames[selectedLi]}_${new Date().toISOString().split("T")[0]}.xlsx`
+      : `${tabNames[selectedLi]}_Shipments_${new Date().toISOString().split("T")[0]}.xlsx`;
 
     XLSX.writeFile(wb, fileName);
   };
@@ -315,13 +370,13 @@ const Shipments = ({
   // Pass download function to parent
   useEffect(() => {
     if (onDownloadSetup) {
-      onDownloadSetup(downloadExcel);
+      onDownloadSetup(() => downloadExcel);
     }
   }, [
     onDownloadSetup,
-    downloadExcel,
     shipmentsData,
     selectedShipments,
+    filteredShipments,
     selectedLi,
   ]);
 
@@ -354,7 +409,8 @@ const Shipments = ({
   useEffect(() => {
     const selectedAWBNumbers = shipmentsData
       .filter((shipment) => selectedShipments.includes(shipment._id))
-      .map((shipment) => shipment.awbNo);
+      .map((shipment) => shipment.awbNo)
+      .filter(Boolean);
 
     setSelectedAwbs(selectedAWBNumbers);
   }, [selectedShipments, shipmentsData, setSelectedAwbs]);
@@ -368,6 +424,10 @@ const Shipments = ({
     }
   };
 
+  // Check if all current items are selected
+  const isAllSelected = currentItems.length > 0 && 
+    currentItems.every(item => selectedShipments.includes(item._id));
+
   return (
     <div className="flex flex-col gap-2 relative">
       <div className="sticky top-[150px] bg-[#f8f9fa] z-0">
@@ -380,11 +440,9 @@ const Shipments = ({
               type="checkbox"
               name="select-all"
               id="select-all"
-              checked={
-                selectedShipments.length === currentItems.length &&
-                currentItems.length > 0
-              }
+              checked={isAllSelected}
               onChange={handleSelectAll}
+              className="cursor-pointer"
             />
           </li>
           <li className="text-center">AWB Number</li>
@@ -398,9 +456,13 @@ const Shipments = ({
           <span className="px-4"></span>
         </ul>
       </div>
+      
       <div className="flex flex-col gap-2 overflow-y-auto table-scrollbar h-[310px]">
         {isLoading ? (
-          <p className="text-gray-500 text-center py-4">Loading shipments...</p>
+          <div className="flex justify-center items-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--primary-color)]"></div>
+            <span className="ml-2 text-gray-500">Loading shipments...</span>
+          </div>
         ) : currentItems.length > 0 ? (
           currentItems.map((shipment) => (
             <ShipmentCard
@@ -411,15 +473,31 @@ const Shipments = ({
             />
           ))
         ) : (
-          <p className="text-gray-500 text-center py-4">
-            {searchTerm
-              ? "No shipments match your search."
-              : selectedLi === 7
-                ? "No delivered shipments found."
-                : "No shipments found."}
-          </p>
+          <div className="flex flex-col items-center justify-center py-12">
+            <svg className="w-16 h-16 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+            </svg>
+            <p className="text-gray-500 text-center mt-4">
+              {searchTerm
+                ? "No shipments match your search."
+                : selectedLi === 7
+                  ? "No delivered shipments found in the selected date range."
+                  : selectedLi === 4
+                    ? "No in-transit shipments found in the selected date range."
+                    : selectedLi === 6
+                      ? "No RTO shipments found in the selected date range."
+                      : selectedLi === 5
+                        ? "No hold shipments found."
+                        : selectedLi === 2
+                          ? "No ready to ship shipments found."
+                          : selectedLi === 3
+                            ? "No manifest shipments found."
+                            : "No shipments found in the selected date range."}
+            </p>
+          </div>
         )}
       </div>
+      
       {filteredShipments.length > 0 && (
         <div
           style={{ boxShadow: "0 0 10px 1px rgba(0, 0, 0, 0.1)" }}
@@ -433,14 +511,16 @@ const Shipments = ({
               id="itemsPerPage"
               value={itemsPerPage}
               onChange={handleItemsPerPageChange}
-              className="border border-gray-300 rounded px-2 py-1"
+              className="border border-gray-300 rounded px-2 py-1 text-gray-700"
             >
               <option value="5">5</option>
               <option value="10">10</option>
               <option value="15">15</option>
               <option value="20">20</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
             </select>
-            <span className="ml-4 text-sm">
+            <span className="ml-4 text-sm text-gray-600">
               Showing {filteredShipments.length > 0 ? indexOfFirstItem + 1 : 0}-
               {Math.min(indexOfLastItem, filteredShipments.length)} of{" "}
               {filteredShipments.length} shipments
@@ -448,14 +528,17 @@ const Shipments = ({
           </div>
           <div className="flex items-center">
             <button
-              className="text-[#A0AEC0] px-4 py-2 rounded mr-2 disabled:opacity-50"
+              className="text-[#A0AEC0] px-4 py-2 rounded mr-2 disabled:opacity-50 hover:text-gray-700 transition-colors"
               onClick={handlePrevPage}
               disabled={currentPage === 1 || filteredShipments.length === 0}
             >
               Previous
             </button>
+            <span className="text-gray-600">
+              Page {currentPage} of {Math.ceil(filteredShipments.length / itemsPerPage)}
+            </span>
             <button
-              className="text-[#A0AEC0] px-4 py-2 rounded disabled:opacity-50"
+              className="text-[#A0AEC0] px-4 py-2 rounded ml-2 disabled:opacity-50 hover:text-gray-700 transition-colors"
               onClick={handleNextPage}
               disabled={
                 currentPage ===
