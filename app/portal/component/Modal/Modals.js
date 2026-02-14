@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import Image from "next/image";
+import React from "react";
 
 export const Modal = ({
   isOpen,
@@ -593,3 +594,251 @@ export function ZoneValidationErrorModal({ isOpen, onClose, zoneErrors }) {
     </div>
   );
 }
+
+
+
+
+export const SectorDestinationValidationModal = ({
+  isOpen,
+  onClose,
+  validationErrors = [],
+}) => {
+  if (!isOpen) return null;
+
+  // Group errors by combination for better display
+  const groupedErrors = validationErrors.reduce((acc, error) => {
+    const key = `${error.sector}|${error.destination}|${error.service}`;
+    if (!acc[key]) {
+      acc[key] = {
+        sector: error.sector,
+        destination: error.destination,
+        service: error.service,
+        rowIndices: error.rowIndices || [],
+        message: error.message,
+      };
+    }
+    return acc;
+  }, {});
+
+  const uniqueErrors = Object.values(groupedErrors);
+  const totalAffectedRows = validationErrors.reduce(
+    (sum, err) => sum + (err.rowIndices?.length || 1),
+    0
+  );
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="bg-white rounded-full p-2">
+              <Image
+                src="/warning-icon.svg"
+                width={24}
+                height={24}
+                alt="Warning"
+                className="text-amber-600"
+              />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-white">
+                Invalid Zone Configuration
+              </h2>
+              <p className="text-amber-50 text-sm">
+                {uniqueErrors.length} combination
+                {uniqueErrors.length !== 1 ? "s" : ""} not found in your zone
+                matrix
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-white hover:text-amber-100 transition-colors"
+          >
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
+          {/* Summary Section */}
+          <div className="bg-amber-50 border-l-4 border-amber-500 p-4 mb-6 rounded">
+            <h3 className="font-semibold text-amber-900 mb-2">
+              ⚠️ What does this mean?
+            </h3>
+            <p className="text-sm text-amber-800 mb-3">
+              Your Excel file contains sector-destination-service combinations
+              that don't exist in your zone configuration. This means rates
+              cannot be calculated for these shipments.
+            </p>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="bg-white p-3 rounded">
+                <p className="text-amber-600 font-semibold">
+                  Invalid Combinations
+                </p>
+                <p className="text-2xl font-bold text-amber-900">
+                  {uniqueErrors.length}
+                </p>
+              </div>
+              <div className="bg-white p-3 rounded">
+                <p className="text-amber-600 font-semibold">
+                  Affected Shipments
+                </p>
+                <p className="text-2xl font-bold text-amber-900">
+                  {totalAffectedRows}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Instructions */}
+          <div className="bg-blue-50 border border-blue-200 p-4 mb-6 rounded">
+            <h3 className="font-semibold text-blue-900 mb-2 flex items-center gap-2">
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              How to Fix This
+            </h3>
+            <ol className="list-decimal list-inside text-sm text-blue-800 space-y-2">
+              <li>
+                <strong>Option 1:</strong> Update your Excel file to use valid
+                sector-destination-service combinations from your zone matrix
+              </li>
+              <li>
+                <strong>Option 2:</strong> Contact your administrator to add
+                these combinations to the zone configuration
+              </li>
+              <li>
+                <strong>Option 3:</strong> Check for typos in the Sector,
+                Destination, or ServiceName columns (they are case-sensitive)
+              </li>
+            </ol>
+          </div>
+
+          {/* Error Details Table */}
+          <div className="border border-gray-200 rounded-lg overflow-hidden">
+            <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
+              <h3 className="font-semibold text-gray-700">
+                Invalid Combinations Details
+              </h3>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-100">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                      Sector
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                      Destination
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                      Service
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                      Excel Rows
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {uniqueErrors.map((error, idx) => (
+                    <tr
+                      key={idx}
+                      className={idx % 2 === 0 ? "bg-white" : "bg-gray-50"}
+                    >
+                      <td className="px-4 py-3 text-sm">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                          {error.sector || "N/A"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          {error.destination || "N/A"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          {error.service || "N/A"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-600">
+                        {error.rowIndices && error.rowIndices.length > 0 ? (
+                          <span className="text-xs">
+                            {error.rowIndices.length <= 3
+                              ? error.rowIndices.join(", ")
+                              : `${error.rowIndices.slice(0, 3).join(", ")} +${error.rowIndices.length - 3} more`}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">Unknown</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Additional Help */}
+          <div className="mt-6 bg-gray-50 border border-gray-200 p-4 rounded">
+            <h4 className="font-semibold text-gray-700 mb-2 text-sm">
+              💡 Pro Tips:
+            </h4>
+            <ul className="text-xs text-gray-600 space-y-1">
+              <li>
+                • Sector, Destination, and Service values are{" "}
+                <strong>case-sensitive</strong> (USA ≠ usa)
+              </li>
+              <li>
+                • Make sure there are no extra spaces before or after values
+              </li>
+              <li>
+                • Check your zone configuration in the admin panel to see all
+                valid combinations
+              </li>
+              <li>
+                • You can export your current zone matrix to compare with your
+                Excel file
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+          <button
+            onClick={onClose}
+            className="px-6 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors font-medium shadow-sm"
+          >
+            I Understand - Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default SectorDestinationValidationModal;
