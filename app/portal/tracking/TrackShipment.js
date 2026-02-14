@@ -174,7 +174,7 @@ const ShipmentMap = ({ origin, destination }) => {
     <div className="relative w-full h-[400px] rounded overflow-hidden">
       <div ref={mapRef} className="w-full h-full"></div>
       {loading && (
-        <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center">
+        <div className="absolute  bg-white bg-opacity-75 flex items-center justify-center">
           <div className="text-[#667085] text-sm">Loading map...</div>
         </div>
       )}
@@ -770,7 +770,7 @@ function TrackShipment({ awbNumber }) {
               </span>
             </div>
           </div>
-          <div className="mx-auto w-full">
+          <div className=" w-full z-10">
             <ShipmentMap
               key={`${shipmentData.origin}-${shipmentData.destination}-${shipmentData.sector}`}
               origin={shipmentData.origin}

@@ -979,7 +979,7 @@ export default function BulkUploadPage() {
   };
 
   // UPDATED: Handle Excel file with comprehensive validation
-  
+
   const handleExcelFile = async (file) => {
     if (!file) return;
 
@@ -1620,7 +1620,7 @@ export default function BulkUploadPage() {
           </div>
 
           {/* Main Card */}
-          <div className="bg-white border border-[#E2E8F0] rounded-xl p-6 max-w-screen flex gap-10">
+          <div className="bg-white border border-[#E2E8F0] rounded-xl p-6 flex gap-10">
             <div className="w-4/5">
               <div
                 className="border-2 border-dashed flex justify-center items-center gap-4 border-[#CBD5E0] rounded-lg p-6 w-full bg-[#F8FAFC]"
@@ -1761,9 +1761,10 @@ export default function BulkUploadPage() {
                   </h3>
                   <div className="bg-white rounded p-3 mb-3 border border-amber-300">
                     <p className="text-sm mb-2" style={{ color: "#B45309" }}>
-                      The following combinations don't exist in your zone
-                      configuration. Click "View Details" in the modal above for
-                      specific combinations and fix instructions.
+                      The following combinations don&apos;t exist in your zone
+                      configuration. Click <strong>View Details</strong> in the
+                      modal above for specific combinations and fix
+                      instructions.
                     </p>
                   </div>
                   <span
@@ -1793,14 +1794,14 @@ export default function BulkUploadPage() {
         </div>
       </div>
 
-      <div className="bg-white py-4 max-w-[1800px] rounded-xl border-[1px] mx-6">
+      <div className="bg-white py-4 rounded-xl border-[1px] mx-6">
         <div className="px-4 bg-[#F8FAFC]">
           <TableWithSorting
             register={register}
             setValue={setValue}
             columns={bulkUploadColumns}
             rowData={rowData}
-            className="max-w-[90%]"
+            className=""
           />
         </div>
       </div>
