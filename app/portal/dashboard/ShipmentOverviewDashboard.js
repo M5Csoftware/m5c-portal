@@ -1,89 +1,219 @@
-'use client'
-import React, { PureComponent } from 'react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, LabelList } from 'recharts';
+"use client";
+import React, { useContext, useEffect, useState } from "react";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  LabelList,
+} from "recharts";
+import { GlobalContext } from "../GlobalContext";
+import { useSession } from "next-auth/react";
 
-const data = [
-  { name: 'Jan', USA: 58, UK: 34, Canada: 20, Australia: 15, Europe: 40, 'New Zealand': 10 },
-  { name: 'Feb', USA: 67, UK: 45, Canada: 25, Australia: 20, Europe: 45, 'New Zealand': 15 },
-  { name: 'Mar', USA: 80, UK: 84, Canada: 30, Australia: 25, Europe: 50, 'New Zealand': 20 },
-  { name: 'Apr', USA: 73, UK: 50, Canada: 35, Australia: 30, Europe: 55, 'New Zealand': 25 },
-  { name: 'May', USA: 66, UK: 60, Canada: 40, Australia: 35, Europe: 60, 'New Zealand': 30 },
-  { name: 'Jun', USA: 70, UK: 55, Canada: 92, Australia: 40, Europe: 65, 'New Zealand': 35 },
-  { name: 'Jul', USA: 77, UK: 65, Canada: 50, Australia: 45, Europe: 70, 'New Zealand': 40 },
-  { name: 'Aug', USA: 85, UK: 70, Canada: 85, Australia: 50, Europe: 75, 'New Zealand': 45 },
-  { name: 'Sep', USA: 95, UK: 75, Canada: 60, Australia: 55, Europe: 80, 'New Zealand': 50 },
-  { name: 'Oct', USA: 90, UK: 80, Canada: 65, Australia: 76, Europe: 85, 'New Zealand': 55 },
-  { name: 'Nov', USA: 85, UK: 85, Canada: 70, Australia: 98, Europe: 90, 'New Zealand': 60 },
-  { name: 'Dec', USA: 100, UK: 90, Canada: 75, Australia: 109, Europe: 95, 'New Zealand': 65 },
-];
+const ShipmentOverviewDashboard = ({ duration }) => {
+  const { server, accountCode } = useContext(GlobalContext);
+  const { data: session } = useSession();
+  const [chartData, setChartData] = useState([]);
+  const [countries, setCountries] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
+  // Get accountCode from session if not in GlobalContext
+  const finalAccountCode =
+    accountCode || session?.user?.accountCode || session?.user?.email;
 
-export default class ShipmentOverviewDashboard extends PureComponent {
-  filterData(duration) {
-    switch (duration) {
-      case "12 Months":
-        return { filteredData: data, barSize: 26 }; // Return all data with barSize 26
-      case "6 Months":
-        return { filteredData: data.slice(-6), barSize: 52 }; // Return last 6 months with barSize 52
-      case "30 Days":
-        return {
-          filteredData: [
-            { name: 'Jan', USA: 58, UK: 34, Canada: 20, Australia: 15, Europe: 40, 'New Zealand': 10 },
-            { name: 'Feb', USA: 67, UK: 45, Canada: 25, Australia: 20, Europe: 45, 'New Zealand': 15 },
-            { name: 'Mar', USA: 80, UK: 84, Canada: 30, Australia: 25, Europe: 50, 'New Zealand': 20 },
-            { name: 'Apr', USA: 73, UK: 50, Canada: 35, Australia: 30, Europe: 55, 'New Zealand': 25 },
-          ],
-          barSize: 94, // barSize 94 for 30 days
-        };
-      default:
-        return { filteredData: data, barSize: 26 };
-    }
-  }
-
-  // Calculate total orders for each entry
-  calculateTotals = (entry) => {
-    return entry.USA + entry.UK + entry.Canada + entry.Australia;
+  // Define color palette for countries
+  const countryColors = {
+    USA: "#8D0E30",
+    UK: "#A50F34",
+    Canada: "#C50B31",
+    Europe: "#D12C46",
+    "New Zealand": "#EA1B40",
+    Australia: "#FF6C7B",
+    Unknown: "#736E6E"
   };
 
-  render() {
-    const { duration } = this.props;
-    const { filteredData, barSize } = this.filterData(duration);
+  // Calculate bar size based on duration
+  const getBarSize = (duration) => {
+    switch (duration) {
+      case "12 Months":
+        return 26;
+      case "6 Months":
+        return 52;
+      case "30 Days":
+        return 8;
+      default:
+        return 26;
+    }
+  };
 
+  // Calculate total shipments for each time period
+  const calculateTotals = (entry) => {
+    let total = 0;
+    countries.forEach((country) => {
+      total += entry[country] || 0;
+    });
+    return total;
+  };
+
+  // Fetch analytics data
+  useEffect(() => {
+    const fetchAnalytics = async () => {
+      if (!finalAccountCode || !server) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setError(null);
+
+        const response = await fetch(
+          `${server}/portal/shipment-analytics?accountCode=${finalAccountCode}&duration=${duration}`,
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch analytics");
+        }
+
+        const result = await response.json();
+
+        if (result.success) {
+          setChartData(result.data || []);
+          setCountries(result.countries || []);
+        } else {
+          setError("No data available");
+          setChartData([]);
+          setCountries([]);
+        }
+      } catch (err) {
+        console.error("Error fetching analytics:", err);
+        setError(err.message);
+        setChartData([]);
+        setCountries([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAnalytics();
+  }, [finalAccountCode, server, duration]);
+
+  // Loading state
+  if (loading) {
     return (
-      <ResponsiveContainer width="100%" height={290}>
-        <BarChart
-          width={500}
-          height={300}
-          data={filteredData}
-          margin={{
-            top: 20,
-            right: 30,
-            left: 20,
-            bottom: 5,
-          }}
-        >
-          <XAxis dataKey="name"
-            tick={{ fontSize: 14 }}
-            axisLine={{ stroke: '#E2E8F0', strokeWidth: 3 }}
-            tickLine={{ display: 'none' }}
-            padding={{ left: 10, right: 10, bottom: 10, top: 10 }} />
-          <Tooltip cursor={{ fill: 'transparent' }} />
-          <Legend alignmentBaseline='middle' iconSize={14} iconType='circle' align='center' wrapperStyle={{
-
-          }} formatter={(value) => (
-            <span className='text-sm' style={{ padding: '2px', marginRight: '30px'}}>{value}</span>
-          )} />
-          <Bar cursor={"pointer"} barSize={barSize} radius={[0, 0, 4, 4]} dataKey="USA" stackId="a" fill="#8D0E30" />  {/* Darkest */}
-          <Bar cursor={"pointer"} barSize={barSize} dataKey="UK" stackId="a" fill="#A50F34" />
-          <Bar cursor={"pointer"} barSize={barSize} dataKey="Canada" stackId="a" fill="#C50B31" />
-          <Bar cursor={"pointer"} barSize={barSize} dataKey="Europe" stackId="a" fill="#D12C46" />
-          <Bar cursor={"pointer"} barSize={barSize} dataKey="New Zealand" stackId="a" fill="#EA1B40" />  {/* Lighter */}
-          <Bar cursor={"pointer"} barSize={barSize} radius={[4, 4, 0, 0]} dataKey="Australia" stackId="a" fill="#FF6C7B">  {/* Lightest */}
-            <LabelList dataKey={this.calculateTotals} position="top" style={{ fill: '#FF0000', fontSize: 12 }} />
-          </Bar>
-
-        </BarChart>
-      </ResponsiveContainer>
+      <div className="flex items-center justify-center h-[290px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#EA1B40] mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading analytics...</p>
+        </div>
+      </div>
     );
   }
-}
+
+  // Error state
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-[290px]">
+        <div className="text-center text-red-600">
+          <p>Error loading analytics</p>
+          <p className="text-sm text-gray-500 mt-2">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // No data state
+  if (!chartData || chartData.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-[290px]">
+        <div className="text-center text-gray-500">
+          <p>No shipment data available</p>
+          <p className="text-sm mt-2">Create shipments to see analytics</p>
+        </div>
+      </div>
+    );
+  }
+
+  const barSize = getBarSize(duration);
+
+  return (
+    <ResponsiveContainer width="100%" height={290}>
+      <BarChart
+        width={500}
+        height={300}
+        data={chartData}
+        margin={{
+          top: 20,
+          right: 30,
+          left: 20,
+          bottom: 5,
+        }}
+      >
+        <XAxis
+          dataKey="name"
+          tick={{ fontSize: 14 }}
+          axisLine={{ stroke: "#E2E8F0", strokeWidth: 3 }}
+          tickLine={{ display: "none" }}
+          padding={{ left: 10, right: 10, bottom: 10, top: 10 }}
+        />
+        <Tooltip
+          cursor={{ fill: "transparent" }}
+          contentStyle={{
+            backgroundColor: "white",
+            border: "1px solid #E2E8F0",
+            borderRadius: "8px",
+            padding: "8px",
+          }}
+        />
+        <Legend
+          alignmentBaseline="middle"
+          iconSize={14}
+          iconType="circle"
+          align="center"
+          formatter={(value) => (
+            <span
+              className="text-sm"
+              style={{ padding: "2px", marginRight: "30px" }}
+            >
+              {value}
+            </span>
+          )}
+        />
+
+        {/* Render bars dynamically based on available countries */}
+        {countries.map((country, index) => {
+          const isLast = index === countries.length - 1;
+          const color =
+            countryColors[country] ||
+            `hsl(${(index * 360) / countries.length}, 70%, 50%)`;
+
+          return (
+            <Bar
+              key={country}
+              cursor="pointer"
+              barSize={barSize}
+              radius={isLast ? [4, 4, 0, 0] : [0, 0, 4, 4]}
+              dataKey={country}
+              stackId="a"
+              fill={color}
+            >
+              {isLast && (
+                <LabelList
+                  dataKey={calculateTotals}
+                  position="top"
+                  style={{ fill: "#EA1B40", fontSize: 12, fontWeight: "bold" }}
+                />
+              )}
+            </Bar>
+          );
+        })}
+      </BarChart>
+    </ResponsiveContainer>
+  );
+};
+
+export default ShipmentOverviewDashboard;
