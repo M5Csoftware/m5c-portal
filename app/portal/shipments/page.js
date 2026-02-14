@@ -154,7 +154,7 @@ const Page = () => {
       </h1>
 
       {/* Pass search handler and download handler to ShipNav */}
-      <div className="z-50">
+      <div className="">
         <ShipNav
           totalShipments={totalShipments}
           onDownload={handleDownload}
