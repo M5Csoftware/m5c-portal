@@ -1,3 +1,4 @@
+//app/portal/shipment-overview/[awb]/page.js
 "use client";
 import { Phone, MapPin, Download, Search } from "lucide-react";
 import Image from "next/image";
