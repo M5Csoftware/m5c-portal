@@ -17,12 +17,12 @@ const AwbInput = ({ onClose, setIsQuickActionActive, shipmentCount = 0 }) => {
     };
 
     return (
-        <div className="bg-[#FFE3E4] rounded-lg p-6 flex flex-col gap-6 shadow-md w-full mx-auto relative">
+        <div className="bg-[#FFE3E4] rounded-lg p-6 z-50 inset-0 flex flex-col gap-6 shadow-md w-full mx-auto relative">
             {/* Close Button (if passed) */}
             {onClose && (
                 <button
                     onClick={onClose}
-                    className="absolute top-4 right-4 text-gray-500 hover:text-black text-2xl leading-none"
+                    className="absolute top-4 isn right-4 text-gray-500 hover:text-black text-2xl leading-none"
                 >
                     ×
                 </button>
