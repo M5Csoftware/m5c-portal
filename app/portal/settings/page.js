@@ -2,7 +2,7 @@
 import React from "react";
 import SettingBox from "./SettingBox";
 
-const page = () => {
+const SettingsPage = () => {
   return (
     <main className="w-full px-9 py-2 flex flex-col gap-6 relative">
       <h1 className="font-bold text-2xl text-[#18181B]">Settings</h1>
@@ -73,17 +73,38 @@ const page = () => {
           logo="/settings/faq.svg"
           label="FAQ"
           settingList={[
-            { name: "General Questions", link: "/portal/customer-support?tab=help-articles&section=general" },
+            { 
+              name: "General Questions", 
+              link: "/portal/customer-support?tab=help-articles&section=general" 
+            },
             {
-              name: "Shipping and Delivery",
+              name: "Booking and Shipping",
               link: "/portal/customer-support?tab=help-articles&section=shipping",
             },
             {
-              name: "Inventory Management",
-              link: "/portal/customer-support?tab=help-articles&section=inventory",
+              name: "Services",
+              link: "/portal/customer-support?tab=help-articles&section=services",
             },
-            { name: "Account Settings", link: "/portal/customer-support?tab=help-articles&section=account" },
-            { name: "More", link: "/portal/customer-support?tab=help-articles" },
+            // {
+            //   name: "Pricing and Payments",
+            //   link: "/portal/customer-support?tab=help-articles&section=pricing",
+            // },
+            // {
+            //   name: "Delivery and Transit",
+            //   link: "/portal/customer-support?tab=help-articles&section=delivery",
+            // },
+            // {
+            //   name: "Customs and Regulations",
+            //   link: "/portal/customer-support?tab=help-articles&section=customs",
+            // },
+            // { 
+            //   name: "Account Settings", 
+            //   link: "/portal/customer-support?tab=help-articles&section=account" 
+            // },
+            { 
+              name: "All FAQs", 
+              link: "/portal/customer-support?tab=help-articles" 
+            },
           ]}
         />
         <SettingBox
@@ -113,4 +134,4 @@ const page = () => {
   );
 };
 
-export default page;
+export default SettingsPage;
