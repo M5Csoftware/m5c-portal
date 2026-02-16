@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 
-const AwbInput = ({ onClose, setIsQuickActionActive, shipmentCount = 0 }) => {
+const AwbInput = ({ onClose, setIsQuickActionActive, shipmentCount = 0, alwaysShowInput = false }) => {
     const [awbNumber, setAwbNumber] = useState("");
     const router = useRouter();
 
@@ -29,7 +29,7 @@ const AwbInput = ({ onClose, setIsQuickActionActive, shipmentCount = 0 }) => {
             )}
 
             {/* Show track image and message when no shipments */}
-            {shipmentCount === 0 ? (
+            {shipmentCount === 0 && !alwaysShowInput ? (
                 <div className="text-center py-4">
                     {/* Track Image */}
                     <div className="flex justify-center mb-4">
