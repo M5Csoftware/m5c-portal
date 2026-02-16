@@ -13,6 +13,26 @@ import Dispatch, { DisptchedSuccessModal } from "../component/Dispatch";
 import BulkActionsBar from "./BulkActionsBar";
 import ActiveFilters from "./ActiveFilters"; // New component for active filters
 
+// Initial date range (normalized to start/end of day for stability)
+const getInitialDateRange = () => {
+  const start = new Date();
+  start.setDate(start.getDate() - 30);
+  start.setHours(0, 0, 0, 0);
+
+  const end = new Date();
+  end.setHours(23, 59, 59, 999);
+
+  return [
+    {
+      startDate: start,
+      endDate: end,
+      key: "selection",
+    },
+  ];
+};
+
+const INITIAL_DATE_RANGE = getInitialDateRange();
+
 const Page = () => {
   const {
     showSuccessModal,
@@ -132,15 +152,6 @@ const Page = () => {
     setSelectedAwbs([]);
   };
 
-  // Initial date range
-  const initialDateRange = [
-    {
-      startDate: new Date(new Date().setDate(new Date().getDate() - 30)),
-      endDate: new Date(),
-      key: "selection",
-    },
-  ];
-
   // Handler for clearing all filters (Master Reset)
   const handleClearFilters = () => {
     // 1. Reset Global Context filters
@@ -168,11 +179,11 @@ const Page = () => {
     setSearchTerm("");
 
     // 5. Reset Local Date Range
-    setDateRange(initialDateRange);
+    setDateRange(INITIAL_DATE_RANGE);
   };
 
   // Date range state
-  const [dateRange, setDateRange] = useState(initialDateRange);
+  const [dateRange, setDateRange] = useState(INITIAL_DATE_RANGE);
 
   // Handler for date range change
   const handleDateRangeChange = (item) => {
@@ -200,12 +211,17 @@ const Page = () => {
           onDateRangeChange={handleDateRangeChange}
           searchTerm={searchTerm}
           dateRange={dateRange}
+          initialDateRange={INITIAL_DATE_RANGE}
         />
       </div>
 
       {/* Active Filters Display */}
-      {/* Active Filters Display */}
-      <ActiveFilters onClear={handleClearFilters} />
+      <ActiveFilters
+        onClear={handleClearFilters}
+        searchTerm={searchTerm}
+        dateRange={dateRange}
+        initialDateRange={INITIAL_DATE_RANGE}
+      />
 
       {/* Bulk Actions Bar */}
       {showBulkActions && selectedAwbs && selectedAwbs.length > 0 && (

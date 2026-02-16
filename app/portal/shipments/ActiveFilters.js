@@ -2,8 +2,27 @@
 import React, { useContext } from 'react';
 import { GlobalContext } from '../GlobalContext';
 
-function ActiveFilters({ onClear }) {
-  const { filters } = useContext(GlobalContext);
+function ActiveFilters({ onClear, searchTerm, dateRange, initialDateRange }) {
+  const { filters, selectedLi, statusFilter } = useContext(GlobalContext);
+
+  const isDefaultDateRange = () => {
+    if (!dateRange || !initialDateRange) return true;
+
+    const d1 = dateRange[0];
+    const d2 = initialDateRange[0];
+
+    const isSameDate = (dateA, dateB) => {
+      const a = new Date(dateA);
+      const b = new Date(dateB);
+      return (
+        a.getFullYear() === b.getFullYear() &&
+        a.getMonth() === b.getMonth() &&
+        a.getDate() === b.getDate()
+      );
+    };
+
+    return isSameDate(d1.startDate, d2.startDate) && isSameDate(d1.endDate, d2.endDate);
+  };
 
   const getActiveFilterCount = () => {
     let count = 0;
@@ -13,12 +32,16 @@ function ActiveFilters({ onClear }) {
     if (filters.rto) count++;
     if (filters.inTransit) count++;
     if (filters.delivered) count++;
-    if (filters.priceRange[0] !== 0 || filters.priceRange[1] !== 5000) count++;
-    if (filters.weightRange[0] !== 0.5 || filters.weightRange[1] !== 12.0) count++;
+    if (filters.priceRange[0] !== 0 || filters.priceRange[1] !== 100000) count++;
+    if (filters.weightRange[0] !== 0.5 || filters.weightRange[1] !== 50.0) count++;
     if (filters.paymentMethod) count++;
     if (filters.service) count++;
     if (filters.country) count++;
     if (filters.consignmentType) count++;
+    if (selectedLi !== 0) count++;
+    if (statusFilter !== 'All') count++;
+    if (searchTerm && searchTerm.trim() !== '') count++;
+    if (!isDefaultDateRange()) count++;
 
     return count;
   };
@@ -27,11 +50,43 @@ function ActiveFilters({ onClear }) {
 
   if (activeCount === 0) return null;
 
+  const formatDate = (date) => {
+    return new Date(date).toLocaleDateString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
+    });
+  };
+
   return (
     <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <span className="font-semibold text-blue-700">{activeCount} active filter(s):</span>
+
+          {searchTerm && searchTerm.trim() !== '' && (
+            <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">
+              Search: "{searchTerm}"
+            </span>
+          )}
+
+          {!isDefaultDateRange() && (
+            <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">
+              Date: {formatDate(dateRange[0].startDate)} - {formatDate(dateRange[0].endDate)}
+            </span>
+          )}
+
+          {selectedLi !== 0 && (
+            <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">
+              Tab: {['All', 'Processing', 'Failed', 'Manifest'][selectedLi]}
+            </span>
+          )}
+
+          {statusFilter !== 'All' && (
+            <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">
+              Status: {statusFilter}
+            </span>
+          )}
 
           {filters.filterType !== 'All' && (
             <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">
@@ -65,7 +120,7 @@ function ActiveFilters({ onClear }) {
 
           {(filters.m5Coin || filters.rto || filters.inTransit || filters.delivered) && (
             <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">
-              Status: {
+              Quick Filter: {
                 [filters.m5Coin && 'M5 Coin',
                 filters.rto && 'RTO',
                 filters.inTransit && 'In Transit',
@@ -75,13 +130,13 @@ function ActiveFilters({ onClear }) {
             </span>
           )}
 
-          {(filters.priceRange[0] !== 0 || filters.priceRange[1] !== 5000) && (
+          {(filters.priceRange[0] !== 0 || filters.priceRange[1] !== 100000) && (
             <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">
               Price: ₹{filters.priceRange[0]} - ₹{filters.priceRange[1]}
             </span>
           )}
 
-          {(filters.weightRange[0] !== 0.5 || filters.weightRange[1] !== 12.0) && (
+          {(filters.weightRange[0] !== 0.5 || filters.weightRange[1] !== 50.0) && (
             <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">
               Weight: {filters.weightRange[0]}kg - {filters.weightRange[1]}kg
             </span>
