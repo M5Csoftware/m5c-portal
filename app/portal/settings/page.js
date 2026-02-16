@@ -48,17 +48,17 @@ const SettingsPage = () => {
               name: "Shipment Notifications",
               link: "/portal/shipment-notifications",
             },
-            {
-              name: "Inventory Notifications",
-              link: "/portal/inventory-notifications",
-            },
+            // {
+            //   name: "Inventory Notifications",
+            //   link: "/portal/inventory-notifications",
+            // },
             {
               name: "Billing and Payment Notifications",
-              link: "/portal/billing-notifications",
+              link: "/portal/shipment-notifications",
             },
             {
               name: "Offers and Update Notification",
-              link: "/portal/offer-updates",
+              link: "/portal/shipment-notifications",
             },
           ]}
         />
