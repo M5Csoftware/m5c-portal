@@ -27,7 +27,7 @@ function FAQs() {
     const generalFAQs = [
         {
             question: "What is M5C Logistics?",
-            answer: "M5C Logistics is a leading logistics solutions provider specializing in courier and cargo exports to five major global sectors:<br/>Australia, Europe, the UK, the USA, and Canada. We offer comprehensive services tailored to meet the needs of businesses and individuals, ensuring safe and timely delivery of goods."
+            answer: "M5C Logistics is a leading logistics solutions provider specializing in courier and cargo exports to five major global sectors: Australia, Europe, the UK, the USA, and Canada. We offer comprehensive services tailored to meet the needs of businesses and individuals, ensuring safe and timely delivery of goods."
         },
         {
             question: "Which regions do you serve?",
@@ -106,7 +106,7 @@ function FAQs() {
         },
     ];
 
-    const custSupportFAQs = [
+    const accountFAQs = [
         {
             question: "How can I contact M5C Logistics for support?",
             answer: "You can contact our customer support team via phone, email, or through the contact form on our website. We are available to assist you with any inquiries, booking needs, or issues related to your shipments."
@@ -126,8 +126,13 @@ function FAQs() {
     ];
 
     return (
-        <div className='flex flex-col gap-10 h-[600px] overflow-x-auto scrollbar-hide'>
-            <div ref={el => sectionRefs.current['general'] = el}>
+        <div className='flex flex-col gap-10 h-[600px] overflow-y-auto scrollbar-hide px-4'>
+            {/* General Information Section */}
+            <div 
+                id="general"
+                ref={el => sectionRefs.current['general'] = el}
+                className="scroll-mt-4"
+            >
                 <FAQSection
                     heading="General Information"
                     logoSrc="/customer-support/FAQs/general-info.svg"
@@ -136,14 +141,28 @@ function FAQs() {
                     toggleExpand={toggleExpand}
                 />
             </div>
-            <FAQSection
-                heading="Services"
-                logoSrc="/customer-support/FAQs/services.svg"
-                faqs={serviceFAQs}
-                expandedIdx={expandedIdx}
-                toggleExpand={toggleExpand}
-            />
-            <div ref={el => sectionRefs.current['shipping'] = el}>
+
+            {/* Services Section */}
+            <div 
+                id="services"
+                ref={el => sectionRefs.current['services'] = el}
+                className="scroll-mt-4"
+            >
+                <FAQSection
+                    heading="Services"
+                    logoSrc="/customer-support/FAQs/services.svg"
+                    faqs={serviceFAQs}
+                    expandedIdx={expandedIdx}
+                    toggleExpand={toggleExpand}
+                />
+            </div>
+
+            {/* Booking and Shipping Section */}
+            <div 
+                id="shipping"
+                ref={el => sectionRefs.current['shipping'] = el}
+                className="scroll-mt-4"
+            >
                 <FAQSection
                     heading="Booking and Shipping"
                     logoSrc="/customer-support/FAQs/booking.svg"
@@ -152,32 +171,62 @@ function FAQs() {
                     toggleExpand={toggleExpand}
                 />
             </div>
-            <FAQSection
-                heading="Pricing and Payments"
-                logoSrc="/customer-support/FAQs/pricing.svg"
-                faqs={paymentsFAQs}
-                expandedIdx={expandedIdx}
-                toggleExpand={toggleExpand}
-            />
-            <FAQSection
-                heading="Delivery and Transit"
-                logoSrc="/customer-support/FAQs/pricing.svg"
-                faqs={deliveryFAQs}
-                expandedIdx={expandedIdx}
-                toggleExpand={toggleExpand}
-            />
-            <FAQSection
-                heading="Customs and Regulations"
-                logoSrc="/customer-support/FAQs/pricing.svg"
-                faqs={customsFAQs}
-                expandedIdx={expandedIdx}
-                toggleExpand={toggleExpand}
-            />
-            <div ref={el => sectionRefs.current['account'] = el}>
+
+            {/* Pricing and Payments Section */}
+            <div 
+                id="pricing"
+                ref={el => sectionRefs.current['pricing'] = el}
+                className="scroll-mt-4"
+            >
                 <FAQSection
-                    heading="Customer Support"
+                    heading="Pricing and Payments"
                     logoSrc="/customer-support/FAQs/pricing.svg"
-                    faqs={custSupportFAQs}
+                    faqs={paymentsFAQs}
+                    expandedIdx={expandedIdx}
+                    toggleExpand={toggleExpand}
+                />
+            </div>
+
+            {/* Delivery and Transit Section */}
+            <div 
+                id="delivery"
+                ref={el => sectionRefs.current['delivery'] = el}
+                className="scroll-mt-4"
+            >
+                <FAQSection
+                    heading="Delivery and Transit"
+                    logoSrc="/customer-support/FAQs/pricing.svg"
+                    faqs={deliveryFAQs}
+                    expandedIdx={expandedIdx}
+                    toggleExpand={toggleExpand}
+                />
+            </div>
+
+            {/* Customs and Regulations Section */}
+            <div 
+                id="customs"
+                ref={el => sectionRefs.current['customs'] = el}
+                className="scroll-mt-4"
+            >
+                <FAQSection
+                    heading="Customs and Regulations"
+                    logoSrc="/customer-support/FAQs/pricing.svg"
+                    faqs={customsFAQs}
+                    expandedIdx={expandedIdx}
+                    toggleExpand={toggleExpand}
+                />
+            </div>
+
+            {/* Account Section */}
+            <div 
+                id="account"
+                ref={el => sectionRefs.current['account'] = el}
+                className="scroll-mt-4"
+            >
+                <FAQSection
+                    heading="Account Settings"
+                    logoSrc="/customer-support/FAQs/pricing.svg"
+                    faqs={accountFAQs}
                     expandedIdx={expandedIdx}
                     toggleExpand={toggleExpand}
                 />

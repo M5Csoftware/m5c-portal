@@ -708,7 +708,7 @@ const Navbar = () => {
                   </p>
                 </div>
               </div>
-              <div className="flex gap-3 items-center">
+              {/* <div className="flex gap-3 items-center">
                 <div className="w-6 h-6 bg-[var(--primary-color)] rounded-full flex items-center justify-center flex-shrink-0">
                   <Image
                     width={12}
@@ -723,7 +723,7 @@ const Navbar = () => {
                     {m5coins}
                   </p>
                 </div>
-              </div>
+              </div> */}
             </div>
           )}
         </div>
