@@ -147,6 +147,20 @@ const Page = () => {
     });
   };
 
+  // Date range state
+  const [dateRange, setDateRange] = useState([
+    {
+      startDate: new Date(new Date().setDate(new Date().getDate() - 30)),
+      endDate: new Date(),
+      key: "selection",
+    },
+  ]);
+
+  // Handler for date range change
+  const handleDateRangeChange = (item) => {
+    setDateRange(item);
+  };
+
   return (
     <main className="w-full px-9 flex flex-col relative">
       <h1 className="font-bold text-2xl text-[#18181B] sticky top-[74px] bg-[#f8f9fa]">
@@ -165,6 +179,7 @@ const Page = () => {
           onBulkManifest={handleBulkManifest}
           onBulkDispatch={handleBulkDispatch}
           onClearFilters={handleClearFilters}
+          onDateRangeChange={handleDateRangeChange}
         />
       </div>
 
@@ -193,6 +208,7 @@ const Page = () => {
             isSelectMode={isSelectMode}
             onSelectAll={handleSelectAll}
             onDeselectAll={handleDeselectAll}
+            dateRange={dateRange}
           />
         )}
       </div>
