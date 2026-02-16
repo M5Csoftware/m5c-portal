@@ -681,7 +681,7 @@ export const SectorDestinationValidationModal = ({
             </h3>
             <p className="text-sm text-amber-800 mb-3">
               Your Excel file contains sector-destination-service combinations
-              that don't exist in your zone configuration. This means rates
+              that don&apos;t exist in your zone configuration. This means rates
               cannot be calculated for these shipments.
             </p>
             <div className="grid grid-cols-2 gap-4 text-sm">
