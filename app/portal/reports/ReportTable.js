@@ -99,10 +99,10 @@ const ReportTable = ({
     if (isInvoice && header === "Status") {
       const statusColors = {
         Generated: "bg-green-100 text-green-800",
-        Pending: "bg-yellow-100 text-yellow-800",
+        Billed: "bg-green-100 text-green-800",
         Draft: "bg-gray-100 text-gray-800",
       };
-      const status = data[header] || "Pending";
+      const status = data[header] || "Billed";
       return (
         <span
           className={`px-2 py-1 rounded text-xs font-medium ${statusColors[status]}`}
@@ -178,8 +178,8 @@ const ReportTable = ({
               <li
                 key={i}
                 className={`${(isShippingBill || isInvoice) && header === "Actions"
-                  ? "w-[150px]"
-                  : "w-[100px]"
+                  ? "w-[225px]"
+                  : "w-[150px]"
                   } h-[20px] mr-4 truncate`}
               >
                 {header}
@@ -210,8 +210,8 @@ const ReportTable = ({
                       <li
                         key={i}
                         className={`${(isShippingBill || isInvoice) && header === "Actions"
-                          ? "w-[150px]"
-                          : "w-[100px]"
+                          ? "w-[225px]"
+                          : "w-[150px]"
                           } h-[20px] mr-4 ${header === "Actions" ? "" : "truncate"
                           }`}
                       >

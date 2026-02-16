@@ -370,7 +370,7 @@ const Report = () => {
           CustomerName: invoice.customer?.name || "N/A",
           TotalAWBs: invoice.totalAwb || 0,
           GrandTotal: invoice.invoiceSummary?.grandTotal?.toFixed(2) || "0.00",
-          Status: invoice.qrCodeData?.[0]?.irnNumber ? "Generated" : "Pending",
+          Status: invoice.qrCodeData?.[0]?.irnNumber ? "Generated" : "Billed",
           InvoiceData: invoice,
         }));
 
