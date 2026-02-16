@@ -16,7 +16,7 @@ const ManifestTable = () => {
   const [manifests, setManifests] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [downloadingLabels, setDownloadingLabels] = useState(false);
+  const [downloadingLabels, setDownloadingLabels] = useState({}); // Changed to object to track individual manifests
   const [originalShipments, setOriginalShipments] = useState({});
   const [manifestData, setManifestData] = useState([]);
 
@@ -98,7 +98,7 @@ const ManifestTable = () => {
     };
 
     fetchExistingLogo();
-  });
+  }, [session, server]); // Added dependencies
 
   useEffect(() => {
     const fetchManifests = async () => {
@@ -155,7 +155,7 @@ const ManifestTable = () => {
     };
 
     fetchManifests();
-  }, [accountCode]); // Add accountCode to dependency array
+  }, [accountCode, server]); // Add accountCode to dependency array
 
   const toggleSelectAll = () => {
     if (selected.length === currentManifests.length) {
@@ -448,7 +448,9 @@ const ManifestTable = () => {
 
   // Function to download all labels for a manifest
   const downloadAllLabelsForManifest = async (manifest) => {
-    setDownloadingLabels(true);
+    // Set downloading state for this specific manifest
+    setDownloadingLabels((prev) => ({ ...prev, [manifest.id]: true }));
+    
     try {
       // Fetch shipment details if not already cached
       let shipments = originalShipments[manifest.manifestNumber];
@@ -468,8 +470,7 @@ const ManifestTable = () => {
       for (let i = 0; i < shipments.length; i++) {
         const shipment = shipments[i];
         console.log(
-          `Downloading label ${i + 1}/${shipments.length} for AWB: ${shipment.awbNo
-          }`
+          `Downloading label ${i + 1}/${shipments.length} for AWB: ${shipment.awbNo}`
         );
 
         const labelData = createLabelDataFromShipment(shipment);
@@ -485,7 +486,12 @@ const ManifestTable = () => {
       console.error("Error downloading all labels:", error);
       alert("Error downloading labels. Please try again.");
     } finally {
-      setDownloadingLabels(false);
+      // Clear downloading state for this specific manifest
+      setDownloadingLabels((prev) => {
+        const newState = { ...prev };
+        delete newState[manifest.id];
+        return newState;
+      });
     }
   };
 
@@ -811,7 +817,7 @@ const ManifestTable = () => {
   }
 
   return (
-    <div className="">
+    <div className="flex flex-col h-full">
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-t-xl">
           {error}
@@ -819,9 +825,9 @@ const ManifestTable = () => {
       )}
 
       {/* Custom Grid Layout with Divs */}
-      <div className="overflow-hidden">
-        {/* Header */}
-        <div className="bg-white shadow-sm border border-gray-200 px-4 py-4 rounded-md">
+      <div className="flex flex-col flex-1 overflow-hidden">
+        {/* Header - Fixed */}
+        <div className="bg-white shadow-sm border border-gray-200 px-4 py-4 rounded-md flex-shrink-0">
           <div className="grid grid-cols-12 gap-4 items-center">
             <div className="col-span-1 flex justify-center">
               <input
@@ -858,14 +864,14 @@ const ManifestTable = () => {
           </div>
         </div>
 
-        {/* Scrollable Body */}
-        <div className="max-h-72 overflow-y-auto">
+        {/* Scrollable Body - Takes remaining height */}
+        <div className="flex-1 overflow-y-auto min-h-0">
           {currentManifests.length > 0 ? (
-            <div className="">
+            <div className="space-y-2 py-2">
               {currentManifests.map((manifest) => (
                 <div
                   key={manifest.id}
-                  className="px-4 py-4 hover:bg-gray-50 transition-colors border mt-2"
+                  className="px-4 py-4 hover:bg-gray-50 transition-colors border rounded-md"
                 >
                   <div className="grid grid-cols-12 gap-4 items-center">
                     <div className="col-span-1 flex justify-center">
@@ -910,19 +916,18 @@ const ManifestTable = () => {
                           style={{ maxWidth: "250px" }} // limit width so wrapping happens
                           title={getActionText(manifest.status)}
                         >
-                          {/* {getActionText(manifest.status)} */}
-
                           <button
                             onClick={() =>
                               downloadAllLabelsForManifest(manifest)
                             }
-                            disabled={downloadingLabels}
-                            className={`px-6 rounded-lg text-xs py-3 bg-[var(--primary-color)] text-white ${downloadingLabels
-                              ? "opacity-50 cursor-not-allowed"
-                              : ""
-                              }`}
+                            disabled={downloadingLabels[manifest.id]}
+                            className={`px-6 rounded-lg text-xs py-3 bg-[var(--primary-color)] text-white ${
+                              downloadingLabels[manifest.id]
+                                ? "opacity-50 cursor-not-allowed"
+                                : ""
+                            }`}
                           >
-                            {downloadingLabels
+                            {downloadingLabels[manifest.id]
                               ? "Downloading..."
                               : "Download Labels"}
                           </button>
@@ -931,7 +936,6 @@ const ManifestTable = () => {
                         {/* Action buttons (right) */}
                         <div className="flex gap-2 flex-shrink-0">
                           <button
-                            // onClick={() => downloadManifestSummaryPDF(manifestData)}
                             onClick={() => downloadPDF(manifest.manifestNumber)}
                             className="text-gray-400 hover:text-green-600 transition-colors p-1"
                             title="Download Manifest Summary"
@@ -974,9 +978,9 @@ const ManifestTable = () => {
         </div>
       </div>
 
-      {/* Pagination */}
+      {/* Pagination - Fixed at bottom */}
       {manifestsArray.length > 0 && (
-        <div className="sticky bottom-0 border border-gray-200 bg-white px-4 mt-[235px] rounded-lg py-1">
+        <div className="border border-gray-200 bg-white px-4 rounded-lg py-1 flex-shrink-0 mt-4">
           <div className="flex justify-between items-center">
             {/* Items per page selector */}
             <div className="flex items-center gap-2 text-sm text-gray-600">
