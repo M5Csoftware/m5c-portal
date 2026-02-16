@@ -17,6 +17,14 @@ const ShipNav = ({
   selectedCount = 0,
   onSearch,
   onDateRangeChange, // NEW: Callback to pass date range to parent
+  searchTerm = "",
+  dateRange = [
+    {
+      startDate: new Date(new Date().setDate(new Date().getDate() - 30)),
+      endDate: new Date(),
+      key: "selection",
+    },
+  ],
 }) => {
   const {
     setFilterShipmentWindow,
@@ -27,15 +35,7 @@ const ShipNav = ({
   } = useContext(GlobalContext);
   const [lineLeft, setLineLeft] = useState(0);
   const [lineWidth, setLineWidth] = useState(0);
-  const [dateRange, setDateRange] = useState([
-    {
-      startDate: new Date(new Date().setDate(new Date().getDate() - 30)),
-      endDate: new Date(),
-      key: "selection",
-    },
-  ]);
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [searchValue, setSearchValue] = useState("");
   const [showUploadModal, setShowUploadModal] = useState(false);
   const lineRef = useRef(null);
   const datePickerRef = useRef(null);
@@ -44,10 +44,8 @@ const ShipNav = ({
 
   // Handle search input change
   const handleSearchChange = (e) => {
-    const value = e.target.value;
-    setSearchValue(value);
     if (onSearch) {
-      onSearch(value);
+      onSearch(e.target.value);
     }
   };
 
@@ -129,6 +127,8 @@ const ShipNav = ({
       handleDownloadSample(); // Default to downloading the sample file
     }
   };
+
+
 
   const getQuarterRange = () => {
     const currentMonth = new Date().getMonth();
@@ -227,9 +227,10 @@ const ShipNav = ({
 
   return (
     <div>
+
       <div className=" bg-[#f8f9fa] z-10">
         <div className="flex w-full justify-between items-baseline">
-          <div className="w-full">
+          <div className="">
             <div className="flex justify-between">
               <ul className="list-none flex gap-6">
                 <li
@@ -409,6 +410,7 @@ const ShipNav = ({
                 </div>
               )}
 
+
               <button
                 onClick={toggleDatePicker}
                 className="flex mt-2 mb-4 justify-between gap-2 items-center border border-gray-300 px-4 py-2 rounded-lg bg-white hover:bg-gray-50"
@@ -438,7 +440,7 @@ const ShipNav = ({
                 </div>
               )}
 
-              {/* Date Picker Button and Dropdown - Moved out of conditional block to prevent duplication */}
+
             </div>
 
             <div className="flex gap-3 relative">
@@ -454,7 +456,7 @@ const ShipNav = ({
                   className="bg-transparent text-[#71717A] outline-none"
                   type="text"
                   placeholder="Search"
-                  value={searchValue}
+                  value={searchTerm}
                   onChange={handleSearchChange}
                 />
               </div>
@@ -496,14 +498,22 @@ const ShipNav = ({
                 </button>
               </div>
             </div>
+
+
+            {/* Date Picker Button and Dropdown - Moved out of conditional block to prevent duplication */}
           </div>
+
+
         </div>
       </div>
+
 
       {showUploadModal && (
         <UploadModal onClose={() => setShowUploadModal(false)} />
       )}
     </div>
+
+
   );
 };
 
