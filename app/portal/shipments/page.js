@@ -29,8 +29,10 @@ const Page = () => {
     setSelectedAwbs,
     setManifestOpen,
     setDisptchedOpen,
-    filters,
+    setSelectedLi,
+    setStatusFilter,
     setFilters,
+    filters,
   } = useContext(GlobalContext);
 
   const [totalShipments, setTotalShipments] = useState(0);
@@ -130,31 +132,47 @@ const Page = () => {
     setSelectedAwbs([]);
   };
 
-  // Handler for clearing all filters
+  // Initial date range
+  const initialDateRange = [
+    {
+      startDate: new Date(new Date().setDate(new Date().getDate() - 30)),
+      endDate: new Date(),
+      key: "selection",
+    },
+  ];
+
+  // Handler for clearing all filters (Master Reset)
   const handleClearFilters = () => {
+    // 1. Reset Global Context filters
     setFilters({
       filterType: "All",
       m5Coin: false,
       rto: false,
       inTransit: false,
       delivered: false,
-      priceRange: [0, 5000],
-      weightRange: [0.5, 12.0],
+      priceRange: [0, 100000], // Updated to match GlobalContext defaults
+      weightRange: [0.5, 50.0], // Updated to match GlobalContext defaults
       paymentMethod: null,
       service: null,
       country: null,
       consignmentType: null,
     });
+
+    // 2. Reset Tab Selection
+    setSelectedLi(0);
+
+    // 3. Reset Status Filter (for Manifest tab dropdowns etc)
+    setStatusFilter("All");
+
+    // 4. Reset Local Search Term
+    setSearchTerm("");
+
+    // 5. Reset Local Date Range
+    setDateRange(initialDateRange);
   };
 
   // Date range state
-  const [dateRange, setDateRange] = useState([
-    {
-      startDate: new Date(new Date().setDate(new Date().getDate() - 30)),
-      endDate: new Date(),
-      key: "selection",
-    },
-  ]);
+  const [dateRange, setDateRange] = useState(initialDateRange);
 
   // Handler for date range change
   const handleDateRangeChange = (item) => {
@@ -180,11 +198,14 @@ const Page = () => {
           onBulkDispatch={handleBulkDispatch}
           onClearFilters={handleClearFilters}
           onDateRangeChange={handleDateRangeChange}
+          searchTerm={searchTerm}
+          dateRange={dateRange}
         />
       </div>
 
       {/* Active Filters Display */}
-      <ActiveFilters />
+      {/* Active Filters Display */}
+      <ActiveFilters onClear={handleClearFilters} />
 
       {/* Bulk Actions Bar */}
       {showBulkActions && selectedAwbs && selectedAwbs.length > 0 && (
