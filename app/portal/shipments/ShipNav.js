@@ -104,7 +104,9 @@ const ShipNav = ({
   };
 
   const handleDateChange = (item) => {
-    setDateRange([item.selection]);
+    if (onDateRangeChange) {
+      onDateRangeChange([item.selection]);
+    }
     // Optionally close the picker after selection
     // setShowDatePicker(false);
   };
