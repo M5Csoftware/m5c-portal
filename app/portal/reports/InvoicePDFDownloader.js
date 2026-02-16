@@ -113,9 +113,10 @@ const InvoiceTemplate = ({ invoiceData, qrImage }) => {
       <div className="text-center mb-2 flex items-center justify-between">
         <div className="w-1/3">
           <img
-            src="logo.svg"
+            src="/logo.svg"
             alt="Logo"
             style={{ width: "50px", height: "50px" }}
+            className=""
           />
         </div>
         <h1 className="text-2xl font-bold w-1/3">TAX INVOICE</h1>
@@ -468,7 +469,7 @@ const InvoiceTemplate = ({ invoiceData, qrImage }) => {
             For M 5 CONTINENT LOGISTICS SOLUTION PVT. LTD
           </strong>
           <img
-            src="invoice-stamp.png"
+            src="/invoice-stamp.png"
             className="w-32 h-32"
             alt="stampNsignature"
           />
