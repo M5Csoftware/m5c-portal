@@ -339,12 +339,7 @@ const ShipNav = ({
                 style={{ width: lineWidth, height: "3px", left: lineLeft }}
               ></div>
             </div>
-            <button
-              onClick={toggleDatePicker}
-              className="flex justify-between gap-2 items-center border border-gray-300 px-4 py-2 rounded-lg bg-white hover:bg-gray-50"
-            >
-              <span className="text-[#2d3748]">{formatDateRange()}</span>
-            </button>
+
           </div>
           <div className="flex items-center gap-3 text-[#A0AEC0]">
             <div className="flex w-fit">
@@ -386,31 +381,28 @@ const ShipNav = ({
                 <div className="flex w-[250px] h-[45px] border border-gray-300 rounded-lg overflow-hidden">
                   <button
                     onClick={() => setStatusFilter("All")}
-                    className={`flex-1 text-center transition-all duration-200 m-1 rounded-lg ${
-                      statusFilter === "All"
-                        ? "bg-gray-200 text-black"
-                        : "text-black hover:bg-gray-200"
-                    }`}
+                    className={`flex-1 text-center transition-all duration-200 m-1 rounded-lg ${statusFilter === "All"
+                      ? "bg-gray-200 text-black"
+                      : "text-black hover:bg-gray-200"
+                      }`}
                   >
                     All
                   </button>
                   <button
                     onClick={() => setStatusFilter("Drop")}
-                    className={`flex-1 text-center transition-all duration-200 m-1 rounded-lg ${
-                      statusFilter === "Drop"
-                        ? "bg-gray-200 text-black"
-                        : "text-black hover:bg-gray-200"
-                    }`}
+                    className={`flex-1 text-center transition-all duration-200 m-1 rounded-lg ${statusFilter === "Drop"
+                      ? "bg-gray-200 text-black"
+                      : "text-black hover:bg-gray-200"
+                      }`}
                   >
                     Drop
                   </button>
                   <button
                     onClick={() => setStatusFilter("Pickup")}
-                    className={`flex-1 text-center transition-all duration-200 m-1 rounded-lg ${
-                      statusFilter === "Pickup"
-                        ? "bg-gray-200 text-black"
-                        : "text-black hover:bg-gray-200"
-                    }`}
+                    className={`flex-1 text-center transition-all duration-200 m-1 rounded-lg ${statusFilter === "Pickup"
+                      ? "bg-gray-200 text-black"
+                      : "text-black hover:bg-gray-200"
+                      }`}
                   >
                     Pickup
                   </button>
@@ -419,9 +411,9 @@ const ShipNav = ({
 
               <button
                 onClick={toggleDatePicker}
-                className="flex justify-between gap-2 items-center border border-gray-300 px-4 py-2 rounded-lg bg-white hover:bg-gray-50"
+                className="flex mt-2 mb-4 justify-between gap-2 items-center border border-gray-300 px-4 py-2 rounded-lg bg-white hover:bg-gray-50"
               >
-                <span className="text-[#2d3748]">Last 30 Days</span>
+                <span className="text-[#2d3748]">{formatDateRange()}</span>
                 <Image
                   width={20}
                   height={20}
@@ -445,6 +437,8 @@ const ShipNav = ({
                   />
                 </div>
               )}
+
+              {/* Date Picker Button and Dropdown - Moved out of conditional block to prevent duplication */}
             </div>
 
             <div className="flex gap-3 relative">

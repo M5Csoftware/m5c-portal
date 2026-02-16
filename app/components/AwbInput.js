@@ -17,7 +17,7 @@ const AwbInput = ({ onClose, setIsQuickActionActive, shipmentCount = 0 }) => {
     };
 
     return (
-        <div className="bg-[#FFE3E4] rounded-lg p-6 z-50 inset-0 flex flex-col gap-6 shadow-md w-full mx-auto relative">
+        <div className="bg-[#FFE3E4] rounded-lg p-6 inset-0 flex flex-col gap-6 shadow-md w-full mx-auto relative">
             {/* Close Button (if passed) */}
             {onClose && (
                 <button
@@ -53,7 +53,7 @@ const AwbInput = ({ onClose, setIsQuickActionActive, shipmentCount = 0 }) => {
             ) : (
                 <>
                     {/* Heading */}
-                    <div>
+                    <div className="">
                         <h2 className="text-2xl font-semibold text-[#18181B]">Track Your Shipment</h2>
                         <p className="text-[#18181B] text-sm mt-2">
                             Find and track your shipment effortlessly, in real time

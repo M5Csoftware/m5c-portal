@@ -89,9 +89,9 @@ function FilterShipment() {
   );
 
   // Local state for slider values
-  const [priceRange, setPriceRange] = useState(filters.priceRange || [0, 5000]);
+  const [priceRange, setPriceRange] = useState(filters.priceRange || [0, 100000]);
   const [weightRange, setWeightRange] = useState(
-    filters.weightRange || [0.5, 12.0],
+    filters.weightRange || [0.5, 50.0],
   );
 
   // Initialize form with filter values
@@ -166,8 +166,8 @@ function FilterShipment() {
     setServiceFilter(null);
     setCountryFilter(null);
     setConsignmentFilter(null);
-    setPriceRange([0, 5000]);
-    setWeightRange([0.5, 12.0]);
+    setPriceRange([0, 100000]);
+    setWeightRange([0.5, 50.0]);
 
     // Reset global filters
     setFilters({
@@ -176,8 +176,8 @@ function FilterShipment() {
       rto: false,
       inTransit: false,
       delivered: false,
-      priceRange: [0, 5000],
-      weightRange: [0.5, 12.0],
+      priceRange: [0, 100000],
+      weightRange: [0.5, 50.0],
       paymentMethod: null,
       service: null,
       country: null,
@@ -263,8 +263,8 @@ function FilterShipment() {
           height={0}
         />
 
-        <div className="p-6">
-          <form className="h-[80vh]" onSubmit={handleSubmit(onSubmit)}>
+        <div className="p-6 h-[calc(100vh-100px)] overflow-y-auto">
+          <form className="h-full" onSubmit={handleSubmit(onSubmit)}>
             <div className="flex h-full flex-col justify-between gap-4">
               <div className="text-sm w-full flex flex-col gap-6">
                 {/* Filter Type Radio Buttons */}
@@ -376,7 +376,7 @@ function FilterShipment() {
                     <input
                       type="range"
                       min="0"
-                      max="5000"
+                      max="100000"
                       step="100"
                       value={priceRange[0]}
                       onChange={(e) =>
@@ -390,7 +390,7 @@ function FilterShipment() {
                     <input
                       type="range"
                       min="0"
-                      max="5000"
+                      max="100000"
                       step="100"
                       value={priceRange[1]}
                       onChange={(e) =>
@@ -403,7 +403,7 @@ function FilterShipment() {
                     />
                     <div className="flex justify-between text-xs text-[#979797]">
                       <span>₹0</span>
-                      <span>₹5000</span>
+                      <span>₹100000</span>
                     </div>
                   </div>
 
@@ -415,7 +415,7 @@ function FilterShipment() {
                     <input
                       type="range"
                       min="0.5"
-                      max="12.0"
+                      max="50.0"
                       step="0.1"
                       value={weightRange[0]}
                       onChange={(e) =>
@@ -429,7 +429,7 @@ function FilterShipment() {
                     <input
                       type="range"
                       min="0.5"
-                      max="12.0"
+                      max="50.0"
                       step="0.1"
                       value={weightRange[1]}
                       onChange={(e) =>
@@ -442,7 +442,7 @@ function FilterShipment() {
                     />
                     <div className="flex justify-between text-xs text-[#979797]">
                       <span>0.5kg</span>
-                      <span>12.0kg</span>
+                      <span>50.0kg</span>
                     </div>
                   </div>
                 </div>
