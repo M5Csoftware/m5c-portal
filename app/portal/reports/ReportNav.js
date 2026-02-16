@@ -35,8 +35,12 @@ const Report = () => {
 
   const [reportData, setReportData] = useState([]);
   const [filteredReportData, setFilteredReportData] = useState([]);
+  const [saleSummaryData, setSaleSummaryData] = useState([]);
+  const [filteredSaleSummaryData, setFilteredSaleSummaryData] = useState([]);
   const [shippingBills, setShippingBills] = useState([]);
+  const [filteredShippingBills, setFilteredShippingBills] = useState([]);
   const [invoices, setInvoices] = useState([]);
+  const [filteredInvoices, setFilteredInvoices] = useState([]);
   const [tableHeaders, setTableHeaders] = useState([]);
   const [selectedRows, setSelectedRows] = useState({});
 
@@ -45,7 +49,7 @@ const Report = () => {
   const [isLoadingInvoices, setIsLoadingInvoices] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
-  // ADDED: State for button label
+  // State for button label
   const [selectedRangeLabel, setSelectedRangeLabel] = useState("Last 30 days");
 
   const headers = [
@@ -144,7 +148,7 @@ const Report = () => {
     });
   };
 
-  // ADDED: Parse date for comparison
+  // Parse date for comparison
   const parseDateForComparison = (dateString) => {
     if (!dateString) return null;
     try {
@@ -156,7 +160,7 @@ const Report = () => {
     }
   };
 
-  // ADDED: Filter data by date range
+  // Filter data by date range
   const filterByDateRange = (data, dateField) => {
     if (!data || data.length === 0) return data;
 
@@ -183,53 +187,134 @@ const Report = () => {
     });
   };
 
-  // ADDED: Filter data by search term
+  // Filter data by search term
   const filterBySearch = (data) => {
     if (!searchTerm.trim()) return data;
 
     const term = searchTerm.toLowerCase().trim();
     return data.filter((item) => {
       return Object.values(item).some((value) => {
-        if (typeof value === "string") {
-          return value.toLowerCase().includes(term);
+        if (typeof value === "string" || typeof value === "number") {
+          return String(value).toLowerCase().includes(term);
         }
         return false;
       });
     });
   };
 
-  // ADDED: Apply all filters
-  const applyFilters = () => {
-    let dataToFilter = [];
-    let dateField = "";
+  // Generate Sale Summary Data from report data
+  const generateSaleSummaryData = (shipments) => {
+    if (!shipments || shipments.length === 0) return [];
 
-    // Get the data to filter based on selected tab
+    const summaryMap = new Map();
+
+    shipments.forEach((item) => {
+      const customerCode = item.CustomerCode || "N/A";
+      const customerName = item.CustomerName || "N/A";
+      const key = `${customerCode}-${customerName}`;
+
+      if (!summaryMap.has(key)) {
+        summaryMap.set(key, {
+          CustomerCode: customerCode,
+          CustomerName: customerName,
+          Branch: item.Branch || "N/A",
+          City: item.ConsigneeCity || "N/A",
+          SalePerson: item.salePerson || "N/A",
+          CountAwbNo: 0,
+          Pcs: 0,
+          ActWeight: 0,
+          VolWeight: 0,
+          ChgWeight: 0,
+          BasicAmount: 0,
+          SGST: 0,
+          CGST: 0,
+          IGST: 0,
+          Mischg: 0,
+          Fuel: 0,
+          GrandTotal: 0,
+          TotalOutStanding: 0,
+          // Store BookingDate from first item for date filtering
+          BookingDate: item.BookingDate,
+          BookingDateOriginal: item.BookingDateOriginal,
+        });
+      }
+
+      const entry = summaryMap.get(key);
+      entry.CountAwbNo += 1;
+      entry.Pcs += parseFloat(item.Pcs) || 0;
+      entry.ActWeight += parseFloat(item.ActWeight) || 0;
+      entry.VolWeight += parseFloat(item.VolWeight) || 0;
+      entry.ChgWeight += parseFloat(item.ChgWeight) || 0;
+      entry.BasicAmount += parseFloat(item.BasicAmount) || 0;
+      entry.SGST += parseFloat(item.SGST) || 0;
+      entry.CGST += parseFloat(item.CGST) || 0;
+      entry.IGST += parseFloat(item.IGST) || 0;
+      entry.Mischg += parseFloat(item.Mischg) || 0;
+      entry.Fuel += parseFloat(item.Fuel) || 0;
+      entry.GrandTotal += parseFloat(item.GrandTotal) || 0;
+      entry.TotalOutStanding += parseFloat(item.totalOutstanding) || 0;
+
+      // Format numbers to 2 decimal places
+      entry.Pcs = Number(entry.Pcs.toFixed(2));
+      entry.ActWeight = Number(entry.ActWeight.toFixed(2));
+      entry.VolWeight = Number(entry.VolWeight.toFixed(2));
+      entry.ChgWeight = Number(entry.ChgWeight.toFixed(2));
+      entry.BasicAmount = Number(entry.BasicAmount.toFixed(2));
+      entry.SGST = Number(entry.SGST.toFixed(2));
+      entry.CGST = Number(entry.CGST.toFixed(2));
+      entry.IGST = Number(entry.IGST.toFixed(2));
+      entry.Mischg = Number(entry.Mischg.toFixed(2));
+      entry.Fuel = Number(entry.Fuel.toFixed(2));
+      entry.GrandTotal = Number(entry.GrandTotal.toFixed(2));
+      entry.TotalOutStanding = Number(entry.TotalOutStanding.toFixed(2));
+    });
+
+    return Array.from(summaryMap.values());
+  };
+
+  // Apply all filters based on selected tab
+  const applyFilters = () => {
     if (selectedLi === 0) {
-      // Sale Report
-      dataToFilter = reportData;
-      dateField = "BookingDate";
+      // Sale Report - filter using original date field
+      const filtered = filterByDateRange(reportData, "BookingDateOriginal");
+      return filterBySearch(filtered);
     } else if (selectedLi === 1) {
       // Sale Summary Report
-      dataToFilter = getSaleSummaryData(reportData);
-      dateField = "BookingDate"; // Use same date field
+      // First generate summary from filtered report data using original date
+      const filteredShipments = filterByDateRange(reportData, "BookingDateOriginal");
+      const summary = generateSaleSummaryData(filteredShipments);
+      // Apply search filter to summary data
+      return filterBySearch(summary);
     } else if (selectedLi === 2) {
       // Shipping Bill
-      dataToFilter = shippingBills;
-      dateField = "UploadedAt";
+      const filtered = filterByDateRange(shippingBills, "UploadedAtOriginal");
+      return filterBySearch(filtered);
     } else if (selectedLi === 3) {
       // Invoice
-      dataToFilter = invoices;
-      dateField = "InvoiceDate";
+      const filtered = filterByDateRange(invoices, "InvoiceDateOriginal");
+      return filterBySearch(filtered);
     }
-
-    // Apply date filter
-    let filteredData = filterByDateRange(dataToFilter, dateField);
-
-    // Apply search filter
-    filteredData = filterBySearch(filteredData);
-
-    return filteredData;
+    return [];
   };
+
+  // Update filtered data when dependencies change
+  useEffect(() => {
+    const filtered = applyFilters();
+    
+    // Set the appropriate state based on selected tab
+    if (selectedLi === 0) {
+      setFilteredReportData(filtered);
+    } else if (selectedLi === 1) {
+      setFilteredSaleSummaryData(filtered);
+    } else if (selectedLi === 2) {
+      setFilteredShippingBills(filtered);
+    } else if (selectedLi === 3) {
+      setFilteredInvoices(filtered);
+    }
+    
+    setCurrentPage(1); // Reset to first page
+    setSelectedRows({}); // Clear selected rows
+  }, [dateRange, searchTerm, selectedLi, reportData, shippingBills, invoices]);
 
   // Fetch shipping bills
   const fetchShippingBills = async () => {
@@ -248,7 +333,7 @@ const Report = () => {
           FileName: bill.pdfFile.fileName || "",
           FileSize: formatFileSize(bill.pdfFile.fileSize || 0),
           UploadedAt: formatDate(bill.pdfFile.uploadedAt),
-          UploadedAtOriginal: bill.pdfFile.uploadedAt, // ADDED: Keep original date
+          UploadedAtOriginal: bill.pdfFile.uploadedAt, // Keep original date
           Status: bill.status || "uploaded",
           FileUrl: bill.pdfFile.fileUrl || "",
           DownloadUrl: bill.pdfFile.downloadUrl || bill.pdfFile.fileUrl || "",
@@ -256,6 +341,7 @@ const Report = () => {
           Actions: bill.pdfFile.fileUrl || "",
         }));
         setShippingBills(bills);
+        setFilteredShippingBills(bills);
         console.log(`✅ Loaded ${bills.length} shipping bills`);
       }
     } catch (error) {
@@ -281,7 +367,7 @@ const Report = () => {
         const invoicesList = res.data.data.map((invoice) => ({
           InvoiceNumber: invoice.invoiceNumber || "",
           InvoiceDate: formatDate(invoice.invoiceDate),
-          InvoiceDateOriginal: invoice.invoiceDate, // ADDED: Keep original date
+          InvoiceDateOriginal: invoice.invoiceDate, // Keep original date
           CustomerName: invoice.customer?.name || "",
           TotalAWBs: invoice.shipments?.length || 0,
           GrandTotal: invoice.invoiceSummary?.grandTotal?.toFixed(2) || "0.00",
@@ -290,6 +376,7 @@ const Report = () => {
         }));
 
         setInvoices(invoicesList);
+        setFilteredInvoices(invoicesList);
         console.log(
           `✅ Loaded ${invoicesList.length} invoices with isExcel=true`,
         );
@@ -428,6 +515,9 @@ const Report = () => {
       return;
     }
 
+    // Get the current data based on selected tab
+    const currentData = selectedLi === 0 ? filteredReportData : filteredSaleSummaryData;
+    
     // Get selected row indices
     const selectedIndices = Object.keys(selectedRows).filter(
       (key) => selectedRows[key],
@@ -439,12 +529,12 @@ const Report = () => {
 
     if (selectedIndices.length === 0) {
       // No rows selected - download all filtered data
-      dataToDownload = filteredReportData;
-      recordCount = filteredReportData.length;
+      dataToDownload = currentData;
+      recordCount = currentData.length;
     } else {
       // Rows selected - download only selected rows
       dataToDownload = selectedIndices.map(
-        (index) => filteredReportData[parseInt(index)],
+        (index) => currentData[parseInt(index)],
       );
       recordCount = selectedIndices.length;
     }
@@ -455,17 +545,60 @@ const Report = () => {
       return;
     }
 
-    // Prepare data for Excel
+    // Determine which headers to use
+    const headersToUse = selectedLi === 0 ? headers : saleSummaryHeaders;
+
+    // Helper function to format date for Excel
+    const formatDateForExcel = (dateString) => {
+      if (!dateString) return "";
+      
+      // Check if it's an ISO date string
+      if (typeof dateString === 'string' && dateString.includes('T')) {
+        try {
+          const date = new Date(dateString);
+          // Format as DD-MMM-YYYY (e.g., 08-Dec-2025)
+          return date.toLocaleDateString("en-IN", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+          }).replace(/-/g, '-');
+        } catch (e) {
+          return dateString;
+        }
+      }
+      return dateString;
+    };
+
+    // Prepare data for Excel with formatted dates
     const excelData = dataToDownload.map((row) => {
       const rowData = {};
-      tableHeaders.forEach((header) => {
-        rowData[header] = row[header] || "";
+      
+      headersToUse.forEach((header) => {
+        let value = row[header] || "";
+        
+        // Format date fields specifically
+        if (header === "BookingDate" || header === "InvoiceDate" || header.includes("Date")) {
+          value = formatDateForExcel(value);
+        }
+        
+        // Format numeric values to ensure they're readable
+        if (typeof value === 'number') {
+          value = value.toString();
+        }
+        
+        rowData[header] = value;
       });
       return rowData;
     });
 
-    // Create worksheet
+    // Create worksheet with column widths
     const worksheet = XLSX.utils.json_to_sheet(excelData);
+    
+    // Set column widths for better readability
+    const colWidths = headersToUse.map(header => ({
+      wch: Math.max(header.length, 15) // Minimum width of 15 characters
+    }));
+    worksheet['!cols'] = colWidths;
 
     // Create workbook
     const workbook = XLSX.utils.book_new();
@@ -473,15 +606,17 @@ const Report = () => {
     XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
 
     // Generate filename with timestamp
-    const timestamp = new Date().toISOString().split("T")[0];
+    const timestamp = new Date().toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    }).replace(/-/g, '-');
     const filename = `${sheetName}_${timestamp}.xlsx`;
 
     // Download file
     XLSX.writeFile(workbook, filename);
 
-    console.log(
-      `✅ Downloaded ${recordCount} records to ${filename}`,
-    );
+    console.log(`✅ Downloaded ${recordCount} records to ${filename}`);
 
     // Show success notification
     const successToast = document.createElement("div");
@@ -508,8 +643,9 @@ const Report = () => {
 
         const transform = (item) => ({
           AwbNo: item.awbNo || "",
-          BookingDate: item.date || "",
-          FlightDate: item.date || "",
+          BookingDate: item.date ? formatDate(item.date) : "",
+          BookingDateOriginal: item.date || "",
+          FlightDate: item.date ? formatDate(item.date) : "",
           Branch: item.receiverState || "",
           OriginName: item.shipperCity || "",
           Sector: item.sector || "",
@@ -549,13 +685,17 @@ const Report = () => {
           : [];
 
         setReportData(transformed);
+        setFilteredReportData(transformed);
+        
+        // Generate and set sale summary data
+        const summary = generateSaleSummaryData(transformed);
+        setSaleSummaryData(summary);
+        setFilteredSaleSummaryData(summary);
+        
         setTableHeaders(headers);
 
-        // Apply initial filter
-        const filteredData = applyFilters();
-        setFilteredReportData(filteredData);
-
         console.log(`✅ Loaded ${transformed.length} shipment records`);
+        console.log(`✅ Generated ${summary.length} sale summary records`);
       } catch (error) {
         console.error("Error fetching report data:", error.message);
       } finally {
@@ -575,61 +715,6 @@ const Report = () => {
   useEffect(() => {
     fetchInvoices();
   }, [session?.user?.accountCode, server]);
-
-  // ADDED: Update filtered data when date range, search, or tab changes
-  useEffect(() => {
-    const filteredData = applyFilters();
-    setFilteredReportData(filteredData);
-    setCurrentPage(1); // Reset to first page
-  }, [dateRange, searchTerm, selectedLi, reportData, shippingBills, invoices]);
-
-  const getSaleSummaryData = (shipments) => {
-    const summaryMap = {};
-
-    shipments.forEach((item) => {
-      const key = `${item.CustomerCode}-${item.CustomerName}`;
-
-      if (!summaryMap[key]) {
-        summaryMap[key] = {
-          CustomerCode: item.CustomerCode || "",
-          CustomerName: item.CustomerName || "",
-          Branch: item.Branch || "",
-          City: item.ConsigneeCity || "",
-          SalePerson: item.salesPersonName || "",
-          CountAwbNo: 0,
-          Pcs: 0,
-          ActWeight: 0,
-          VolWeight: 0,
-          ChgWeight: 0,
-          BasicAmount: 0,
-          SGST: 0,
-          CGST: 0,
-          IGST: 0,
-          Mischg: 0,
-          Fuel: 0,
-          GrandTotal: 0,
-          TotalOutStanding: 0,
-        };
-      }
-
-      const entry = summaryMap[key];
-      entry.CountAwbNo += 1;
-      entry.Pcs += parseFloat(item.Pcs) || 0;
-      entry.ActWeight += parseFloat(item.ActWeight) || 0;
-      entry.VolWeight += parseFloat(item.VolWeight) || 0;
-      entry.ChgWeight += parseFloat(item.ChgWeight) || 0;
-      entry.BasicAmount += parseFloat(item.BasicAmount) || 0;
-      entry.SGST += parseFloat(item.SGST) || 0;
-      entry.CGST += parseFloat(item.CGST) || 0;
-      entry.IGST += parseFloat(item.IGST) || 0;
-      entry.Mischg += parseFloat(item.Mischg) || 0;
-      entry.Fuel += parseFloat(item.Fuel) || 0;
-      entry.GrandTotal += parseFloat(item.GrandTotal) || 0;
-      entry.TotalOutStanding += parseFloat(item.totalOutstanding) || 0;
-    });
-
-    return Object.values(summaryMap);
-  };
 
   const handleLiClick = (index) => {
     setSelectedLi(index);
@@ -673,7 +758,7 @@ const Report = () => {
 
   const toggleDatePicker = () => setShowDatePicker(!showDatePicker);
 
-  // MODIFIED: Update button label when date changes
+  // Update button label when date changes
   const handleDateChange = (item) => {
     setDateRange([item.selection]);
 
@@ -725,9 +810,6 @@ const Report = () => {
         `${formatShortDate(startDate)} - ${formatShortDate(endDate)}`,
       );
     }
-
-    // Don't close picker automatically - let user select both dates
-    // setShowDatePicker(false);
   };
 
   const getQuarterRange = () => {
@@ -781,9 +863,18 @@ const Report = () => {
     },
   ];
 
-  // ADDED: Handle search input
+  // Handle search input
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
+  };
+
+  // Get current data based on selected tab
+  const getCurrentData = () => {
+    if (selectedLi === 0) return filteredReportData;
+    if (selectedLi === 1) return filteredSaleSummaryData;
+    if (selectedLi === 2) return filteredShippingBills;
+    if (selectedLi === 3) return filteredInvoices;
+    return [];
   };
 
   return (
@@ -857,7 +948,6 @@ const Report = () => {
               onClick={toggleDatePicker}
               className="flex justify-between gap-2 items-center border border-gray-300 px-4 py-2 rounded-lg bg-white"
             >
-              {/* MODIFIED: Use dynamic label */}
               <span className="text-[#2d3748]">{selectedRangeLabel}</span>
               <Image
                 width={20}
@@ -885,7 +975,6 @@ const Report = () => {
 
           <div className="rounded-md flex items-center gap-2 bg-[#F1F0F5] px-[11px] py-[6px]">
             <Image width={20} height={20} src="/search.svg" alt="Search" />
-            {/* MODIFIED: Add onChange handler */}
             <input
               className="bg-transparent text-[#71717A] outline-none"
               type="text"
@@ -897,14 +986,14 @@ const Report = () => {
         </div>
 
         <div className="my-4">
-          <p className="text-xs">{filteredReportData.length} records</p>
+          <p className="text-xs">{getCurrentData().length} records</p>
         </div>
 
         {cardShow ? (
           <div className="mt-[90px] absolute">
             <ReportTable
               headers={tableHeaders}
-              reportData={filteredReportData}
+              reportData={getCurrentData()}
               itemsPerPage={itemsPerPage}
               currentPage={currentPage}
               setItemsPerPage={setItemsPerPage}
@@ -912,7 +1001,9 @@ const Report = () => {
               onDownloadPDF={
                 selectedLi === 2
                   ? handleDownloadShippingBillPDF
-                  : handleDownloadInvoicePDF
+                  : selectedLi === 3
+                  ? handleDownloadInvoicePDF
+                  : null
               }
               onViewPDF={
                 selectedLi === 2 ? handleViewShippingBillPDF : handleViewInvoice
