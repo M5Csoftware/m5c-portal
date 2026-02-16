@@ -113,9 +113,10 @@ const InvoiceTemplate = ({ invoiceData, qrImage }) => {
       <div className="text-center mb-2 flex items-center justify-between">
         <div className="w-1/3">
           <img
-            src="logo.svg"
+            src="/logo.svg"
             alt="Logo"
             style={{ width: "50px", height: "50px" }}
+            className=""
           />
         </div>
         <h1 className="text-2xl font-bold w-1/3">TAX INVOICE</h1>
@@ -246,7 +247,7 @@ const InvoiceTemplate = ({ invoiceData, qrImage }) => {
             <div className="ml-2 pb-4 leading-tight">
               <div>
                 Ground Floor, Khasra No 91, Plot No. NJF PC 40 <br />
-                Bamroli Village, NEW DELHI-110077
+                Bamnoli Village, NEW DELHI-110077
                 <br />
                 Email: Info@m5clogs.com <br />
                 Website: www.m5clogs.com
@@ -468,7 +469,7 @@ const InvoiceTemplate = ({ invoiceData, qrImage }) => {
             For M 5 CONTINENT LOGISTICS SOLUTION PVT. LTD
           </strong>
           <img
-            src="invoice-stamp.png"
+            src="/invoice-stamp.png"
             className="w-32 h-32"
             alt="stampNsignature"
           />
@@ -491,11 +492,11 @@ export const downloadInvoicePDF = async (server, invoiceNumber) => {
         invoiceNumber
       )}`
     );
-    
+
     if (!res.ok) {
       throw new Error("Invoice not found");
     }
-    
+
     const invoiceData = await res.json();
 
     console.log("✅ Invoice data fetched successfully");
@@ -542,7 +543,7 @@ export const downloadInvoicePDF = async (server, invoiceNumber) => {
     // Render invoice template (Page 1)
     const { createRoot } = await import('react-dom/client');
     const root1 = createRoot(page1Container);
-    
+
     await new Promise((resolve) => {
       root1.render(<InvoiceTemplate invoiceData={invoiceData} qrImage={qrImage} />);
       setTimeout(resolve, 1000);
@@ -555,7 +556,7 @@ export const downloadInvoicePDF = async (server, invoiceNumber) => {
       format: "a4",
       compress: true
     });
-    
+
     const pdfWidth = pdf.internal.pageSize.getWidth();
 
     // Canvas options
@@ -579,7 +580,7 @@ export const downloadInvoicePDF = async (server, invoiceNumber) => {
     // Render page 2 if shipments exist
     if (invoiceData.shipments?.length > 0) {
       console.log("📸 Capturing page 2...");
-      
+
       const page2Container = document.createElement('div');
       page2Container.style.width = '210mm';
       page2Container.style.minHeight = '297mm';
@@ -589,7 +590,7 @@ export const downloadInvoicePDF = async (server, invoiceNumber) => {
       container.appendChild(page2Container);
 
       const root2 = createRoot(page2Container);
-      
+
       await new Promise((resolve) => {
         root2.render(
           <div>
@@ -623,9 +624,9 @@ export const downloadInvoicePDF = async (server, invoiceNumber) => {
                   const pincode = s.receiverPincode;
                   const product = s.goodstype || s.shipmentType;
                   const weight = s.totalActualWt || s.weight || 0;
-                  const basicAmt = s.basicAmt || s.amount || 0;
-                  const discount = s.discountAmt || s.discount || 0;
-                  const taxable = s.taxableAmount || basicAmt - discount;
+                  const basicAmt = s.amount || s.basicAmt || 0;
+                  const discount = s.discount || s.discountAmt || 0;
+                  const taxable = s.taxableAmount || (Number(basicAmt) - Number(discount));
 
                   return (
                     <tr key={i} className="text-center">
@@ -694,7 +695,7 @@ export const downloadInvoicePDF = async (server, invoiceNumber) => {
     // Download PDF
     const fileName = `Invoice_${invoiceNumber.replace(/\//g, "_")}.pdf`;
     pdf.save(fileName);
-    
+
     console.log("✅ PDF downloaded successfully:", fileName);
     return { success: true, fileName };
 

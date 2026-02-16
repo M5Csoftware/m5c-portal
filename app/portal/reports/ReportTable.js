@@ -84,13 +84,6 @@ const ReportTable = ({
 
       return (
         <div className="flex gap-2 items-center justify-center">
-          {/* <button
-            onClick={() => onViewPDF(invoiceNumber)}
-            className="px-3 py-1 border w-full transition-all border-red-900 text-red-900 font-semibold text-xs rounded-md hover:bg-red-50"
-            title="View Invoice"
-          >
-            View
-          </button> */}
           <button
             onClick={() => onDownloadPDF(invoiceNumber)}
             className="px-3 py-1 bg-[#EA1B40] text-white text-xs rounded hover:bg-[#d01636] transition-all"
@@ -106,10 +99,10 @@ const ReportTable = ({
     if (isInvoice && header === "Status") {
       const statusColors = {
         Generated: "bg-green-100 text-green-800",
-        Pending: "bg-yellow-100 text-yellow-800",
+        Billed: "bg-green-100 text-green-800",
         Draft: "bg-gray-100 text-gray-800",
       };
-      const status = data[header] || "Pending";
+      const status = data[header] || "Billed";
       return (
         <span
           className={`px-2 py-1 rounded text-xs font-medium ${statusColors[status]}`}
@@ -184,11 +177,10 @@ const ReportTable = ({
             {headers.map((header, i) => (
               <li
                 key={i}
-                className={`${
-                  (isShippingBill || isInvoice) && header === "Actions"
-                    ? "w-[150px]"
-                    : "w-[100px]"
-                } h-[20px] mr-4 truncate`}
+                className={`${(isShippingBill || isInvoice) && header === "Actions"
+                  ? "w-[225px]"
+                  : "w-[150px]"
+                  } h-[20px] mr-4 truncate`}
               >
                 {header}
               </li>
@@ -217,13 +209,11 @@ const ReportTable = ({
                     {headers.map((header, i) => (
                       <li
                         key={i}
-                        className={`${
-                          (isShippingBill || isInvoice) && header === "Actions"
-                            ? "w-[150px]"
-                            : "w-[100px]"
-                        } h-[20px] mr-4 ${
-                          header === "Actions" ? "" : "truncate"
-                        }`}
+                        className={`${(isShippingBill || isInvoice) && header === "Actions"
+                          ? "w-[225px]"
+                          : "w-[150px]"
+                          } h-[20px] mr-4 ${header === "Actions" ? "" : "truncate"
+                          }`}
                       >
                         {renderCellContent(header, data)}
                       </li>

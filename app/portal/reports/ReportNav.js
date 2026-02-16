@@ -300,7 +300,7 @@ const Report = () => {
   // Update filtered data when dependencies change
   useEffect(() => {
     const filtered = applyFilters();
-    
+
     // Set the appropriate state based on selected tab
     if (selectedLi === 0) {
       setFilteredReportData(filtered);
@@ -311,7 +311,7 @@ const Report = () => {
     } else if (selectedLi === 3) {
       setFilteredInvoices(filtered);
     }
-    
+
     setCurrentPage(1); // Reset to first page
     setSelectedRows({}); // Clear selected rows
   }, [dateRange, searchTerm, selectedLi, reportData, shippingBills, invoices]);
@@ -357,28 +357,27 @@ const Report = () => {
 
     setIsLoadingInvoices(true);
     try {
-      // Using unified endpoint with accountCode parameter
+      // Using unified endpoint
       const res = await axios.get(
-        `${server}/portal/billing-invoice-software?accountCode=${session.user.accountCode}`,
+        `${server}/billing-invoice/invoice`,
       );
 
       if (res.data.success) {
-        // The backend already filters for isExcel=true
-        const invoicesList = res.data.data.map((invoice) => ({
+        const invoicesList = res.data.invoices.map((invoice) => ({
           InvoiceNumber: invoice.invoiceNumber || "",
           InvoiceDate: formatDate(invoice.invoiceDate),
           InvoiceDateOriginal: invoice.invoiceDate, // Keep original date
-          CustomerName: invoice.customer?.name || "",
-          TotalAWBs: invoice.shipments?.length || 0,
+          CustomerName: invoice.customer?.name || "N/A",
+          TotalAWBs: invoice.totalAwb || 0,
           GrandTotal: invoice.invoiceSummary?.grandTotal?.toFixed(2) || "0.00",
-          Status: invoice.qrCodeData?.[0]?.irnNumber ? "Generated" : "Pending",
+          Status: invoice.qrCodeData?.[0]?.irnNumber ? "Generated" : "Billed",
           InvoiceData: invoice,
         }));
 
         setInvoices(invoicesList);
         setFilteredInvoices(invoicesList);
         console.log(
-          `✅ Loaded ${invoicesList.length} invoices with isExcel=true`,
+          `✅ Loaded ${invoicesList.length} invoices`,
         );
       }
     } catch (error) {
@@ -485,7 +484,7 @@ const Report = () => {
 
       // Fetch the invoice data using unified endpoint
       const response = await fetch(
-        `${server}/portal/billing-invoice-software?invoiceNumber=${encodeURIComponent(invoiceNumber)}`,
+        `${server}/billing-invoice/invoice?invoiceNumber=${encodeURIComponent(invoiceNumber)}`,
       );
 
       if (!response.ok) {
@@ -517,7 +516,7 @@ const Report = () => {
 
     // Get the current data based on selected tab
     const currentData = selectedLi === 0 ? filteredReportData : filteredSaleSummaryData;
-    
+
     // Get selected row indices
     const selectedIndices = Object.keys(selectedRows).filter(
       (key) => selectedRows[key],
@@ -551,7 +550,7 @@ const Report = () => {
     // Helper function to format date for Excel
     const formatDateForExcel = (dateString) => {
       if (!dateString) return "";
-      
+
       // Check if it's an ISO date string
       if (typeof dateString === 'string' && dateString.includes('T')) {
         try {
@@ -572,20 +571,20 @@ const Report = () => {
     // Prepare data for Excel with formatted dates
     const excelData = dataToDownload.map((row) => {
       const rowData = {};
-      
+
       headersToUse.forEach((header) => {
         let value = row[header] || "";
-        
+
         // Format date fields specifically
         if (header === "BookingDate" || header === "InvoiceDate" || header.includes("Date")) {
           value = formatDateForExcel(value);
         }
-        
+
         // Format numeric values to ensure they're readable
         if (typeof value === 'number') {
           value = value.toString();
         }
-        
+
         rowData[header] = value;
       });
       return rowData;
@@ -593,7 +592,7 @@ const Report = () => {
 
     // Create worksheet with column widths
     const worksheet = XLSX.utils.json_to_sheet(excelData);
-    
+
     // Set column widths for better readability
     const colWidths = headersToUse.map(header => ({
       wch: Math.max(header.length, 15) // Minimum width of 15 characters
@@ -686,12 +685,12 @@ const Report = () => {
 
         setReportData(transformed);
         setFilteredReportData(transformed);
-        
+
         // Generate and set sale summary data
         const summary = generateSaleSummaryData(transformed);
         setSaleSummaryData(summary);
         setFilteredSaleSummaryData(summary);
-        
+
         setTableHeaders(headers);
 
         console.log(`✅ Loaded ${transformed.length} shipment records`);
@@ -891,11 +890,10 @@ const Report = () => {
               ].map((label, i) => (
                 <li
                   key={i}
-                  className={`cursor-pointer text-sm ${
-                    selectedLi === i
-                      ? "text-[var(--primary-color)]"
-                      : "text-[#A0AEC0]"
-                  }`}
+                  className={`cursor-pointer text-sm ${selectedLi === i
+                    ? "text-[var(--primary-color)]"
+                    : "text-[#A0AEC0]"
+                    }`}
                   onClick={() => handleLiClick(i)}
                 >
                   {label}
@@ -1002,8 +1000,8 @@ const Report = () => {
                 selectedLi === 2
                   ? handleDownloadShippingBillPDF
                   : selectedLi === 3
-                  ? handleDownloadInvoicePDF
-                  : null
+                    ? handleDownloadInvoicePDF
+                    : null
               }
               onViewPDF={
                 selectedLi === 2 ? handleViewShippingBillPDF : handleViewInvoice
