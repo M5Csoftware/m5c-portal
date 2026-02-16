@@ -10,6 +10,7 @@ const PickupAddress = () => {
   const [addresses, setAddresses] = useState([]);
   const [editingId, setEditingId] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
   const { data: session } = useSession();
   const { server } = useContext(GlobalContext);
   const accountCode = session?.user?.accountCode;
@@ -42,6 +43,22 @@ const PickupAddress = () => {
     fetchAddresses();
   }, []);
 
+  // Filter addresses based on search query
+  const filteredAddresses = addresses.filter((address) => {
+    const query = searchQuery.toLowerCase();
+    return (
+      address.name?.toLowerCase().includes(query) ||
+      address.addressName?.toLowerCase().includes(query) ||
+      address.contact?.toLowerCase().includes(query) ||
+      address.street?.toLowerCase().includes(query) ||
+      address.locality?.toLowerCase().includes(query) ||
+      address.landmark?.toLowerCase().includes(query) ||
+      address.pincode?.toLowerCase().includes(query) ||
+      address.city?.toLowerCase().includes(query) ||
+      address.state?.toLowerCase().includes(query)
+    );
+  });
+
   // Handle input changes
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -52,7 +69,7 @@ const PickupAddress = () => {
       try {
         let response;
         const payload = { ...formData, accountCode }; // always include accountCode
-        console.log(payload)
+        console.log(payload);
 
         if (editingId) {
           response = await axios.put(
@@ -99,7 +116,6 @@ const PickupAddress = () => {
     }
   };
 
-
   const handleEdit = (address) => {
     setEditingId(address._id); // Store ID to detect PUT
     setFormData({ ...address }); // Prefill the form
@@ -140,6 +156,8 @@ const PickupAddress = () => {
             <input
               type="text"
               placeholder="Search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="ml-2 bg-transparent outline-none text-gray-700"
             />
           </div>
@@ -151,9 +169,7 @@ const PickupAddress = () => {
                 // Use Promise.all to send delete requests in parallel
                 await Promise.all(
                   selectedIds.map((id) =>
-                    axios.delete(
-                      `${server}/portal/manage-pickup?id=${id}`
-                    )
+                    axios.delete(`${server}/portal/manage-pickup?id=${id}`)
                   )
                 );
                 // Remove from local state
@@ -166,8 +182,9 @@ const PickupAddress = () => {
               }
             }}
             disabled={selectedIds.length === 0}
-            className={`flex items-center gap-1 border rounded-md px-4 py-2 text-[#EA1B40] border-[#EA1B40] hover:bg-red-100 ${selectedIds.length === 0 ? "opacity-50 cursor-not-allowed" : ""
-              }`}
+            className={`flex items-center gap-1 border rounded-md px-4 py-2 text-[#EA1B40] border-[#EA1B40] hover:bg-red-100 ${
+              selectedIds.length === 0 ? "opacity-50 cursor-not-allowed" : ""
+            }`}
           >
             <span>
               <Image
@@ -186,7 +203,7 @@ const PickupAddress = () => {
         {/* Add Address Button */}
         <div className="flex gap-4">
           {/* Address Cards */}
-          <div className=" grid grid-cols-5 gap-2 ">
+          <div className="grid grid-cols-5 gap-6">
             <div
               className="w-[280px] h-[190px] rounded-md border border-[#E2E8F0] py-4 px-5 flex justify-center items-center cursor-pointer"
               onClick={() => {
@@ -207,8 +224,8 @@ const PickupAddress = () => {
               <Image width={72} height={72} src="/plus-red.svg" alt="Wallet" />
             </div>
 
-            {addresses.length > 0 ? (
-              addresses.map((address, index) => (
+            {filteredAddresses.length > 0 ? (
+              filteredAddresses.map((address, index) => (
                 <div
                   key={index}
                   className="border rounded-lg p-5 w-[280px] h-[190px] bg-white flex flex-col gap-4"
