@@ -69,48 +69,51 @@ const Shipments = ({
         }
 
         // For tabs that use the getAllShipments endpoint
-        if ([0, 1, 4, 5, 6, 7].includes(selectedLi)) {
+        if ([0, 1, 5, 6, 7].includes(selectedLi)) {
           url = `${server}/portal/get-delivered-shipments?accountCode=${session?.user?.accountCode}&type=${type}`;
-          
+
           // Add date range for applicable tabs (not for Latest tab)
           if (selectedLi !== 1) {
             const startDate = dateRange?.[0]?.startDate?.toISOString();
             const endDate = dateRange?.[0]?.endDate?.toISOString();
-            
+
             if (startDate) url += `&startDate=${startDate}`;
             if (endDate) url += `&endDate=${endDate}`;
           }
-          
+
           response = await axios.get(url);
-          
+
           const shipments = response.data.shipments || [];
           setShipmentsData(shipments);
           setTotalShipments(response.data.total || shipments.length);
           console.log(`${type} shipments:`, shipments.length);
-        } 
+        }
         // For Ready to Ship and Manifest tabs (use regular get-shipments)
         else {
           url = `${server}/portal/get-shipments?accountCode=${session?.user?.accountCode}`;
-          
+
           // Add date range filter
           const startDate = dateRange?.[0]?.startDate?.toISOString();
           const endDate = dateRange?.[0]?.endDate?.toISOString();
-          
+
           if (startDate) url += `&startDate=${startDate}`;
           if (endDate) url += `&endDate=${endDate}`;
-          
+
           response = await axios.get(url);
-          
+
           let shipments = response.data.shipments || response.data.shipment || [];
           shipments = Array.isArray(shipments) ? shipments : [shipments];
-          
+
           // Additional filtering for specific tabs
           if (selectedLi === 2) { // Ready to Ship
-            shipments = shipments.filter(s => s.status === "Ready to Ship");
+            // status check removed as per new requirement
+            shipments = shipments.filter(s => s.basicAmt > 0 && s.status !== "Hold" && !s.manifestNo);
           } else if (selectedLi === 3) { // Manifest
-            shipments = shipments.filter(s => s.manifestNo != null);
+            shipments = shipments.filter(s => s.manifestNo);
+          } else if (selectedLi === 4) { // In Transit
+            shipments = shipments.filter(s => s.manifestNo && s.status !== "Delivered" && s.status !== "RTO" && s.status !== "Hold");
           }
-          
+
           setShipmentsData(shipments);
           setTotalShipments(shipments.length);
           console.log(`${type} shipments:`, shipments.length);
@@ -147,13 +150,14 @@ const Shipments = ({
           statusMatch = true;
           break;
         case 2: // Ready to Ship
-          statusMatch = shipment.status === "Ready to Ship";
+          // status check removed as per new requirement
+          statusMatch = shipment.basicAmt > 0 && shipment.status !== "Hold" && !shipment.manifestNo;
           break;
         case 3: // Manifest - show all shipments with manifestNo
-          statusMatch = shipment.manifestNo != null;
+          statusMatch = shipment.manifestNo;
           break;
         case 4: // In Transit
-          statusMatch = shipment.status === "In Transit";
+          statusMatch = shipment.manifestNo && shipment.status !== "Delivered" && shipment.status !== "RTO" && shipment.status !== "Hold";
           break;
         case 5: // HOLD TAB
           statusMatch = shipment.status === "Hold";
@@ -183,92 +187,91 @@ const Shipments = ({
 
       if (!searchMatch) return false;
 
-      // 3. Apply filters from FilterShipment panel ONLY on "ALL" and "Latest" TAB
-      if (selectedLi === 0 || selectedLi === 1) {
-        // Filter by type (All, Invoiced, New)
-        if (filters.filterType !== "All") {
-          if (filters.filterType === "Invoiced" && !shipment.invoiced) {
-            return false;
-          }
-          if (filters.filterType === "New" && !shipment.isNew) {
-            return false;
-          }
-        }
+      // 3. Apply filters from FilterShipment panel
 
-        // Filter by M5 Coin Discount
-        if (filters.m5Coin && !shipment.m5CoinDiscount) {
+      // Filter by type (All, Invoiced, New)
+      if (filters.filterType !== "All") {
+        if (filters.filterType === "Invoiced" && !shipment.invoiced) {
           return false;
         }
-
-        // Filter by RTO
-        if (filters.rto && !shipment.appliedForRTO) {
+        if (filters.filterType === "New" && !shipment.isNew) {
           return false;
         }
+      }
 
-        // Filter by in-transit from panel
-        if (filters.inTransit && shipment.status !== "In Transit") {
+      // Filter by M5 Coin Discount
+      if (filters.m5Coin && !shipment.m5CoinDiscount) {
+        return false;
+      }
+
+      // Filter by RTO
+      if (filters.rto && !shipment.appliedForRTO) {
+        return false;
+      }
+
+      // Filter by in-transit from panel
+      if (filters.inTransit && shipment.status !== "In Transit") {
+        return false;
+      }
+
+      // Filter by delivered from panel
+      if (filters.delivered && shipment.status !== "Delivered") {
+        return false;
+      }
+
+      // Filter by price range
+      if (shipment.totalAmt) {
+        const price = parseFloat(shipment.totalAmt);
+        if (price < filters.priceRange[0] || price > filters.priceRange[1]) {
           return false;
         }
+      }
 
-        // Filter by delivered from panel
-        if (filters.delivered && shipment.status !== "Delivered") {
-          return false;
-        }
-
-        // Filter by price range
-        if (shipment.totalAmt) {
-          const price = parseFloat(shipment.totalAmt);
-          if (price < filters.priceRange[0] || price > filters.priceRange[1]) {
-            return false;
-          }
-        }
-
-        // Filter by weight range
-        if (shipment.chargeableWt) {
-          const weight = parseFloat(shipment.chargeableWt);
-          if (
-            weight < filters.weightRange[0] ||
-            weight > filters.weightRange[1]
-          ) {
-            return false;
-          }
-        }
-
-        // Filter by payment method
+      // Filter by weight range
+      if (shipment.chargeableWt) {
+        const weight = parseFloat(shipment.chargeableWt);
         if (
-          filters.paymentMethod &&
-          shipment.paymentDetails?.mode !== filters.paymentMethod.value
+          weight < filters.weightRange[0] ||
+          weight > filters.weightRange[1]
         ) {
           return false;
         }
+      }
 
-        // Filter by service
-        if (filters.service && shipment.service !== filters.service.value) {
-          return false;
-        }
+      // Filter by payment method
+      if (
+        filters.paymentMethod &&
+        shipment.paymentDetails?.mode !== filters.paymentMethod.value
+      ) {
+        return false;
+      }
 
-        // Filter by country
+      // Filter by service
+      if (filters.service && shipment.service !== filters.service.value) {
+        return false;
+      }
+
+      // Filter by country
+      if (
+        filters.country &&
+        shipment.receiverCountry !== filters.country.value
+      ) {
+        return false;
+      }
+
+      // Filter by consignment type
+      if (filters.consignmentType) {
         if (
-          filters.country &&
-          shipment.receiverCountry !== filters.country.value
+          filters.consignmentType.value === "consignee" &&
+          !shipment.isConsignee
         ) {
           return false;
         }
-
-        // Filter by consignment type
-        if (filters.consignmentType) {
-          if (
-            filters.consignmentType.value === "consignee" &&
-            !shipment.isConsignee
-          ) {
-            return false;
-          }
-          if (
-            filters.consignmentType.value === "consigner" &&
-            !shipment.isConsigner
-          ) {
-            return false;
-          }
+        if (
+          filters.consignmentType.value === "consigner" &&
+          !shipment.isConsigner
+        ) {
+          return false;
         }
       }
 
@@ -306,8 +309,8 @@ const Shipments = ({
     const shipmentsToDownload =
       selectedShipments.length > 0
         ? shipmentsData.filter((shipment) =>
-            selectedShipments.includes(shipment._id),
-          )
+          selectedShipments.includes(shipment._id),
+        )
         : filteredShipments;
 
     if (shipmentsToDownload.length === 0) {
@@ -425,7 +428,7 @@ const Shipments = ({
   };
 
   // Check if all current items are selected
-  const isAllSelected = currentItems.length > 0 && 
+  const isAllSelected = currentItems.length > 0 &&
     currentItems.every(item => selectedShipments.includes(item._id));
 
   return (
@@ -456,7 +459,7 @@ const Shipments = ({
           <span className="px-4"></span>
         </ul>
       </div>
-      
+
       <div className="flex flex-col gap-2 overflow-y-auto table-scrollbar h-[310px]">
         {isLoading ? (
           <div className="flex justify-center items-center py-8">
@@ -497,7 +500,7 @@ const Shipments = ({
           </div>
         )}
       </div>
-      
+
       {filteredShipments.length > 0 && (
         <div
           style={{ boxShadow: "0 0 10px 1px rgba(0, 0, 0, 0.1)" }}
@@ -542,7 +545,7 @@ const Shipments = ({
               onClick={handleNextPage}
               disabled={
                 currentPage ===
-                  Math.ceil(filteredShipments.length / itemsPerPage) ||
+                Math.ceil(filteredShipments.length / itemsPerPage) ||
                 filteredShipments.length === 0
               }
             >

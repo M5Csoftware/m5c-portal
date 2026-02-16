@@ -25,7 +25,7 @@ const Page = () => {
   const [currency, setCurrency] = useState("INR");
   const [totalBalance, setTotalBalance] = useState(0);
   const [balanceLoading, setBalanceLoading] = useState(true);
-  const [todaysRevenue, setTodaysRevenue] = useState(500000);
+  const [todaysRevenue, setTodaysRevenue] = useState(0);
   const [airwaybillStock, setAirwaybillStock] = useState(1000);
 
   const formattedTotalBalance = new Intl.NumberFormat("en-IN").format(
@@ -70,6 +70,21 @@ const Page = () => {
           const data = await shipmentResponse.json();
           if (data.shipments && Array.isArray(data.shipments)) {
             setShipmentCount(data.shipments.length);
+
+            // Calculate Today's Revenue
+            const today = new Date();
+            const revenue = data.shipments.reduce((acc, shipment) => {
+              const shipmentDate = new Date(shipment.createdAt || shipment.date || shipment.bookingDate);
+              if (
+                shipmentDate.getDate() === today.getDate() &&
+                shipmentDate.getMonth() === today.getMonth() &&
+                shipmentDate.getFullYear() === today.getFullYear()
+              ) {
+                return acc + (Number(shipment.amount) || Number(shipment.totalAmt) || 0);
+              }
+              return acc;
+            }, 0);
+            setTodaysRevenue(revenue);
           }
         }
 
@@ -176,51 +191,7 @@ const Page = () => {
   }, [finalAccountCode, server]);
 
   // Fetch shipment count for the user
-  useEffect(() => {
-    const fetchShipmentCount = async () => {
-      if (!session?.user?.accountCode || !server) {
-        setLoading(false);
-        return;
-      }
 
-      try {
-        setLoading(true);
-        const response = await fetch(
-          `${server}/portal/get-shipments?accountCode=${session.user.accountCode}`,
-        );
-
-        if (!response.ok) {
-          setShipmentCount(0);
-          setHoldShipmentsCount(0);
-          return;
-        }
-
-        const data = await response.json();
-
-        if (data.shipments && Array.isArray(data.shipments)) {
-          setShipmentCount(data.shipments.length);
-
-          // const holdCount = data.shipments.filter(
-          //   (shipment) =>
-          //     shipment.status?.toLowerCase().includes("hold") ||
-          //     shipment.status?.toLowerCase().includes("pending"),
-          // ).length;
-          // setHoldShipmentsCount(holdCount);
-        } else {
-          setShipmentCount(0);
-          setHoldShipmentsCount(0);
-        }
-      } catch (error) {
-        console.error("Error fetching shipment count:", error);
-        setShipmentCount(0);
-        setHoldShipmentsCount(0);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchShipmentCount();
-  }, [session, server]);
 
   const handleGraphDurationChange = (duration) => {
     setActiveDuration(duration);
@@ -538,9 +509,8 @@ const Page = () => {
 const GraphYearSelect = ({ duration, isActive, onClick }) => {
   return (
     <div
-      className={`text-xs transition-all border-2 px-4 py-2 rounded-lg font-bold cursor-pointer ${
-        isActive ? "border-gray-400" : "border-transparent"
-      }`}
+      className={`text-xs transition-all border-2 px-4 py-2 rounded-lg font-bold cursor-pointer ${isActive ? "border-gray-400" : "border-transparent"
+        }`}
       onClick={onClick}
     >
       {duration}
