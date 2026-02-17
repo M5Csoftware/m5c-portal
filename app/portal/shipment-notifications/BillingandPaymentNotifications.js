@@ -13,23 +13,21 @@ function RedCheckbox({ id, isChecked, onChange, disabled = false }) {
   return (
     <div
       onClick={handleToggle}
-      className={`flex gap-2.5 items-center select-none ${
-        disabled
+      className={`flex gap-2.5 items-center select-none ${disabled
           ? "cursor-not-allowed opacity-50"
           : "cursor-pointer hover:opacity-80"
-      }`}
+        }`}
     >
       <div
-        className={`rounded w-[18px] h-[18px] border flex items-center justify-center transition-colors ${
-          isChecked ? "border-[var(--primary-color)] bg-[var(--primary-color)]" : "border-[#E2E8F0]"
-        }`}
+        className={`rounded w-[18px] h-[18px] border flex items-center justify-center transition-colors ${isChecked ? "border-[var(--primary-color)] bg-[var(--primary-color)]" : "border-[#E2E8F0]"
+          }`}
       >
         {isChecked && <Check className="w-3 h-3 text-white" />}
         <input
           id={id}
           type="checkbox"
           checked={isChecked}
-          onChange={() => {}}
+          onChange={() => { }}
           className="hidden"
           disabled={disabled}
         />
@@ -85,8 +83,8 @@ function BillingandPaymentNotifications({ notifications, onNotificationChange })
     { key: "newInvoiceGenerated", label: "New Invoice Generated" },
     { key: "paymentDueReminder", label: "Payment Due Reminder" },
     { key: "creditLimitExceededAlert", label: "Credit Limit Exceeded Alert" },
-    { key: "creditLimitExceededAlert2", label: "Credit Limit Exceeded Alert" },
-    { key: "billingError", label: "Billing Error" },
+    // { key: "creditLimitExceededAlert2", label: "Credit Limit Exceeded Alert" },
+    // { key: "billingError", label: "Billing Error" },
     { key: "rateHike", label: "Rate Hike" },
   ];
 
@@ -107,13 +105,12 @@ function BillingandPaymentNotifications({ notifications, onNotificationChange })
           className="flex items-center gap-2 px-3 py-1.5 text-sm text-red-600 rounded hover:bg-red-50 cursor-pointer"
         >
           <div
-            className={`w-4 h-4 border rounded flex items-center justify-center ${
-              isAllSelected
+            className={`w-4 h-4 border rounded flex items-center justify-center ${isAllSelected
                 ? "border-[var(--primary-color)] bg-[var(--primary-color)]"
                 : isSomeSelected
-                ? "border-[var(--primary-color)] bg-red-100"
-                : "border-[#E2E8F0]"
-            }`}
+                  ? "border-[var(--primary-color)] bg-red-100"
+                  : "border-[#E2E8F0]"
+              }`}
           >
             {isAllSelected && <Check className="w-3 h-3 text-white" />}
             {isSomeSelected && !isAllSelected && (
@@ -133,11 +130,10 @@ function BillingandPaymentNotifications({ notifications, onNotificationChange })
       {notificationTypes.map((type, index) => (
         <div
           key={type.key}
-          className={`grid grid-cols-4 gap-4 p-3 items-center text-xs text-[#18181B] font-medium ${
-            index !== notificationTypes.length - 1
+          className={`grid grid-cols-4 gap-4 p-3 items-center text-xs text-[#18181B] font-medium ${index !== notificationTypes.length - 1
               ? "border-b border-[#E2E8F0]"
               : ""
-          }`}
+            }`}
         >
           <div className="font-medium text-gray-800">{type.label}</div>
 

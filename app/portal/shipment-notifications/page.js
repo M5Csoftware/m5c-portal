@@ -11,7 +11,7 @@ import { GlobalContext } from "../GlobalContext";
 const Page = () => {
   const { server } = useContext(GlobalContext);
   const { data: session } = useSession();
-  
+
   const [notifications, setNotifications] = useState({
     // Shipment Notifications
     shipmentCreated_email: false,
@@ -171,50 +171,48 @@ const Page = () => {
             </p>
           </div>
           <div className="flex justify-end gap-3 pt-4 border-gray-200">
-          <button
-            onClick={() => {
-              setNotifications({ ...originalNotifications });
-            }}
-            disabled={!hasChanges || loading}
-            className={`px-6 py-2.5 border border-gray-300 text-gray-700 rounded-md font-medium transition-colors ${
-              hasChanges && !loading
-                ? "hover:bg-gray-50"
-                : "opacity-50 cursor-not-allowed"
-            }`}
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={loading}
-            className={`px-6 py-2.5 rounded-md font-medium transition-colors ${
-              loading
-                ? "bg-gray-400 cursor-not-allowed"
-                : "bg-[#EA1B40] hover:bg-red-600"
-            } text-white`}
-          >
-            {loading ? "Saving..." : hasChanges ? "Update Settings" : "Save Settings"}
-          </button>
-        </div>
+            <button
+              onClick={() => {
+                setNotifications({ ...originalNotifications });
+              }}
+              disabled={!hasChanges || loading}
+              className={`px-6 py-2.5 border border-gray-300 text-gray-700 rounded-md font-medium transition-colors ${hasChanges && !loading
+                  ? "hover:bg-gray-50"
+                  : "opacity-50 cursor-not-allowed"
+                }`}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={loading}
+              className={`px-6 py-2.5 rounded-md font-medium transition-colors ${loading
+                  ? "bg-gray-400 cursor-not-allowed"
+                  : "bg-[#EA1B40] hover:bg-red-600"
+                } text-white`}
+            >
+              {loading ? "Saving..." : hasChanges ? "Update Settings" : "Save Settings"}
+            </button>
+          </div>
         </div>
 
         <ShipmentNotifications
           notifications={notifications}
           onNotificationChange={handleNotificationChange}
         />
-        
+
         <BillingandPaymentNotifications
           notifications={notifications}
           onNotificationChange={handleNotificationChange}
         />
-        
-        <OffersAndUpdatesNotification
+
+        {/* <OffersAndUpdatesNotification
           notifications={notifications}
           onNotificationChange={handleNotificationChange}
-        />
+        /> */}
 
         {/* Save Button */}
-        
+
       </div>
 
       <NotificationFlag
