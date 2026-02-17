@@ -281,7 +281,10 @@ const Report = () => {
     } else if (selectedLi === 1) {
       // Sale Summary Report
       // First generate summary from filtered report data using original date
-      const filteredShipments = filterByDateRange(reportData, "BookingDateOriginal");
+      const filteredShipments = filterByDateRange(
+        reportData,
+        "BookingDateOriginal",
+      );
       const summary = generateSaleSummaryData(filteredShipments);
       // Apply search filter to summary data
       return filterBySearch(summary);
@@ -352,32 +355,38 @@ const Report = () => {
   };
 
   // Fetch invoices - ONLY show invoices where isExcel is true
+  // Fetch invoices - ONLY show invoices where isExcel is true AND match accountCode
   const fetchInvoices = async () => {
     if (!session?.user?.accountCode || isLoadingInvoices) return;
 
     setIsLoadingInvoices(true);
     try {
       // Using unified endpoint
-      const res = await axios.get(
-        `${server}/billing-invoice/invoice`,
-      );
+      const res = await axios.get(`${server}/billing-invoice/invoice`);
 
       if (res.data.success) {
-        const invoicesList = res.data.invoices.map((invoice) => ({
-          InvoiceNumber: invoice.invoiceNumber || "",
-          InvoiceDate: formatDate(invoice.invoiceDate),
-          InvoiceDateOriginal: invoice.invoiceDate, // Keep original date
-          CustomerName: invoice.customer?.name || "N/A",
-          TotalAWBs: invoice.totalAwb || 0,
-          GrandTotal: invoice.invoiceSummary?.grandTotal?.toFixed(2) || "0.00",
-          Status: invoice.qrCodeData?.[0]?.irnNumber ? "Generated" : "Billed",
-          InvoiceData: invoice,
-        }));
+        // Filter invoices by accountCode from session
+        const filteredInvoices = res.data.invoices
+          .filter((invoice) => {
+            // Check if customer exists and accountCode matches
+            return invoice.customer?.accountCode === session.user.accountCode;
+          })
+          .map((invoice) => ({
+            InvoiceNumber: invoice.invoiceNumber || "",
+            InvoiceDate: formatDate(invoice.invoiceDate),
+            InvoiceDateOriginal: invoice.invoiceDate, // Keep original date
+            CustomerName: invoice.customer?.name || "N/A",
+            TotalAWBs: invoice.totalAwb || 0,
+            GrandTotal:
+              invoice.invoiceSummary?.grandTotal?.toFixed(2) || "0.00",
+            Status: invoice.qrCodeData?.[0]?.irnNumber ? "Generated" : "Billed",
+            InvoiceData: invoice,
+          }));
 
-        setInvoices(invoicesList);
-        setFilteredInvoices(invoicesList);
+        setInvoices(filteredInvoices);
+        setFilteredInvoices(filteredInvoices);
         console.log(
-          `✅ Loaded ${invoicesList.length} invoices`,
+          `✅ Loaded ${filteredInvoices.length} invoices for account ${session.user.accountCode}`,
         );
       }
     } catch (error) {
@@ -386,7 +395,6 @@ const Report = () => {
       setIsLoadingInvoices(false);
     }
   };
-
   // Download Shipping Bill PDF
   const handleDownloadShippingBillPDF = async (awbNo, fileName) => {
     try {
@@ -515,7 +523,8 @@ const Report = () => {
     }
 
     // Get the current data based on selected tab
-    const currentData = selectedLi === 0 ? filteredReportData : filteredSaleSummaryData;
+    const currentData =
+      selectedLi === 0 ? filteredReportData : filteredSaleSummaryData;
 
     // Get selected row indices
     const selectedIndices = Object.keys(selectedRows).filter(
@@ -552,15 +561,17 @@ const Report = () => {
       if (!dateString) return "";
 
       // Check if it's an ISO date string
-      if (typeof dateString === 'string' && dateString.includes('T')) {
+      if (typeof dateString === "string" && dateString.includes("T")) {
         try {
           const date = new Date(dateString);
           // Format as DD-MMM-YYYY (e.g., 08-Dec-2025)
-          return date.toLocaleDateString("en-IN", {
-            day: "2-digit",
-            month: "short",
-            year: "numeric",
-          }).replace(/-/g, '-');
+          return date
+            .toLocaleDateString("en-IN", {
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+            })
+            .replace(/-/g, "-");
         } catch (e) {
           return dateString;
         }
@@ -576,12 +587,16 @@ const Report = () => {
         let value = row[header] || "";
 
         // Format date fields specifically
-        if (header === "BookingDate" || header === "InvoiceDate" || header.includes("Date")) {
+        if (
+          header === "BookingDate" ||
+          header === "InvoiceDate" ||
+          header.includes("Date")
+        ) {
           value = formatDateForExcel(value);
         }
 
         // Format numeric values to ensure they're readable
-        if (typeof value === 'number') {
+        if (typeof value === "number") {
           value = value.toString();
         }
 
@@ -594,10 +609,10 @@ const Report = () => {
     const worksheet = XLSX.utils.json_to_sheet(excelData);
 
     // Set column widths for better readability
-    const colWidths = headersToUse.map(header => ({
-      wch: Math.max(header.length, 15) // Minimum width of 15 characters
+    const colWidths = headersToUse.map((header) => ({
+      wch: Math.max(header.length, 15), // Minimum width of 15 characters
     }));
-    worksheet['!cols'] = colWidths;
+    worksheet["!cols"] = colWidths;
 
     // Create workbook
     const workbook = XLSX.utils.book_new();
@@ -605,11 +620,13 @@ const Report = () => {
     XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
 
     // Generate filename with timestamp
-    const timestamp = new Date().toLocaleDateString("en-IN", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    }).replace(/-/g, '-');
+    const timestamp = new Date()
+      .toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      })
+      .replace(/-/g, "-");
     const filename = `${sheetName}_${timestamp}.xlsx`;
 
     // Download file
@@ -890,10 +907,11 @@ const Report = () => {
               ].map((label, i) => (
                 <li
                   key={i}
-                  className={`cursor-pointer text-sm ${selectedLi === i
-                    ? "text-[var(--primary-color)]"
-                    : "text-[#A0AEC0]"
-                    }`}
+                  className={`cursor-pointer text-sm ${
+                    selectedLi === i
+                      ? "text-[var(--primary-color)]"
+                      : "text-[#A0AEC0]"
+                  }`}
                   onClick={() => handleLiClick(i)}
                 >
                   {label}
