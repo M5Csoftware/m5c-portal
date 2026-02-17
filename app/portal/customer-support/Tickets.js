@@ -6,12 +6,17 @@ import axios from "axios";
 import { GlobalContext } from "../GlobalContext";
 import { useSession } from "next-auth/react";
 
-const Tickets = ({ statusFilter, dateRange, searchTerm }) => {
-  // ADDED searchTerm prop
+const Tickets = ({
+  statusFilter,
+  dateRange,
+  searchTerm,
+  filters, // ADDED: filters prop
+}) => {
   const [selectedtickets, setSelectedtickets] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(15);
   const [loading, setLoading] = useState(true);
+  const [allTickets, setAllTickets] = useState([]); // Store all tickets
   const { ticketRefreshTrigger, ticketsData, setTicketsData, server } =
     useContext(GlobalContext);
   const { data: session } = useSession();
@@ -35,85 +40,14 @@ const Tickets = ({ statusFilter, dateRange, searchTerm }) => {
               `TCKT-${(index + 1).toString().padStart(3, "0")}`,
           }));
 
-          console.log("Processed tickets:", allTickets);
-          console.log("Status filter:", statusFilter);
-          console.log("Date range:", dateRange);
-          console.log("Search term:", searchTerm); // ADDED
-
-          let filteredTickets = allTickets;
-
-          // Apply status filter
-          if (statusFilter && statusFilter !== "All" && statusFilter !== "") {
-            filteredTickets = filteredTickets.filter(
-              (ticket) =>
-                ticket.status?.toLowerCase() === statusFilter.toLowerCase(),
-            );
-            console.log(`Filtered by status ${statusFilter}:`, filteredTickets);
-          }
-
-          // Apply date range filter
-          if (dateRange && dateRange.startDate && dateRange.endDate) {
-            filteredTickets = filteredTickets.filter((ticket) => {
-              // Check both createdAt and updatedAt fields
-              const ticketDate = new Date(ticket.updatedAt || ticket.createdAt);
-              const startDate = new Date(dateRange.startDate);
-              const endDate = new Date(dateRange.endDate);
-
-              // Set time to start/end of day for accurate comparison
-              startDate.setHours(0, 0, 0, 0);
-              endDate.setHours(23, 59, 59, 999);
-
-              const isInRange =
-                ticketDate >= startDate && ticketDate <= endDate;
-
-              return isInRange;
-            });
-            console.log(`Filtered by date range:`, filteredTickets);
-          }
-
-          // ADDED: Apply search filter
-          if (searchTerm && searchTerm.trim() !== "") {
-            const searchLower = searchTerm.toLowerCase().trim();
-
-            filteredTickets = filteredTickets.filter((ticket) => {
-              // Define all searchable fields in your ticket data
-              const searchableFields = [
-                ticket.ticketId || "",
-                ticket.displayTicketId || "",
-                ticket.awbNo || "",
-                ticket.subCategory || "",
-                ticket.status || "",
-                ticket.priority || "",
-                ticket.issueType || "",
-                ticket.description || "",
-                ticket.comments || "",
-              ];
-
-              // Check if any field contains the search term
-              return searchableFields.some((field) => {
-                if (typeof field === "string") {
-                  return field.toLowerCase().includes(searchLower);
-                } else if (typeof field === "number") {
-                  return field.toString().includes(searchLower);
-                }
-                return false;
-              });
-            });
-            console.log(`Filtered by search "${searchTerm}":`, filteredTickets);
-          }
-
-          console.log(
-            `Available statuses:`,
-            allTickets.map((t) => t.status),
-          );
-          setTicketsData(filteredTickets);
+          setAllTickets(allTickets);
         } else {
           console.error("Invalid data format:", response.data);
-          setTicketsData([]);
+          setAllTickets([]);
         }
       } catch (error) {
         console.error("Error fetching tickets:", error);
-        setTicketsData([]);
+        setAllTickets([]);
       } finally {
         setLoading(false);
       }
@@ -122,13 +56,131 @@ const Tickets = ({ statusFilter, dateRange, searchTerm }) => {
     if (session?.user?.accountCode) {
       fetchTickets();
     }
+  }, [ticketRefreshTrigger, session?.user?.accountCode, server]);
+
+  // Apply all filters whenever any filter changes
+  useEffect(() => {
+    let filteredTickets = [...allTickets];
+
+    console.log("Applying filters:", {
+      statusFilter,
+      dateRange,
+      searchTerm,
+      filters,
+    });
+
+    // Apply status filter
+    if (statusFilter && statusFilter !== "All" && statusFilter !== "") {
+      filteredTickets = filteredTickets.filter(
+        (ticket) => ticket.status?.toLowerCase() === statusFilter.toLowerCase(),
+      );
+    }
+
+    // Apply date range filter
+    if (dateRange && dateRange.startDate && dateRange.endDate) {
+      filteredTickets = filteredTickets.filter((ticket) => {
+        const ticketDate = new Date(ticket.updatedAt || ticket.createdAt);
+        const startDate = new Date(dateRange.startDate);
+        const endDate = new Date(dateRange.endDate);
+
+        startDate.setHours(0, 0, 0, 0);
+        endDate.setHours(23, 59, 59, 999);
+
+        return ticketDate >= startDate && ticketDate <= endDate;
+      });
+    }
+
+    // Apply search filter
+    if (searchTerm && searchTerm.trim() !== "") {
+      const searchLower = searchTerm.toLowerCase().trim();
+      filteredTickets = filteredTickets.filter((ticket) => {
+        const searchableFields = [
+          ticket.ticketId || "",
+          ticket.displayTicketId || "",
+          ticket.awbNo || "",
+          ticket.subCategory || "",
+          ticket.status || "",
+          ticket.priority || "",
+          ticket.issueType || "",
+          ticket.description || "",
+          ticket.comments || "",
+        ];
+
+        return searchableFields.some((field) =>
+          field.toString().toLowerCase().includes(searchLower),
+        );
+      });
+    }
+
+    // Apply advanced filters from FilterCustomerSupport
+    // Apply advanced filters from FilterCustomerSupport
+    if (filters) {
+      // Filter by Ticket ID
+      if (filters.ticketId) {
+        filteredTickets = filteredTickets.filter(
+          (ticket) =>
+            ticket.ticketId === filters.ticketId.value ||
+            ticket.displayTicketId === filters.ticketId.value,
+        );
+      }
+
+      // Filter by AWB Number
+      if (filters.awbNumber) {
+        filteredTickets = filteredTickets.filter(
+          (ticket) => ticket.awbNo === filters.awbNumber.value,
+        );
+      }
+
+      // Filter by Sub Category
+      if (filters.subCategory) {
+        filteredTickets = filteredTickets.filter(
+          (ticket) => ticket.subCategory === filters.subCategory.value,
+        );
+      }
+
+      // Filter by Status
+      if (filters.status) {
+        filteredTickets = filteredTickets.filter(
+          (ticket) =>
+            ticket.status?.toLowerCase() ===
+            filters.status.value?.toLowerCase(),
+        );
+      }
+
+      // Filter by destination (country)
+      if (filters.destination) {
+        filteredTickets = filteredTickets.filter((ticket) => {
+          const destinationValue = filters.destination.value?.toLowerCase();
+          return (
+            ticket.destinationCountry?.toLowerCase() === destinationValue ||
+            ticket.country?.toLowerCase() === destinationValue ||
+            ticket.destination?.toLowerCase() === destinationValue
+          );
+        });
+      }
+
+      // Filter by consignment type
+      if (filters.consignmentType) {
+        filteredTickets = filteredTickets.filter((ticket) => {
+          if (filters.consignmentType.value === "consignee") {
+            return ticket.consigneeName || ticket.consignee;
+          } else if (filters.consignmentType.value === "consigner") {
+            return ticket.consignerName || ticket.consignor;
+          }
+          return true;
+        });
+      }
+    }
+
+    console.log("Final filtered tickets:", filteredTickets.length);
+    setTicketsData(filteredTickets);
+    setCurrentPage(1); // Reset to first page when filters change
   }, [
+    allTickets,
     statusFilter,
     dateRange,
-    searchTerm, // ADDED to dependencies
-    ticketRefreshTrigger,
-    session?.user?.accountCode,
-    server,
+    searchTerm,
+    filters,
     setTicketsData,
   ]);
 
@@ -136,11 +188,6 @@ const Tickets = ({ statusFilter, dateRange, searchTerm }) => {
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentItems = ticketsData.slice(indexOfFirstItem, indexOfLastItem);
-
-  // Reset to page 1 when data changes
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [ticketsData.length, statusFilter, dateRange, searchTerm]); // ADDED searchTerm
 
   // Checkbox logic
   const handleCheckboxChange = (id) => {
@@ -173,27 +220,35 @@ const Tickets = ({ statusFilter, dateRange, searchTerm }) => {
   const handleItemsPerPageChange = (e) => {
     const newItemsPerPage = parseInt(e.target.value);
     setItemsPerPage(newItemsPerPage);
-
-    // Recalculate current page to keep showing the same items
-    const newPage = Math.ceil((indexOfFirstItem + 1) / newItemsPerPage);
-    setCurrentPage(newPage || 1);
+    setCurrentPage(1);
   };
 
   const handleSelectAll = () => {
     if (selectedtickets.length === currentItems.length) {
-      // If all current items are selected, deselect all
       setSelectedtickets([]);
     } else {
-      // Select all current items
       const currentIds = currentItems.map((ticket) => ticket._id);
       setSelectedtickets(currentIds);
     }
   };
 
-  // Calculate if all current items are selected
   const areAllSelected =
     currentItems.length > 0 &&
     currentItems.every((ticket) => selectedtickets.includes(ticket._id));
+
+  // Helper function to get active filter count
+  // Helper function to get active filter count
+  const getActiveFilterCount = () => {
+    if (!filters) return 0;
+    let count = 0;
+    if (filters.ticketId) count++;
+    if (filters.awbNumber) count++;
+    if (filters.subCategory) count++;
+    if (filters.status) count++;
+    if (filters.destination) count++;
+    if (filters.consignmentType) count++;
+    return count;
+  };
 
   if (loading) {
     return (
@@ -205,12 +260,15 @@ const Tickets = ({ statusFilter, dateRange, searchTerm }) => {
 
   return (
     <div className="flex flex-col gap-2">
-      {/* Debug info - Updated */}
+      {/* Debug info */}
       <div className="text-xs text-gray-500 p-2 bg-gray-100 rounded">
         Total Tickets: {ticketsData.length} | Showing: {currentItems.length} |
         Page: {currentPage}/{Math.ceil(ticketsData.length / itemsPerPage) || 1}{" "}
-        | Filter: {statusFilter || "All"} |
-        {searchTerm ? ` Search: "${searchTerm}" | ` : " "}
+        | Status: {statusFilter || "All"} |
+        {searchTerm ? ` Search: "${searchTerm}" | ` : ""}
+        {getActiveFilterCount() > 0
+          ? ` Active Filters: ${getActiveFilterCount()} | `
+          : ""}
         Date Range:{" "}
         {dateRange
           ? `${new Date(dateRange.startDate).toLocaleDateString()} - ${new Date(dateRange.endDate).toLocaleDateString()}`
@@ -220,22 +278,44 @@ const Tickets = ({ statusFilter, dateRange, searchTerm }) => {
       {/* Search Results Header */}
       {searchTerm && ticketsData.length > 0 && (
         <div className="bg-blue-50 border-l-4 border-blue-500 p-3 rounded">
+          <div className="flex items-center">
+            <svg
+              className="w-5 h-5 text-blue-500 mr-2"
+              fill="currentColor"
+              viewBox="0 0 20 20"
+            >
+              <path
+                fillRule="evenodd"
+                d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"
+                clipRule="evenodd"
+              />
+            </svg>
+            <span className="text-sm text-blue-700">
+              Found <strong>{ticketsData.length}</strong> tickets matching{" "}
+              <strong>"{searchTerm}"</strong>
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Filters Applied Header */}
+      {getActiveFilterCount() > 0 && (
+        <div className="bg-green-50 border-l-4 border-green-500 p-3 rounded">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <svg
-                className="w-5 h-5 text-blue-500 mr-2"
+                className="w-5 h-5 text-green-500 mr-2"
                 fill="currentColor"
                 viewBox="0 0 20 20"
               >
                 <path
                   fillRule="evenodd"
-                  d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"
+                  d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z"
                   clipRule="evenodd"
                 />
               </svg>
-              <span className="text-sm text-blue-700">
-                Found <strong>{ticketsData.length}</strong> tickets matching 
-                <strong>{searchTerm}</strong>
+              <span className="text-sm text-green-700">
+                <strong>{getActiveFilterCount()}</strong> active filters applied
               </span>
             </div>
           </div>
@@ -273,20 +353,20 @@ const Tickets = ({ statusFilter, dateRange, searchTerm }) => {
               ticketData={ticket}
               selected={selectedtickets.includes(ticket._id)}
               onCheckboxChange={handleCheckboxChange}
-              searchTerm={searchTerm} // Pass search term for highlighting
+              searchTerm={searchTerm}
             />
           ))
         ) : (
           <div className="text-center py-8 text-gray-500 bg-white border rounded">
-            {ticketsData.length === 0
-              ? searchTerm
-                ? `No tickets found for "${searchTerm}"${statusFilter ? ` with status "${statusFilter}"` : ""}${dateRange ? " in the selected date range" : ""}`
+            {allTickets.length === 0
+              ? "No tickets found"
+              : searchTerm
+                ? `No tickets matching "${searchTerm}"`
                 : statusFilter && statusFilter !== "All"
-                  ? `No ${statusFilter} tickets found${dateRange ? " in the selected date range" : ""}`
-                  : dateRange
-                    ? "No tickets found in the selected date range"
-                    : "No tickets found"
-              : "No tickets on this page. Try going to the first page."}
+                  ? `No ${statusFilter} tickets found`
+                  : getActiveFilterCount() > 0
+                    ? "No tickets match the selected filters"
+                    : "No tickets found"}
           </div>
         )}
       </div>
