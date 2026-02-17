@@ -13,7 +13,8 @@ const Nav = ({
   onDateRangeChange,
   selectedLi,
   onLiChange,
-  onSearchChange, // ADDED: search handler
+  onSearchChange,
+  onFilterChange, // ADDED: filter handler
 }) => {
   const searchParams = useSearchParams();
   const [lineLeft, setLineLeft] = useState(0);
@@ -28,7 +29,7 @@ const Nav = ({
   ]);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const datePickerRef = useRef(null);
-  const [searchTerm, setSearchTerm] = useState(""); // ADDED: search term state
+  const [searchTerm, setSearchTerm] = useState("");
   const op = ["Open", "Closed", "In Progress"];
 
   const { setRaiseTicketWindow, ticketsData } = useContext(GlobalContext);
@@ -39,7 +40,7 @@ const Nav = ({
   useEffect(() => {
     const tab = searchParams.get("tab");
     if (tab === "help-articles") {
-      onLiChange(1); // Switch to Help Articles tab (index 1)
+      onLiChange(1);
     }
   }, [searchParams, onLiChange]);
 
@@ -97,28 +98,18 @@ const Nav = ({
     const newRange = [item.selection];
     setDateRange(newRange);
 
-    // Pass the date range to parent component
     if (onDateRangeChange) {
       onDateRangeChange({
         startDate: item.selection.startDate,
         endDate: item.selection.endDate,
       });
     }
-
-    console.log(
-      "Date range changed:",
-      item.selection.startDate,
-      "to",
-      item.selection.endDate,
-    );
   };
 
-  // ADDED: Handle search input change with debounce
   const handleSearchChange = (e) => {
     const value = e.target.value;
     setSearchTerm(value);
 
-    // Use debounce to avoid too many updates
     clearTimeout(window.searchTimeout);
     window.searchTimeout = setTimeout(() => {
       if (onSearchChange) {
@@ -127,7 +118,6 @@ const Nav = ({
     }, 300);
   };
 
-  // ADDED: Clear search handler
   const handleClearSearch = () => {
     setSearchTerm("");
     if (onSearchChange) {
@@ -208,17 +198,6 @@ const Nav = ({
       </div>
     );
   };
-
-  // Add debug logging
-  useEffect(() => {
-    console.log("Nav - ticketsData:", ticketsData);
-    console.log("Nav - Open tickets:", countOpenTickets(ticketsData));
-    console.log(
-      "Nav - In Progress tickets:",
-      countInProgressTickets(ticketsData),
-    );
-    console.log("Nav - Closed tickets:", countClosedTickets(ticketsData));
-  }, [ticketsData]);
 
   // Format date range display
   const formatDateRange = () => {

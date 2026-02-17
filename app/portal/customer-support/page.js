@@ -14,43 +14,51 @@ const Page = () => {
     endDate: new Date(),
   });
   const [selectedLi, setSelectedLi] = useState(0);
-  const [searchTerm, setSearchTerm] = useState(""); // ADDED: search term state
+  const [searchTerm, setSearchTerm] = useState("");
+  const [advancedFilters, setAdvancedFilters] = useState(null); // ADDED: state for advanced filters
 
   const handleDateRangeChange = (newDateRange) => {
     console.log("Page - Date range changed:", newDateRange);
     setDateRange(newDateRange);
   };
 
-  // ADDED: Handle search change
   const handleSearchChange = (searchValue) => {
     console.log("Page - Search term changed:", searchValue);
     setSearchTerm(searchValue);
   };
 
+  // ADDED: Handle advanced filters change
+  const handleFilterChange = (filters) => {
+    console.log("Page - Advanced filters changed:", filters);
+    setAdvancedFilters(filters);
+  };
+
   return (
     <main className="w-full px-9 flex flex-col gap-6 relative">
       <h1 className="font-bold text-2xl text-[#18181B]">Customer Support</h1>
-      {/* Pass search handler to Nav */}
+      {/* Pass filter handler to Nav */}
       <Nav
         onStatusChange={setStatusFilter}
         onDateRangeChange={handleDateRangeChange}
         selectedLi={selectedLi}
         onLiChange={setSelectedLi}
-        onSearchChange={handleSearchChange} // ADDED
+        onSearchChange={handleSearchChange}
+        onFilterChange={handleFilterChange} // ADDED
       />
       {selectedLi == 0 ? (
         <div>
-          {/* Pass search term to Tickets */}
+          {/* Pass advanced filters to Tickets */}
           <Tickets
             statusFilter={statusFilter}
             dateRange={dateRange}
-            searchTerm={searchTerm} // ADDED
+            searchTerm={searchTerm}
+            filters={advancedFilters} // ADDED
           />
           <div className="bg-white shadow-lg rounded-lg z-[100] fixed top-0 bottom-0 right-0">
             <RaiseTicket />
           </div>
           <div className="bg-white shadow-lg rounded-lg z-[100] fixed top-0 bottom-0 right-0">
-            <FilterCustomerSupport />
+            <FilterCustomerSupport onApplyFilters={handleFilterChange} /> {/* ADDED onApplyFilters prop */}
           </div>
         </div>
       ) : (
