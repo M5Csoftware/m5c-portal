@@ -269,9 +269,11 @@ const NotificationModal = () => {
                   >
                     <div className={`absolute left-[1px] top-0 h-full w-1 rounded-l-lg ${notification.priority === "high"
                       ? "bg-red-500"
-                      : notification.priority === "medium"
-                        ? "bg-yellow-400"
-                        : "bg-gray-300"
+                      : notification.priority === "low"
+                        ? "bg-green-400"
+                        : notification.priority === "medium"
+                          ? "bg-yellow-400"
+                          : "bg-gray-300"
                       }`} />
 
                     {/* Title + Time */}
