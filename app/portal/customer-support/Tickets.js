@@ -291,8 +291,8 @@ const Tickets = ({
               />
             </svg>
             <span className="text-sm text-blue-700">
-              Found <strong>{ticketsData.length}</strong> tickets matching{" "}
-              <strong>"{searchTerm}"</strong>
+              Found <strong>{ticketsData.length}</strong> tickets matching
+              <strong>{searchTerm}</strong>
             </span>
           </div>
         </div>
