@@ -156,9 +156,14 @@ export function NotificationPage({ onClose }) {
   };
 
   const filteredNotifications = notifications.filter((notification) => {
+    const title = (notification.title || "").toLowerCase();
+    const awb = (notification.awb || "").toLowerCase();
+    const search = (searchTerm || "").toLowerCase();
+
     const matchesSearch =
-      notification.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      notification.awb.includes(searchTerm);
+      title.includes(search) ||
+      awb.includes(search);
+
     const matchesFilter =
       filterType === "All" || notification.type === filterType;
     return matchesSearch && matchesFilter;
