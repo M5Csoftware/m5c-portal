@@ -20,7 +20,7 @@ const NotificationModal = () => {
   const [loading, setLoading] = useState(false);
 
   const [unreadCount, setUnreadCount] = useState(0);
-
+  const [initialNotification, setInitialNotification] = useState(null);
   const notificationSoundRef = useRef(null);
 
   useEffect(() => {
@@ -115,7 +115,7 @@ const NotificationModal = () => {
       setUnreadCount(res.data.count);
 
       if (res.data.count > prevCountRef.current) {
-        notificationSoundRef.current?.play().catch(() => {});
+        notificationSoundRef.current?.play().catch(() => { });
       }
 
       prevCountRef.current = res.data.count;
@@ -140,6 +140,7 @@ const NotificationModal = () => {
 
   const handleViewAll = () => {
     setIsOpen(false);
+    setInitialNotification(null);
     setTimeout(() => setShowFullPage(true), 180);
   };
 
@@ -235,28 +236,24 @@ const NotificationModal = () => {
                     key={notification._id}
                     onClick={() => {
                       markAsRead(notification._id);
-
-                      if (notification.link) {
-                        router.push(notification.link);
-                        setIsOpen(false);
-                      }
+                      setInitialNotification(notification);
+                      setIsOpen(false);
+                      setTimeout(() => setShowFullPage(true), 180);
                     }}
-                    className={`p-4 pb-2  rounded-l-lg border-l-0 rounded-xl cursor-pointer transition-all border relative ${
-                      notification.isRead
-                        ? "bg-white border-gray-200 hover:bg-gray-50"
-                        : "bg-[#fff0f3] border-[#ffd4dc] hover:bg-[#ffe3e8]"
-                    }`}
+                    className={`p-4 pb-2  rounded-l-lg border-l-0 rounded-xl cursor-pointer transition-all border relative ${notification.isRead
+                      ? "bg-white border-gray-200 hover:bg-gray-50"
+                      : "bg-[#fff0f3] border-[#ffd4dc] hover:bg-[#ffe3e8]"
+                      }`}
                   >
                     <div
-                      className={`absolute left-[1px] top-0 h-full w-1 rounded-l-lg ${
-                        notification.priority === "high"
-                          ? "bg-red-500"
-                          : notification.priority === "low"
-                            ? "bg-green-400"
-                            : notification.priority === "medium"
-                              ? "bg-yellow-400"
-                              : "bg-gray-300"
-                      }`}
+                      className={`absolute left-[1px] top-0 h-full w-1 rounded-l-lg ${notification.priority === "high"
+                        ? "bg-red-500"
+                        : notification.priority === "low"
+                          ? "bg-green-400"
+                          : notification.priority === "medium"
+                            ? "bg-yellow-400"
+                            : "bg-gray-300"
+                        }`}
                     />
 
                     {/* Title + Time */}
@@ -316,7 +313,12 @@ const NotificationModal = () => {
       )}
 
       {/* FULL PAGE MODAL */}
-      {showFullPage && <NotificationPage onClose={handleCloseFullPage} />}
+      {showFullPage && (
+        <NotificationPage
+          onClose={handleCloseFullPage}
+          initialNotification={initialNotification}
+        />
+      )}
     </div>
   );
 };
