@@ -8,7 +8,6 @@ import axios from "axios";
 import { ExternalLinkIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 
-
 const NotificationModal = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [showFullPage, setShowFullPage] = useState(false);
@@ -28,14 +27,12 @@ const NotificationModal = () => {
     notificationSoundRef.current = new Audio("/notifications.mp3");
   }, []);
 
-
   useEffect(() => {
     if (session?.user?.accountCode) {
       fetchRecentNotifications();
       fetchUnreadCount();
     }
   }, [session?.user?.accountCode]);
-
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -65,15 +62,13 @@ const NotificationModal = () => {
       fetchUnreadCount();
     }, 10000);
 
-
-
     return () => clearInterval(interval);
   }, [session?.user?.accountCode]);
 
-
   const markAsRead = async (id) => {
     try {
-      await axios.patch(`${process.env.NEXT_PUBLIC_SERVER}/notifications/${id}`, {
+      await axios.put(`${process.env.NEXT_PUBLIC_SERVER}/notifications`, {
+        id,
         isRead: true,
       });
 
@@ -84,13 +79,10 @@ const NotificationModal = () => {
     }
   };
 
-
   const fetchRecentNotifications = async () => {
     setLoading(true);
 
-
     try {
-
       const res = await getNotifications({
         page: 1,
         limit: 15,
@@ -103,11 +95,9 @@ const NotificationModal = () => {
 
       setNotifications(res.notifications);
       setLoading(false);
-
     } catch (error) {
       console.error("Error fetching recent notifications:", error);
       setLoading(false);
-
     }
   };
 
@@ -119,41 +109,34 @@ const NotificationModal = () => {
           params: {
             accountCode: session?.user?.accountCode,
           },
-        }
+        },
       );
 
       setUnreadCount(res.data.count);
 
       if (res.data.count > prevCountRef.current) {
-        notificationSoundRef.current?.play().catch(() => { });
+        notificationSoundRef.current?.play().catch(() => {});
       }
 
       prevCountRef.current = res.data.count;
-
-
     } catch (err) {
       console.error("Unread count error:", err);
-
     }
   };
-
 
   const markAllAsRead = async () => {
     try {
       await axios.patch(
         `${process.env.NEXT_PUBLIC_SERVER}/notifications/mark-all`,
-        { accountCode: session?.user?.accountCode }
+        { accountCode: session?.user?.accountCode },
       );
 
       fetchRecentNotifications();
       fetchUnreadCount();
-
     } catch (err) {
       console.error(err);
     }
   };
-
-
 
   const handleViewAll = () => {
     setIsOpen(false);
@@ -174,12 +157,10 @@ const NotificationModal = () => {
     return () => clearInterval(interval);
   }, [isOpen]);
 
-
   // sort unread first
-  const unread = notifications.filter(n => !n.isRead);
-  const read = notifications.filter(n => n.isRead);
+  const unread = notifications.filter((n) => !n.isRead);
+  const read = notifications.filter((n) => n.isRead);
   const sortedNotifications = [...unread, ...read];
-
 
   return (
     <div className="relative">
@@ -190,7 +171,6 @@ const NotificationModal = () => {
           if (!isOpen) {
             fetchRecentNotifications();
             fetchUnreadCount();
-
           }
           setIsOpen(!isOpen);
         }}
@@ -250,7 +230,6 @@ const NotificationModal = () => {
                   minute: "2-digit",
                 });
 
-
                 return (
                   <div
                     key={notification._id}
@@ -262,24 +241,28 @@ const NotificationModal = () => {
                         setIsOpen(false);
                       }
                     }}
-                    className={`p-4 pb-2  rounded-l-lg border-l-0 rounded-xl cursor-pointer transition-all border relative ${notification.isRead
-                      ? "bg-white border-gray-200 hover:bg-gray-50"
-                      : "bg-[#fff0f3] border-[#ffd4dc] hover:bg-[#ffe3e8]"
-                      }`}
+                    className={`p-4 pb-2  rounded-l-lg border-l-0 rounded-xl cursor-pointer transition-all border relative ${
+                      notification.isRead
+                        ? "bg-white border-gray-200 hover:bg-gray-50"
+                        : "bg-[#fff0f3] border-[#ffd4dc] hover:bg-[#ffe3e8]"
+                    }`}
                   >
-                    <div className={`absolute left-[1px] top-0 h-full w-1 rounded-l-lg ${notification.priority === "high"
-                      ? "bg-red-500"
-                      : notification.priority === "low"
-                        ? "bg-green-400"
-                        : notification.priority === "medium"
-                          ? "bg-yellow-400"
-                          : "bg-gray-300"
-                      }`} />
+                    <div
+                      className={`absolute left-[1px] top-0 h-full w-1 rounded-l-lg ${
+                        notification.priority === "high"
+                          ? "bg-red-500"
+                          : notification.priority === "low"
+                            ? "bg-green-400"
+                            : notification.priority === "medium"
+                              ? "bg-yellow-400"
+                              : "bg-gray-300"
+                      }`}
+                    />
 
                     {/* Title + Time */}
                     <div className="flex justify-between items-start">
-                      <p className="text-sm font-extrabold text-gray-700 leading-snug">
-                        {notification.title}
+                      <p className="text-sm font-extrabold tracking-normal text-gray-700 leading-snug">
+                        {notification.event}
                       </p>
                       <span className="text-[11px] text-gray-400 ml-3 whitespace-nowrap">
                         {formattedDateTime}
@@ -287,15 +270,22 @@ const NotificationModal = () => {
                     </div>
 
                     {/* Description */}
-                    <p className="text-xs text-gray-600 mt-1 leading-relaxed">
-                      {notification.description}
-                    </p>
+                    <div className="leading-tight">
+                      <p className="text-xs font-thin text-gray-800 mt-1">
+                        {notification.description}
+                      </p>
+                      <span className="text-xs tracking-wide leading-tight">
+                        {notification.message}
+                      </span>
+                    </div>
 
                     {/* Red indicator for unread */}
-                    <div className="flex justify-between group">
+                    <div className="flex justify-between group mt-1">
                       {notification.link && (
                         <div className="flex gap-1 text-[#EA1B40] items-center text-xs mt-1">
-                          <span className="font-semibold tracking-wide">Action link</span>
+                          <span className="font-semibold tracking-wide">
+                            Action link
+                          </span>
                           <ExternalLinkIcon width={12} height={12} />
                         </div>
                       )}
@@ -309,7 +299,6 @@ const NotificationModal = () => {
                         </div>
                       )}
                     </div>
-
                   </div>
                 );
               })
@@ -327,12 +316,9 @@ const NotificationModal = () => {
       )}
 
       {/* FULL PAGE MODAL */}
-      {showFullPage && (
-        <NotificationPage onClose={handleCloseFullPage} />
-      )}
+      {showFullPage && <NotificationPage onClose={handleCloseFullPage} />}
     </div>
   );
-
 };
 
 export default NotificationModal;
