@@ -268,7 +268,7 @@ const NotificationModal = () => {
 
                     {/* Description */}
                     <div className="leading-tight">
-                      <p className="text-xs font-thin text-gray-800 mt-1">
+                      <p className="text-xs font-medium text-gray-800 mt-1">
                         {notification.description}
                       </p>
                       <span className="text-xs tracking-wide leading-tight">
