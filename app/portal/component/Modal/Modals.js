@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import React from "react";
 import ExcelJS from "exceljs";
@@ -1040,9 +1040,9 @@ export const InsufficientBalanceModal = ({
   bookedCount = 0,
   skippedEntries = [],
 }) => {
-  if (!isOpen) return null;
-
   const [downloading, setDownloading] = useState(false);
+
+  if (!isOpen) return null;
 
   const handleDownload = async () => {
     if (skippedEntries.length === 0) return;
