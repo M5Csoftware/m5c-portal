@@ -1042,7 +1042,7 @@ export const InsufficientBalanceModal = ({
 }) => {
   if (!isOpen) return null;
 
-  const [downloading, setDownloading] = React.useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   const handleDownload = async () => {
     if (skippedEntries.length === 0) return;
