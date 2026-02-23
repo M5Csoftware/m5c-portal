@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useForm } from "react-hook-form";
 import { useContext, useEffect, useRef, useState } from "react";
 import * as XLSX from "xlsx";
+import axios from "axios";
 import { GlobalContext } from "../GlobalContext";
 import { useSession } from "next-auth/react";
 import {
@@ -16,6 +17,7 @@ import {
   ValidationErrorModal,
   ZoneValidationErrorModal,
   SectorDestinationValidationModal,
+  InsufficientBalanceModal,
 } from "@/app/portal/component/Modal/Modals";
 
 // List of common Indian zip code prefixes (first 2 digits) for accurate validation
@@ -208,6 +210,7 @@ export default function BulkUploadPage() {
     useState([]);
   const { data: session, status } = useSession();
   const [accountCode, setAccountCode] = useState("");
+  const [originName, setOriginName] = useState(""); // Resolved from branch → entities
 
   // Modal states
   const [showValidationModal, setShowValidationModal] = useState(false);
@@ -219,6 +222,11 @@ export default function BulkUploadPage() {
   const [showZoneValidationModal, setShowZoneValidationModal] = useState(false);
   const [showSectorDestinationModal, setShowSectorDestinationModal] =
     useState(false);
+  const [showInsufficientBalanceModal, setShowInsufficientBalanceModal] = useState(false);
+  const [insufficientBalanceData, setInsufficientBalanceData] = useState({
+    bookedCount: 0,
+    skippedEntries: [],
+  });
 
   const [modalData, setModalData] = useState({
     title: "",
@@ -245,6 +253,21 @@ export default function BulkUploadPage() {
       // Also store in localStorage for backward compatibility
       if (typeof window !== "undefined") {
         localStorage.setItem("accountCode", userAccountCode || "DEFAULT");
+      }
+
+      // Fetch origin from customer branch → entities lookup
+      if (userAccountCode) {
+        fetch(`/api/get-origin?accountCode=${userAccountCode}`)
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.success && data.originName) {
+              console.log(`✅ Origin resolved: ${data.branchCode} → ${data.originName}`);
+              setOriginName(data.originName);
+            } else {
+              console.warn("⚠️ Could not resolve origin:", data.message);
+            }
+          })
+          .catch((err) => console.error("❌ Error fetching origin:", err));
       }
     }
   }, [session, status]);
@@ -563,7 +586,7 @@ export default function BulkUploadPage() {
       status: "Shipment Created!",
       date: new Date().toISOString(),
       sector: (excelRow.Sector?.toString().trim() || "").toUpperCase(),
-      origin: excelRow.Origin?.toString().trim() || "",
+      origin: originName || "",
       destination: (
         excelRow.Destination?.toString().trim() || ""
       ).toUpperCase(),
@@ -727,7 +750,7 @@ export default function BulkUploadPage() {
 
     // Add table display fields
     Object.assign(shipment, {
-      origin: excelRow.Origin,
+      origin: originName || "",
       sector: excelRow.Sector,
       destination: excelRow.Destination,
       service: excelRow.ServiceName,
@@ -757,7 +780,7 @@ export default function BulkUploadPage() {
   };
 
   const bulkUploadColumns = [
-    { key: "origin", label: "Origin" },
+    // { key: "origin", label: "Origin" },
     { key: "sector", label: "Sector" },
     { key: "destination", label: "Destination" },
     { key: "service", label: "Service" },
@@ -1074,7 +1097,7 @@ export default function BulkUploadPage() {
           const mappedRows = excelRows.map((row, index) => {
             const transformed = transformExcelToShipment(row, index);
             return {
-              origin: row.Origin,
+              // origin: row.Origin,
               sector: row.Sector,
               destination: row.Destination,
               service: row.ServiceName,
@@ -1158,7 +1181,7 @@ export default function BulkUploadPage() {
       const mappedRows = excelRows.map((row, index) => {
         const transformed = transformExcelToShipment(row, index);
         return {
-          origin: row.Origin,
+          // origin: row.Origin,
           sector: row.Sector,
           destination: row.Destination,
           service: row.ServiceName,
@@ -1391,111 +1414,166 @@ export default function BulkUploadPage() {
   const proceedWithUpload = async (shipmentsWithRates) => {
     try {
       setLoading(true);
-
       const currentAccountCode = getAccountCode();
-      const uploadPayload = {
-        shipments: shipmentsWithRates,
-        accountCode: currentAccountCode,
-        timestamp: new Date().toISOString(),
-        totalShipments: shipmentsWithRates.length,
-      };
+      const successfulShipments = [];
+      const failedShipments = [];        // any non-balance failures
+      const balanceFailedShipments = []; // shipments skipped due to insufficient balance
+      let stopUpload = false;
+      let stopReason = "";
+      let stoppedByBalance = false;
 
-      console.log("🚀 Sending upload request:", {
-        payloadSize: JSON.stringify(uploadPayload).length,
-        shipmentCount: uploadPayload.shipments.length,
-        accountCode: currentAccountCode,
-      });
+      // STEP-BY-STEP SEQUENTIAL UPLOAD
+      for (let i = 0; i < shipmentsWithRates.length; i++) {
+        const shipment = shipmentsWithRates[i];
 
-      const response = await fetch(`${server}/bulk-upload/portal`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(uploadPayload),
-      });
+        // Once stopped (by balance or other reason), mark remaining as balance-skipped
+        if (stopUpload) {
+          balanceFailedShipments.push({
+            ...shipment,
+            errorReason: stoppedByBalance
+              ? "Insufficient balance"
+              : `Skipped: ${stopReason || "Process stopped"}`,
+          });
+          continue;
+        }
 
-      console.log(
-        "📡 Upload response status:",
-        response.status,
-        response.statusText,
-      );
+        // 1. Check current balance before each shipment (fresh fetch every time)
+        try {
+          const balanceRes = await axios.get(
+            `${server}/portal/update-balance?accountCode=${currentAccountCode}&t=${new Date().getTime()}`
+          );
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("❌ Upload error details:", errorText);
+          if (balanceRes.data.success) {
+            const currentBalance = Number(balanceRes.data.data.leftOverBalance) || 0;
+            const shipmentAmount = Number(shipment.totalAmt) || 0;
+
+            console.log(
+              `💰 Balance check [shipment ${i + 1}]: balance=₹${currentBalance}, shipmentAmt=₹${shipmentAmount}`
+            );
+
+            // Block if balance is <= 0 OR if balance is less than the shipment cost
+            if (currentBalance <= 0 || currentBalance < shipmentAmount) {
+              stopUpload = true;
+              stoppedByBalance = true;
+              stopReason =
+                currentBalance <= 0
+                  ? `Balance is ₹${currentBalance} (must be > 0)`
+                  : `Balance ₹${currentBalance} is less than shipment cost ₹${shipmentAmount}`;
+              balanceFailedShipments.push({
+                ...shipment,
+                errorReason:
+                  currentBalance <= 0
+                    ? `Insufficient balance (₹${currentBalance})`
+                    : `Insufficient balance (₹${currentBalance} < ₹${shipmentAmount})`,
+              });
+              console.warn(`⛔ Stopping upload: ${stopReason}`);
+              continue;
+            }
+          }
+        } catch (balanceError) {
+          console.error("Error checking balance:", balanceError);
+          stopUpload = true;
+          stoppedByBalance = true;
+          stopReason = "Failed to verify balance";
+          balanceFailedShipments.push({
+            ...shipment,
+            errorReason: "Could not verify balance",
+          });
+          continue;
+        }
+
+        // 2. Proceed with single shipment upload
+        const singleUploadPayload = {
+          shipments: [shipment],
+          accountCode: currentAccountCode,
+          timestamp: new Date().toISOString(),
+          totalShipments: 1,
+        };
 
         try {
-          const errorData = JSON.parse(errorText);
+          const response = await axios.post(`${server}/bulk-upload/portal`, singleUploadPayload);
 
-          if (
-            errorData.message === "Zone validation failed" &&
-            errorData.errors
-          ) {
-            setShowZoneValidationModal(true);
-            setSectorDestinationServiceErrors(errorData.errors);
-            setLoading(false);
-            return;
+          if (response.data.success && response.data.newRecords > 0) {
+            successfulShipments.push(shipment);
+          } else {
+            const msg = response.data.message || "Failed to book shipment";
+            const isBalanceError =
+              msg.toLowerCase().includes("balance") ||
+              msg.toLowerCase().includes("insufficient");
+
+            if (isBalanceError) {
+              stopUpload = true;
+              stoppedByBalance = true;
+              stopReason = "Insufficient balance (Server reported)";
+              balanceFailedShipments.push({ ...shipment, errorReason: "Insufficient balance" });
+            } else {
+              failedShipments.push({ ...shipment, errorReason: msg });
+            }
           }
+        } catch (uploadError) {
+          console.error("Single shipment upload error:", uploadError);
+          const errorMsg = uploadError.response?.data?.message || uploadError.message;
+          const isBalanceError =
+            errorMsg.toLowerCase().includes("balance") ||
+            errorMsg.toLowerCase().includes("insufficient");
 
-          throw new Error(
-            `Upload failed: ${errorData.message || response.status}`,
-          );
-        } catch (e) {
-          throw new Error(`Upload failed: ${response.status} - ${errorText}`);
+          if (isBalanceError) {
+            stopUpload = true;
+            stoppedByBalance = true;
+            stopReason = "Insufficient balance (Server Error)";
+            balanceFailedShipments.push({ ...shipment, errorReason: "Insufficient balance" });
+          } else {
+            failedShipments.push({ ...shipment, errorReason: errorMsg });
+          }
         }
       }
 
-      const data = await response.json();
-      console.log("✅ Upload response data:", data);
-
-      if (data.success) {
-        const { newRecords, duplicates, balanceUpdate } = data;
-
-        const details = [`New records: ${newRecords}`];
-
-        if (duplicates > 0) {
-          details.push(`Duplicates skipped: ${duplicates}`);
-        }
-
-        if (balanceUpdate) {
-          details.push(
-            `Customer balance updated: ₹${(balanceUpdate.oldBalance - balanceUpdate.difference).toFixed(2)}`,
-            `Change: ₹${balanceUpdate.difference > 0 ? "-" : ""}${balanceUpdate.difference.toFixed(2)}`,
-          );
-        }
-
-        setModalData({
-          title: "Upload Completed Successfully",
-          message: "Your shipments have been uploaded successfully!",
-          details: details,
-        });
-        setShowSuccessModal(true);
-
-        if (newRecords > 0) {
-          setRowData([]);
-          setExcelData([]);
-          setFileName("");
-          setValidationErrors([]);
-          setSectorDestinationServiceErrors([]);
-
-          if (fileInputRef.current) {
-            fileInputRef.current.value = "";
-          }
-        }
-      } else {
-        setModalData({
-          title: "Upload Failed",
-          message: data.message || "Upload failed. Please try again.",
-          errors: [data.message || "Unknown error occurred"],
-        });
-        setShowErrorModal(true);
+      // ── Clear uploaded data from table if any succeeded ──
+      const totalSuccessful = successfulShipments.length;
+      if (totalSuccessful > 0) {
+        setRowData([]);
+        setExcelData([]);
+        setFileName("");
+        setValidationErrors([]);
+        setSectorDestinationServiceErrors([]);
+        if (fileInputRef.current) fileInputRef.current.value = "";
       }
-    } catch (error) {
-      console.error("Upload error:", error);
+
+      // ── Show dedicated Insufficient Balance modal if any entries were stopped ──
+      if (balanceFailedShipments.length > 0) {
+        setInsufficientBalanceData({
+          bookedCount: totalSuccessful,
+          skippedEntries: balanceFailedShipments,
+        });
+        setShowInsufficientBalanceModal(true);
+        return; // Don't show any other modal
+      }
+
+      // ── Show regular result modal for non-balance failures ──
+      if (totalSuccessful > 0 || failedShipments.length > 0) {
+        setModalData({
+          title: failedShipments.length === 0
+            ? "Upload Completed Successfully"
+            : "Upload Summary",
+          message: failedShipments.length === 0
+            ? "All shipments have been uploaded successfully!"
+            : `Uploaded ${totalSuccessful} of ${shipmentsWithRates.length} shipments. ${failedShipments.length} failed.`,
+          details: [`Successfully booked: ${totalSuccessful}`],
+          errors: failedShipments.map((s) => `${s.reference || s.awbNo || "Row"}: ${s.errorReason}`),
+        });
+
+        if (failedShipments.length > 0) {
+          setShowErrorModal(true);
+        } else {
+          setShowSuccessModal(true);
+        }
+      }
+    } catch (globalError) {
+      console.error("Global upload handler error:", globalError);
       setModalData({
         title: "Upload Error",
-        message: "An error occurred while uploading data",
-        errors: [error.message, "", "Check console for details."],
+        message: "A critical error occurred during the sequential upload process",
+        errors: [globalError.message],
       });
       setShowErrorModal(true);
     } finally {
@@ -1510,6 +1588,13 @@ export default function BulkUploadPage() {
   return (
     <>
       {/* MODALS */}
+      <InsufficientBalanceModal
+        isOpen={showInsufficientBalanceModal}
+        onClose={() => setShowInsufficientBalanceModal(false)}
+        bookedCount={insufficientBalanceData.bookedCount}
+        skippedEntries={insufficientBalanceData.skippedEntries}
+      />
+
       <ValidationErrorModal
         isOpen={showValidationModal}
         onClose={() => setShowValidationModal(false)}
