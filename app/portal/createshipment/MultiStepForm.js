@@ -33,7 +33,7 @@ const MultiStepForm = () => {
   const [creditLimitError, setCreditLimitError] = useState("");
   const [isShipmentOnHold, setIsShipmentOnHold] = useState(false);
   const [holdMessage, setHoldMessage] = useState("");
-  
+
   const searchParams = useSearchParams();
   const router = useRouter();
   const editAwb = searchParams.get("editAwb");
@@ -181,6 +181,7 @@ const MultiStepForm = () => {
         accountCode: session?.user?.accountCode,
         customerName: session?.user?.name,
         source: "Portal",
+        entryType: "Portal",
         userId: session?.user?.id,
         chargeableWt: chargeableWt,
       };
@@ -211,7 +212,7 @@ const MultiStepForm = () => {
         }
 
         console.log("Balance updated successfully:", balanceResponse.data.data);
-        
+
         // Refresh balance in Checkout component
         if (typeof window !== 'undefined' && window.refreshBalance) {
           window.refreshBalance();
@@ -236,7 +237,7 @@ const MultiStepForm = () => {
 
       // Continue with shipment creation (even if balance update failed due to credit limit)
       console.log("Creating shipment with payload:", payload);
-      
+
       const newShipment = await axios.post(
         `${server}/portal/create-shipment`,
         payload
@@ -244,14 +245,14 @@ const MultiStepForm = () => {
 
       const successAwb = newShipment.data.awbNo;
       console.log("Shipment Created", successAwb);
-      
+
       // Check if shipment was placed on hold
       if (newShipment.data.isHold) {
         setIsShipmentOnHold(true);
         setHoldMessage(newShipment.data.message || "Shipment created but placed on hold due to insufficient credit");
         setCreditLimitError("⚠️ " + (newShipment.data.message || "Credit Limit Exceeded! Shipment placed on hold."));
       }
-      
+
       setSuccessAwbNo(successAwb);
 
       // Don't reset the form if on hold - keep the data visible
@@ -260,7 +261,7 @@ const MultiStepForm = () => {
         setValue("accountCode", session?.user?.accountCode);
         setStep(1);
       }
-      
+
       setVisibleFlag(true);
 
       setTimeout(() => {
@@ -270,10 +271,10 @@ const MultiStepForm = () => {
           router.push("/portal/shipments");
         }
       }, 3000);
-      
+
     } catch (error) {
       console.error("Error Creating/Updating shipment:", error);
-      
+
       if (error.response?.data?.error) {
         alert(`Error: ${error.response.data.error}`);
       } else {
@@ -402,9 +403,8 @@ const MultiStepForm = () => {
                 <li
                   key={item.num}
                   onClick={() => setStep(item.num)}
-                  className={`flex items-center gap-1 cursor-pointer transition-colors ${
-                    step === item.num && "text-[var(--primary-color)]"
-                  }`}
+                  className={`flex items-center gap-1 cursor-pointer transition-colors ${step === item.num && "text-[var(--primary-color)]"
+                    }`}
                 >
                   <span>{item.label}</span>
                   {idx < 5 && (

@@ -4,6 +4,7 @@ const ShipmentSchema = new mongoose.Schema(
   {
     awbNo: { type: String, default: "", unique: true },
     accountCode: { type: String, required: true },
+    entryType: { type: String, default: "Portal" },
 
     status: { type: String, default: "Shipment Created!" },
     date: { type: Date, required: true },

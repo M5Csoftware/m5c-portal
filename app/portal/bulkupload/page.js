@@ -559,6 +559,7 @@ export default function BulkUploadPage() {
 
       // Account and basic info - USING ACTUAL ACCOUNT CODE FROM SESSION
       accountCode: currentAccountCode,
+      entryType: "Portal",
       status: "Shipment Created!",
       date: new Date().toISOString(),
       sector: (excelRow.Sector?.toString().trim() || "").toUpperCase(),
@@ -1568,7 +1569,7 @@ export default function BulkUploadPage() {
           setShowWarningModal(false);
           setLoading(false);
         }}
-        onConfirm={modalData.onConfirm || (() => {})}
+        onConfirm={modalData.onConfirm || (() => { })}
         title={modalData.title}
         message={modalData.message}
         confirmText="Continue Upload"
