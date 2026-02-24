@@ -79,7 +79,7 @@ function Checkout({
         setBalanceVersion(prev => prev + 1);
       };
     }
-    
+
     return () => {
       if (typeof window !== 'undefined') {
         delete window.refreshBalance;
@@ -130,29 +130,28 @@ function Checkout({
     }
   }, [selectedServiceLocal, filteredServicesWithRates]);
 
-  // Calculate remaining balance after shipment
-  const remainingBalance = currentBalance - summary.grandTotal;
-  const hasInsufficientBalance = remainingBalance < 0 && (currentBalance + currentCredit) < summary.grandTotal;
-  const isLowBalance = currentBalance > 0 && currentBalance < summary.grandTotal;
-  const willUseCredit = currentBalance < summary.grandTotal && currentBalance + currentCredit >= summary.grandTotal;
+  // Calculate remaining balance after shipment (negative = has money, positive = debt)
+  // Adding shipmentAmount moves balance toward positive (less money)
+  const remainingBalance = currentBalance + summary.grandTotal;
+  const hasInsufficientBalance = remainingBalance > 0 && (remainingBalance - currentCredit) > 0;
+  const isLowBalance = currentBalance < 0 && remainingBalance > currentBalance && remainingBalance <= 0;
+  const willUseCredit = remainingBalance > 0 && (remainingBalance - currentCredit) <= 0;
 
   return (
     <div className="bg-white rounded-3xl p-10 flex flex-col gap-2">
       <div className="flex gap-2 items-center">
         <div className="relative w-9 h-9">
           <Image
-            className={`absolute left-0 right-0 top-0 bottom-0 transition-opacity duration-500 ${
-              step <= 6 ? "opacity-100" : "opacity-0"
-            }`}
+            className={`absolute left-0 right-0 top-0 bottom-0 transition-opacity duration-500 ${step <= 6 ? "opacity-100" : "opacity-0"
+              }`}
             src="/create-shipment/6.svg"
             alt="step 6"
             width={36}
             height={36}
           />
           <Image
-            className={`absolute left-0 right-0 top-0 bottom-0 transition-opacity duration-500 ${
-              step > 6 ? "opacity-100" : "opacity-0"
-            }`}
+            className={`absolute left-0 right-0 top-0 bottom-0 transition-opacity duration-500 ${step > 6 ? "opacity-100" : "opacity-0"
+              }`}
             src="/create-shipment/done-red.svg"
             alt="step 6 completed"
             width={36}
@@ -163,9 +162,8 @@ function Checkout({
       </div>
 
       <div
-        className={`flex flex-col gap-5 overflow-hidden transition-max-height duration-500 ease-in-out ${
-          step === 6 ? "max-h-[2000px]" : "max-h-0"
-        }`}
+        className={`flex flex-col gap-5 overflow-hidden transition-max-height duration-500 ease-in-out ${step === 6 ? "max-h-[2000px]" : "max-h-0"
+          }`}
       >
         <div className="text-xs bg-gradient-to-br from-white to-gray-50 p-8 rounded-2xl border border-gray-200 w-full mx-auto">
           {/* Header */}
@@ -188,7 +186,7 @@ function Checkout({
                 <div>
                   <p className="font-semibold text-yellow-800">Shipment on Hold</p>
                   <p className="text-yellow-700 text-xs mt-1">
-                    This shipment has been placed on hold due to insufficient credit. 
+                    This shipment has been placed on hold due to insufficient credit.
                     Please recharge your account to release the shipment.
                   </p>
                 </div>
@@ -214,24 +212,26 @@ function Checkout({
           )}
 
           {/* Balance Display */}
-          <div className={`bg-gradient-to-r rounded-xl p-4 mb-6 ${
-            hasOutstanding 
-              ? 'from-red-50 to-orange-50 border border-red-200' 
-              : 'from-blue-50 to-indigo-50 border border-blue-200'
-          }`}>
+          <div className={`bg-gradient-to-r rounded-xl p-4 mb-6 ${hasOutstanding
+            ? 'from-red-50 to-orange-50 border border-red-200'
+            : 'from-blue-50 to-indigo-50 border border-blue-200'
+            }`}>
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-semibold text-gray-700 mb-1">
-                  {hasOutstanding ? 'Outstanding Balance' : 'Current Balance'}
+                  {hasOutstanding ? 'Outstanding Balance' : 'Available Balance'}
                 </p>
-                <p className={`text-lg font-bold ${
-                  hasOutstanding ? 'text-red-600' : 'text-blue-600'
-                }`}>
+                <p className={`text-lg font-bold ${hasOutstanding ? 'text-red-600' : currentBalance < 0 ? 'text-blue-600' : 'text-red-600'
+                  }`}>
                   {loadingBalance
                     ? "Loading..."
-                    : hasOutstanding 
+                    : hasOutstanding
                       ? `-₹${outstandingAmount.toFixed(2)}`
-                      : `₹${currentBalance.toFixed(2)}`}
+                      : currentBalance < 0
+                        ? `₹${Math.abs(currentBalance).toFixed(2)}`
+                        : currentBalance === 0
+                          ? '₹0.00'
+                          : `In Debt: ₹${currentBalance.toFixed(2)}`}
                 </p>
                 {currentCredit > 0 && (
                   <p className="text-xs text-gray-500 mt-1">
@@ -244,31 +244,34 @@ function Checkout({
                   Balance After Shipment
                 </p>
                 <p
-                  className={`text-lg font-bold ${
-                    isShipmentOnHold 
-                      ? "text-yellow-600"
-                      : hasInsufficientBalance 
-                        ? "text-red-600" 
-                        : "text-green-600"
-                  }`}
+                  className={`text-lg font-bold ${isShipmentOnHold
+                    ? "text-yellow-600"
+                    : hasInsufficientBalance
+                      ? "text-red-600"
+                      : "text-green-600"
+                    }`}
                 >
-                  {isShipmentOnHold 
+                  {isShipmentOnHold
                     ? "On Hold"
-                    : `₹${remainingBalance.toFixed(2)}`}
+                    : remainingBalance < 0
+                      ? `₹${Math.abs(remainingBalance).toFixed(2)}`
+                      : remainingBalance === 0
+                        ? '₹0.00'
+                        : `-₹${remainingBalance.toFixed(2)}`}
                 </p>
               </div>
             </div>
-            
+
             {/* Low Balance Warning */}
             {isLowBalance && !isShipmentOnHold && !hasInsufficientBalance && (
               <div className="mt-3 p-2 bg-yellow-100 rounded text-yellow-700 text-xs font-semibold flex items-center gap-2">
                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                 </svg>
-                ⚠️ Your current balance is low. Remaining ₹{(summary.grandTotal - currentBalance).toFixed(2)} will be deducted from your credit limit.
+                ⚠️ Your balance is getting low after this shipment.
               </div>
             )}
-            
+
             {/* Will Use Credit */}
             {willUseCredit && !isShipmentOnHold && !hasInsufficientBalance && (
               <div className="mt-3 p-2 bg-purple-100 rounded text-purple-700 text-xs font-semibold flex items-center gap-2">
@@ -279,7 +282,7 @@ function Checkout({
                 💳 Credit will be used for this transaction.
               </div>
             )}
-            
+
             {/* Insufficient Balance */}
             {hasInsufficientBalance && !isShipmentOnHold && (
               <div className="mt-3 p-2 bg-red-100 rounded text-red-700 text-xs font-semibold flex items-center gap-2">
@@ -301,7 +304,7 @@ function Checkout({
                 <div>
                   <p className="font-semibold text-orange-800">Outstanding Balance</p>
                   <p className="text-orange-700 text-xs mt-1">
-                    You have an outstanding balance of ₹{outstandingAmount.toFixed(2)}. 
+                    You have an outstanding balance of ₹{outstandingAmount.toFixed(2)}.
                     This amount will be adjusted first from your payment.
                   </p>
                 </div>
@@ -373,11 +376,10 @@ function Checkout({
           </div>
 
           {/* Total */}
-          <div className={`bg-gradient-to-r rounded-xl p-4 mb-6 ${
-            isShipmentOnHold 
-              ? 'from-yellow-600 to-yellow-500'
-              : 'from-[var(--primary-color)] to-red-600'
-          }`}>
+          <div className={`bg-gradient-to-r rounded-xl p-4 mb-6 ${isShipmentOnHold
+            ? 'from-yellow-600 to-yellow-500'
+            : 'from-[var(--primary-color)] to-red-600'
+            }`}>
             <div className="flex justify-between items-center">
               <div>
                 <span className="text-white font-semibold text-lg">
@@ -419,19 +421,18 @@ function Checkout({
           {/* CTA Button */}
           <div className="flex justify-end">
             <button
-              className={`font-bold py-4 px-6 rounded-xl flex items-center justify-center space-x-2 transition-colors ${
-                isShipmentOnHold
-                  ? 'bg-yellow-600 text-white hover:bg-yellow-700'
-                  : 'bg-[var(--primary-color)] text-white hover:bg-red-600'
-              } disabled:opacity-50 disabled:cursor-not-allowed`}
+              className={`font-bold py-4 px-6 rounded-xl flex items-center justify-center space-x-2 transition-colors ${isShipmentOnHold
+                ? 'bg-yellow-600 text-white hover:bg-yellow-700'
+                : 'bg-[var(--primary-color)] text-white hover:bg-red-600'
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
               type="submit"
               disabled={!summary.service}
             >
               <span>
-                {isShipmentOnHold 
-                  ? 'Shipment on Hold' 
-                  : isEditMode 
-                    ? 'Update Shipment' 
+                {isShipmentOnHold
+                  ? 'Shipment on Hold'
+                  : isEditMode
+                    ? 'Update Shipment'
                     : 'Create Shipment'}
               </span>
               <svg
