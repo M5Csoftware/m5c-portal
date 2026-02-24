@@ -1,6 +1,7 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import React from "react";
+import ExcelJS from "exceljs";
 
 export const Modal = ({
   isOpen,
@@ -266,11 +267,10 @@ export const ConfirmModal = ({
           onConfirm();
           onClose();
         }}
-        className={`px-6 py-2 rounded-lg text-white font-semibold ${
-          isDestructive
-            ? "bg-red-600 hover:bg-red-700"
-            : "bg-[var(--primary-color)] hover:opacity-90"
-        }`}
+        className={`px-6 py-2 rounded-lg text-white font-semibold ${isDestructive
+          ? "bg-red-600 hover:bg-red-700"
+          : "bg-[var(--primary-color)] hover:opacity-90"
+          }`}
       >
         {confirmText}
       </button>
@@ -457,8 +457,6 @@ export const ValidationErrorModal = ({ isOpen, onClose, validationErrors }) => {
   );
 };
 
-// Add this to your Modals.js file
-
 export function ZoneValidationErrorModal({ isOpen, onClose, zoneErrors }) {
   if (!isOpen) return null;
 
@@ -595,9 +593,6 @@ export function ZoneValidationErrorModal({ isOpen, onClose, zoneErrors }) {
   );
 }
 
-
-
-
 export const SectorDestinationValidationModal = ({
   isOpen,
   onClose,
@@ -605,7 +600,6 @@ export const SectorDestinationValidationModal = ({
 }) => {
   if (!isOpen) return null;
 
-  // Group errors by combination for better display
   const groupedErrors = validationErrors.reduce((acc, error) => {
     const key = `${error.sector}|${error.destination}|${error.service}`;
     if (!acc[key]) {
@@ -623,7 +617,7 @@ export const SectorDestinationValidationModal = ({
   const uniqueErrors = Object.values(groupedErrors);
   const totalAffectedRows = validationErrors.reduce(
     (sum, err) => sum + (err.rowIndices?.length || 1),
-    0
+    0,
   );
 
   return (
@@ -834,6 +828,422 @@ export const SectorDestinationValidationModal = ({
             className="px-6 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors font-medium shadow-sm"
           >
             I Understand - Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Column definitions — mirrors the sample Excel exactly (no Origin column)
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Fill legend (from the original file):
+//   RED    : FFC00000  → required field   → white font  (theme 0)
+//   YELLOW : FFFFFF00  → optional field   → black font  (theme 1 → use "FF000000")
+//   GREY   : theme-6   → dimension field  → yellow font (FFFFFF00)
+//
+// We replicate theme-6 as the closest standard grey: FF808080
+// ExcelJS uses ARGB strings.
+
+const COL_DEFS = [
+  // header             key (on shipment obj)            fill          fontColor  width
+  ["Sector", "sector", "RED", "WHITE", 18],
+  ["Destination", "destination", "RED", "WHITE", 14],
+  ["ServiceName", "service", "RED", "WHITE", 36.4],
+  ["GoodsType", "goodstype", "RED", "WHITE", 19.3],
+  ["PCS", "pcs", "RED", "WHITE", 8],
+  ["Length", "__length", "GREY", "YELLOW", 21.9],
+  ["Breadth", "__breadth", "GREY", "YELLOW", 14],
+  ["Height", "__height", "GREY", "YELLOW", 14],
+  ["ActualWeight", "__actualWeight", "GREY", "WHITE", 23.9],
+  ["HSNCode", "__hsnCode", "GREY", "WHITE", 44],
+  ["Quantity", "__quantity", "GREY", "WHITE", 22.3],
+  ["Rate", "__rate", "GREY", "WHITE", 25.7],
+  ["ConsignorName", "shipperFullName", "RED", "WHITE", 16.4],
+  ["ConsignorAddressLine1", "shipperAddressLine1", "RED", "WHITE", 23.9],
+  ["ConsignorAddressLine2", "shipperAddressLine2", "YELLOW", "BLACK", 25.9],
+  ["ConsignorCity", "shipperCity", "RED", "WHITE", 14.3],
+  ["ConsignorState", "shipperState", "RED", "WHITE", 15.6],
+  ["ConsignorPincode", "shipperPincode", "RED", "WHITE", 18.6],
+  ["ConsignorTelephone", "shipperPhoneNumber", "RED", "WHITE", 21.3],
+  ["ConsignorKycType", "shipperKycType", "RED", "WHITE", 19.1],
+  ["ConsignorKycNo", "shipperKycNumber", "RED", "WHITE", 17.3],
+  ["ConsigneeName", "receiverFullName", "RED", "WHITE", 16.9],
+  ["ConsigneeAddressLine1", "receiverAddressLine1", "RED", "WHITE", 24.3],
+  ["ConsigneeAddressLine2", "receiverAddressLine2", "YELLOW", "BLACK", 25.9],
+  ["ConsigneeCity", "receiverCity", "RED", "WHITE", 14],
+  ["ConsigneeState", "receiverState", "RED", "WHITE", 14],
+  ["ConsigneeZipcode", "receiverPincode", "RED", "WHITE", 14],
+  ["ConsigneeTelephone", "receiverPhoneNumber", "RED", "WHITE", 14],
+  ["ConsigneeEmailId", "receiverEmail", "YELLOW", "BLACK", 14],
+  ["ReferenceNo", "reference", "YELLOW", "BLACK", 14],
+  ["ShipmentContent", "__content", "RED", "WHITE", 20],
+  ["InvoiceValue", "totalInvoiceValue", "RED", "WHITE", 23.6],
+  ["InvoiceCurrency", "currency", "RED", "WHITE", 24.6],
+];
+
+const FILL_COLORS = {
+  RED: "FFC00000",
+  YELLOW: "FFFFFF00",
+  GREY: "FF808080",
+};
+
+const FONT_COLORS = {
+  WHITE: "FFFFFFFF",
+  BLACK: "FF000000",
+  YELLOW: "FFFFFF00",
+};
+
+const thin = { style: "thin" };
+
+/**
+ * Extract comma-separated box dimension / item values from a full shipment object.
+ */
+function extractShipmentFields(entry) {
+  const boxes = Array.isArray(entry.boxes) ? entry.boxes : [];
+  const allItems = Object.values(entry.shipmentAndPackageDetails || {}).flat();
+
+  return {
+    __length: boxes.map((b) => b.length ?? 0).join(","),
+    __breadth: boxes.map((b) => b.width ?? 0).join(","),
+    __height: boxes.map((b) => b.height ?? 0).join(","),
+    __actualWeight: boxes.map((b) => b.actualWt ?? 0).join(","),
+    __hsnCode: allItems.map((i) => i.hsnNo ?? "").join(","),
+    __quantity: allItems.map((i) => i.qty ?? "").join(","),
+    __rate: allItems.map((i) => i.rate ?? "").join(","),
+    __content: allItems.map((i) => i.context ?? "").join(","),
+  };
+}
+
+/**
+ * Build and trigger download of a styled Excel file using ExcelJS.
+ * Matches the original sample file styling exactly.
+ */
+async function downloadPendingShipmentsExcel(skippedEntries) {
+  const ExcelJS = (await import("exceljs")).default;
+  const workbook = new ExcelJS.Workbook();
+
+  workbook.creator = "M5C Portal";
+  workbook.created = new Date();
+  workbook.modified = new Date();
+
+  const sheet = workbook.addWorksheet("Pending Shipments");
+
+  // ── 1. Define columns (sets widths) ──────────────────────────────────────
+  sheet.columns = COL_DEFS.map(([header, , , , width]) => ({
+    header: "",      // we'll style the header row manually
+    width,
+  }));
+
+  // ── 2. Write & style header row ──────────────────────────────────────────
+  const headerRow = sheet.getRow(1);
+  headerRow.height = 20;
+
+  COL_DEFS.forEach(([header, , fillKey, fontColorKey], colIdx) => {
+    const cell = headerRow.getCell(colIdx + 1);
+    cell.value = header;
+
+    cell.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: FILL_COLORS[fillKey] },
+    };
+
+    cell.font = {
+      name: "Calibri",
+      size: 11,
+      bold: true,
+      color: { argb: FONT_COLORS[fontColorKey] },
+    };
+
+    cell.alignment = {
+      horizontal: "center",
+      vertical: "middle",
+      wrapText: false,
+    };
+
+    cell.border = {
+      top: thin,
+      left: thin,
+      bottom: thin,
+      right: thin,
+    };
+  });
+
+  // ── 3. Write data rows ───────────────────────────────────────────────────
+  skippedEntries.forEach((entry) => {
+    const extras = extractShipmentFields(entry);
+    const merged = { ...entry, ...extras };
+
+    const rowValues = COL_DEFS.map(([, key]) => {
+      const val = merged[key];
+      return val !== undefined && val !== null ? val : "";
+    });
+
+    const dataRow = sheet.addRow(rowValues);
+    dataRow.height = 18;
+
+    dataRow.eachCell({ includeEmpty: true }, (cell) => {
+      cell.font = {
+        name: "Calibri",
+        size: 11,
+        bold: false,
+      };
+      cell.alignment = {
+        horizontal: "left",
+        vertical: "middle",
+        wrapText: false,
+      };
+      cell.border = {
+        top: thin,
+        left: thin,
+        bottom: thin,
+        right: thin,
+      };
+    });
+  });
+
+  // ── 4. Freeze the header row ──────────────────────────────────────────────
+  sheet.views = [{ state: "frozen", ySplit: 1 }];
+
+  // ── 5. Trigger browser download ───────────────────────────────────────────
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  });
+  const url = URL.createObjectURL(blob);
+  const timestamp = new Date().toISOString().slice(0, 10);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = `pending_shipments_${timestamp}.xlsx`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * InsufficientBalanceModal
+ *
+ * Props:
+ *  isOpen          – boolean
+ *  onClose         – () => void
+ *  bookedCount     – number of shipments successfully booked
+ *  skippedEntries  – array of full shipment objects that were NOT uploaded
+ */
+export const InsufficientBalanceModal = ({
+  isOpen,
+  onClose,
+  bookedCount = 0,
+  skippedEntries = [],
+}) => {
+  const [downloading, setDownloading] = useState(false);
+
+  if (!isOpen) return null;
+
+  const handleDownload = async () => {
+    if (skippedEntries.length === 0) return;
+    setDownloading(true);
+    try {
+      await downloadPendingShipmentsExcel(skippedEntries);
+    } catch (err) {
+      console.error("Excel download failed:", err);
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+
+        {/* ── Header ─────────────────────────────────────────────────────── */}
+        <div className="bg-gradient-to-r from-orange-500 to-amber-500 px-6 py-4 flex items-center justify-between flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="bg-white bg-opacity-20 rounded-full p-2">
+              <svg
+                className="w-6 h-6 text-white"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-white">
+                Insufficient Balance — Upload Stopped
+              </h2>
+              <p className="text-orange-100 text-sm">
+                {bookedCount} shipment{bookedCount !== 1 ? "s" : ""} booked •{" "}
+                {skippedEntries.length} not uploaded
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-white hover:text-orange-100 transition-colors"
+          >
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </div>
+
+        {/* ── Body ───────────────────────────────────────────────────────── */}
+        <div className="p-6 overflow-y-auto flex-1">
+
+          {/* Summary cards */}
+          <div className="grid grid-cols-2 gap-4 mb-5">
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
+              <p className="text-3xl font-bold text-green-700">{bookedCount}</p>
+              <p className="text-sm text-green-600 font-medium mt-1">
+                ✓ Successfully Booked
+              </p>
+            </div>
+            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 text-center">
+              <p className="text-3xl font-bold text-orange-700">
+                {skippedEntries.length}
+              </p>
+              <p className="text-sm text-orange-600 font-medium mt-1">
+                ✗ Not Uploaded (Insufficient Balance)
+              </p>
+            </div>
+          </div>
+
+          {/* Notice */}
+          <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded mb-5">
+            <p className="text-sm text-amber-800">
+              <strong>Why did this happen?</strong> Your balance was insufficient
+              to book the following shipments. Please top up your balance and
+              re-upload these entries using the downloaded Excel file.
+            </p>
+          </div>
+
+          {/* Skipped entries table */}
+          {skippedEntries.length > 0 && (
+            <div className="border border-gray-200 rounded-lg overflow-hidden">
+              <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+                <h3 className="font-semibold text-gray-700 text-sm">
+                  Entries NOT Uploaded ({skippedEntries.length})
+                </h3>
+                {/* Download button — inside table header */}
+                <button
+                  onClick={handleDownload}
+                  disabled={downloading}
+                  className="flex items-center gap-2 px-4 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors font-semibold shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {downloading ? (
+                    <>
+                      <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                      </svg>
+                      Generating…
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                          d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                      </svg>
+                      Download Excel
+                    </>
+                  )}
+                </button>
+              </div>
+
+              <div className="overflow-x-auto max-h-64 overflow-y-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-100 sticky top-0">
+                    <tr>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">#</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Receiver Name</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Reference No</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Amount (₹)</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Reason</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-100">
+                    {skippedEntries.map((entry, idx) => (
+                      <tr
+                        key={idx}
+                        className={idx % 2 === 0 ? "bg-white" : "bg-orange-50"}
+                      >
+                        <td className="px-4 py-2 text-sm text-gray-500">{idx + 1}</td>
+                        <td className="px-4 py-2 text-sm font-medium text-gray-800">
+                          {entry.receiverFullName || "—"}
+                        </td>
+                        <td className="px-4 py-2 text-sm text-gray-600 font-mono">
+                          {entry.reference || "—"}
+                        </td>
+                        <td className="px-4 py-2 text-sm text-gray-700 font-semibold">
+                          {entry.totalAmt
+                            ? `₹${Number(entry.totalAmt).toFixed(2)}`
+                            : "—"}
+                        </td>
+                        <td className="px-4 py-2 text-xs text-orange-700">
+                          {entry.errorReason || "Insufficient balance"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ── Footer ─────────────────────────────────────────────────────── */}
+        <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex items-center justify-between flex-shrink-0">
+          {/* Download button — in footer too for convenience */}
+          <button
+            onClick={handleDownload}
+            disabled={downloading || skippedEntries.length === 0}
+            className="flex items-center gap-2 px-5 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {downloading ? (
+              <>
+                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                </svg>
+                Generating Excel…
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Download Pending Shipments (.xlsx)
+              </>
+            )}
+          </button>
+
+          <button
+            onClick={onClose}
+            className="px-6 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors font-semibold shadow-sm"
+          >
+            Understood — Close
           </button>
         </div>
       </div>
