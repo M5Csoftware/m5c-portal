@@ -336,15 +336,15 @@ const SearchModal = ({
                             ref={(el) => (itemsRef.current[flatIndex] = el)}
                             onClick={() => handleItemClick(item)}
                             className={`p-4 rounded-xl border-2 transition-all duration-200 cursor-pointer group ${isSelected
-                                ? "border-[var(--primary-color)] bg-blue-50 shadow-md"
-                                : "border-gray-200 hover:border-[var(--primary-color)] hover:bg-blue-50"
+                              ? "border-[var(--primary-color)] bg-blue-50 shadow-md"
+                              : "border-gray-200 hover:border-[var(--primary-color)] hover:bg-blue-50"
                               }`}
                           >
                             <div className="flex items-start gap-3">
                               <div
                                 className={`p-2 rounded-lg ${isSelected
-                                    ? "bg-[var(--primary-color)]"
-                                    : "bg-gray-200"
+                                  ? "bg-[var(--primary-color)]"
+                                  : "bg-gray-200"
                                   } transition-colors`}
                               >
                                 <Image
@@ -353,8 +353,8 @@ const SearchModal = ({
                                   src={item.icon}
                                   alt={item.title}
                                   className={`${isSelected
-                                      ? "filter brightness-0 invert"
-                                      : ""
+                                    ? "filter brightness-0 invert"
+                                    : ""
                                     }`}
                                 />
                               </div>
@@ -362,8 +362,8 @@ const SearchModal = ({
                                 <div className="flex items-center gap-2 mb-1">
                                   <h5
                                     className={`font-semibold truncate ${isSelected
-                                        ? "text-[var(--primary-color)]"
-                                        : "text-gray-800"
+                                      ? "text-[var(--primary-color)]"
+                                      : "text-gray-800"
                                       }`}
                                   >
                                     {item.title}
@@ -393,8 +393,8 @@ const SearchModal = ({
                                 src="/arrow-right.svg"
                                 alt="Go"
                                 className={`opacity-0 transition-opacity ${isSelected
-                                    ? "opacity-100"
-                                    : "group-hover:opacity-100"
+                                  ? "opacity-100"
+                                  : "group-hover:opacity-100"
                                   }`}
                               />
                             </div>
@@ -428,7 +428,7 @@ const formatCurrency = (amount) => {
   return new Intl.NumberFormat("en-IN", {
     style: "decimal",
     maximumFractionDigits: 0,
-  }).format(amount);
+  }).format(Math.abs(amount));
 };
 
 const Navbar = () => {
@@ -601,8 +601,8 @@ const Navbar = () => {
         <div className="relative">
           <button
             className={`cursor-pointer px-4 py-2.5 flex gap-2 text-sm ${isQuickActionActive
-                ? "text-white bg-[var(--primary-color)]"
-                : "bg-[#E2E8F0] hover:bg-[#dbe3ee]"
+              ? "text-white bg-[var(--primary-color)]"
+              : "bg-[#E2E8F0] hover:bg-[#dbe3ee]"
               } transition-all rounded-lg flex items-center`}
             onClick={() => setIsQuickActionActive(!isQuickActionActive)}
           >
@@ -732,8 +732,8 @@ const Navbar = () => {
         <div className="relative flex">
           <div
             className={`flex items-center gap-2 bg-white px-4 py-2.5 rounded-lg border-2 transition-all duration-200 ${isSearchFocused
-                ? "border-[var(--primary-color)] shadow-lg"
-                : "border-gray-200 hover:border-gray-300"
+              ? "border-[var(--primary-color)] shadow-lg"
+              : "border-gray-200 hover:border-gray-300"
               }`}
           >
             <Image

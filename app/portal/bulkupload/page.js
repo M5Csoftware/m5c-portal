@@ -1447,24 +1447,26 @@ export default function BulkUploadPage() {
             const currentBalance = Number(balanceRes.data.data.leftOverBalance) || 0;
             const shipmentAmount = Number(shipment.totalAmt) || 0;
 
+            const availableFunds = currentBalance < 0 ? Math.abs(currentBalance) : 0;
             console.log(
-              `💰 Balance check [shipment ${i + 1}]: balance=₹${currentBalance}, shipmentAmt=₹${shipmentAmount}`
+              `💰 Balance check [shipment ${i + 1}]: balance=₹${currentBalance}, available=₹${availableFunds}, shipmentAmt=₹${shipmentAmount}`
             );
 
-            // Block if balance is <= 0 OR if balance is less than the shipment cost
-            if (currentBalance <= 0 || currentBalance < shipmentAmount) {
+            // Negative balance = has money, Positive = debt
+            // Block if already in debt (>= 0) or if adding shipment would cause debt (balance + amount > 0)
+            if (currentBalance >= 0 || (currentBalance + shipmentAmount) > 0) {
               stopUpload = true;
               stoppedByBalance = true;
               stopReason =
-                currentBalance <= 0
-                  ? `Balance is ₹${currentBalance} (must be > 0)`
-                  : `Balance ₹${currentBalance} is less than shipment cost ₹${shipmentAmount}`;
+                currentBalance >= 0
+                  ? `No available funds (balance is ₹${currentBalance})`
+                  : `Available funds ₹${availableFunds} is less than shipment cost ₹${shipmentAmount}`;
               balanceFailedShipments.push({
                 ...shipment,
                 errorReason:
-                  currentBalance <= 0
-                    ? `Insufficient balance (₹${currentBalance})`
-                    : `Insufficient balance (₹${currentBalance} < ₹${shipmentAmount})`,
+                  currentBalance >= 0
+                    ? `Insufficient balance (no funds available)`
+                    : `Insufficient balance (₹${availableFunds} available < ₹${shipmentAmount} needed)`,
               });
               console.warn(`⛔ Stopping upload: ${stopReason}`);
               continue;
