@@ -269,10 +269,16 @@ function RaiseTicket() {
               <div className="text-xs w-full flex flex-col gap-6">
                 <div>
                   <input
-                    {...register("awbNumber")}
+                    {...register("awbNumber", { required: "AWB number is required" })}
                     placeholder="Enter AWB Number"
-                    className="w-full border border-[#979797] rounded-[4px] px-6 py-4"
+                    className={`w-full border rounded-[4px] px-6 py-4 ${errors.awbNumber ? "border-red-500" : "border-[#979797]"
+                      }`}
                   />
+                  {errors.awbNumber && (
+                    <span className="text-red-500 text-xs mt-1 block">
+                      {errors.awbNumber.message}
+                    </span>
+                  )}
                 </div>
                 <div className="flex justify-between gap-6">
                   <div className="w-full">
