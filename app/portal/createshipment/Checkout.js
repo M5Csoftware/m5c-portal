@@ -40,7 +40,25 @@ function Checkout({
 
   // Watch form values for display
   const chargeableWt = watch("chargeableWt") || 0;
+  const roundedChargeableWt = chargeableWt
+    ? Math.ceil(Number(chargeableWt))
+    : 0;
+
   const totalPcs = watch("boxes")?.length || 0;
+
+  // Calculate total invoice value across ALL boxes
+  const boxes = watch("boxes") || [];
+  const shipmentAndPackageDetails = watch("shipmentAndPackageDetails") || {};
+  const totalInvoiceValue = Object.values(shipmentAndPackageDetails).reduce(
+    (total, boxItems) => {
+      if (!Array.isArray(boxItems)) return total;
+      return (
+        total +
+        boxItems.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0)
+      );
+    },
+    0,
+  );
 
   const cgstPercent = 9;
   const sgstPercent = 9;
@@ -53,14 +71,16 @@ function Checkout({
       setLoadingBalance(true);
       try {
         const response = await axios.get(
-          `${server}/portal/update-balance?accountCode=${session?.user?.accountCode}`
+          `${server}/portal/update-balance?accountCode=${session?.user?.accountCode}`,
         );
 
         if (response.data.success) {
           setCurrentBalance(Number(response.data.data.leftOverBalance) || 0);
           setCurrentCredit(Number(response.data.data.creditLimit) || 0);
           setHasOutstanding(response.data.data.hasOutstanding || false);
-          setOutstandingAmount(Number(response.data.data.outstandingAmount) || 0);
+          setOutstandingAmount(
+            Number(response.data.data.outstandingAmount) || 0,
+          );
         }
       } catch (error) {
         console.error("Error fetching balance:", error);
@@ -74,19 +94,19 @@ function Checkout({
 
   // Expose refresh method to parent
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       window.refreshBalance = () => {
-        setBalanceVersion(prev => prev + 1);
+        setBalanceVersion((prev) => prev + 1);
       };
     }
-
     return () => {
-      if (typeof window !== 'undefined') {
+      if (typeof window !== "undefined") {
         delete window.refreshBalance;
       }
     };
   }, []);
 
+  // Update summary when service changes
   useEffect(() => {
     if (
       !selectedServiceLocal ||
@@ -97,7 +117,7 @@ function Checkout({
     }
 
     const matchingObject = filteredServicesWithRates.find(
-      (item) => item.service === selectedServiceLocal
+      (item) => item.service === selectedServiceLocal,
     );
 
     if (matchingObject) {
@@ -130,28 +150,64 @@ function Checkout({
     }
   }, [selectedServiceLocal, filteredServicesWithRates]);
 
-  // Calculate remaining balance after shipment (negative = has money, positive = debt)
-  // Adding shipmentAmount moves balance toward positive (less money)
+  // ✅ FIXED: Subtract shipment cost from current balance (NOT add)
+  // Negative balance = customer has money (in credit)
+  // Positive balance = customer owes money (in debt)
   const remainingBalance = currentBalance + summary.grandTotal;
-  const hasInsufficientBalance = remainingBalance > 0 && (remainingBalance - currentCredit) > 0;
-  const isLowBalance = currentBalance < 0 && remainingBalance > currentBalance && remainingBalance <= 0;
-  const willUseCredit = remainingBalance > 0 && (remainingBalance - currentCredit) <= 0;
+
+  // ✅ Check if customer has sufficient funds/credit
+  const hasInsufficientBalance = () => {
+    if (currentBalance <= 0) {
+      // Customer has money (negative or zero balance)
+      // They can spend until balance becomes positive and exceeds credit limit
+      return remainingBalance > 0 && remainingBalance > currentCredit;
+    } else {
+      // Customer owes money (positive balance)
+      // They need credit limit to cover the entire shipment
+      return summary.grandTotal > currentCredit;
+    }
+  };
+
+  const isInsufficient = hasInsufficientBalance();
+
+  // ✅ Check if balance is getting low (for customers with money)
+  const isLowBalance =
+    currentBalance < 0 && // They have money
+    remainingBalance > -1000; // Will have less than ₹1000 credit after shipment
+
+  // ✅ Check if credit will be used
+  const willUseCredit =
+    currentBalance > 0 || // Already in debt
+    (currentBalance < 0 && remainingBalance > 0); // Will go into debt
+
+  // Format balance for display
+  const formatBalance = (balance) => {
+    if (balance < 0) {
+      return `₹${Math.abs(balance).toFixed(2)} (In Credit)`;
+    } else if (balance > 0) {
+      return `-₹${balance.toFixed(2)} (Outstanding)`;
+    } else {
+      return `₹0.00`;
+    }
+  };
 
   return (
     <div className="bg-white rounded-3xl p-10 flex flex-col gap-2">
       <div className="flex gap-2 items-center">
         <div className="relative w-9 h-9">
           <Image
-            className={`absolute left-0 right-0 top-0 bottom-0 transition-opacity duration-500 ${step <= 6 ? "opacity-100" : "opacity-0"
-              }`}
+            className={`absolute left-0 right-0 top-0 bottom-0 transition-opacity duration-500 ${
+              step <= 6 ? "opacity-100" : "opacity-0"
+            }`}
             src="/create-shipment/6.svg"
             alt="step 6"
             width={36}
             height={36}
           />
           <Image
-            className={`absolute left-0 right-0 top-0 bottom-0 transition-opacity duration-500 ${step > 6 ? "opacity-100" : "opacity-0"
-              }`}
+            className={`absolute left-0 right-0 top-0 bottom-0 transition-opacity duration-500 ${
+              step > 6 ? "opacity-100" : "opacity-0"
+            }`}
             src="/create-shipment/done-red.svg"
             alt="step 6 completed"
             width={36}
@@ -162,8 +218,9 @@ function Checkout({
       </div>
 
       <div
-        className={`flex flex-col gap-5 overflow-hidden transition-max-height duration-500 ease-in-out ${step === 6 ? "max-h-[2000px]" : "max-h-0"
-          }`}
+        className={`flex flex-col gap-5 overflow-hidden transition-max-height duration-500 ease-in-out ${
+          step === 6 ? "max-h-[2000px]" : "max-h-0"
+        }`}
       >
         <div className="text-xs bg-gradient-to-br from-white to-gray-50 p-8 rounded-2xl border border-gray-200 w-full mx-auto">
           {/* Header */}
@@ -180,14 +237,25 @@ function Checkout({
           {isShipmentOnHold && (
             <div className="bg-yellow-50 border border-yellow-300 rounded-xl p-4 mb-6">
               <div className="flex items-start gap-3">
-                <svg className="w-5 h-5 text-yellow-600 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                <svg
+                  className="w-5 h-5 text-yellow-600 mt-0.5"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                    clipRule="evenodd"
+                  />
                 </svg>
                 <div>
-                  <p className="font-semibold text-yellow-800">Shipment on Hold</p>
+                  <p className="font-semibold text-yellow-800">
+                    Shipment on Hold
+                  </p>
                   <p className="text-yellow-700 text-xs mt-1">
-                    This shipment has been placed on hold due to insufficient credit.
-                    Please recharge your account to release the shipment.
+                    This shipment has been placed on hold due to insufficient
+                    credit. Please recharge your account to release the
+                    shipment.
                   </p>
                 </div>
               </div>
@@ -198,11 +266,21 @@ function Checkout({
           {creditLimitError && !isShipmentOnHold && (
             <div className="bg-red-50 border border-red-300 rounded-xl p-4 mb-6">
               <div className="flex items-start gap-3">
-                <svg className="w-5 h-5 text-red-600 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                <svg
+                  className="w-5 h-5 text-red-600 mt-0.5"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                    clipRule="evenodd"
+                  />
                 </svg>
                 <div>
-                  <p className="font-semibold text-red-800">Credit Limit Exceeded</p>
+                  <p className="font-semibold text-red-800">
+                    Credit Limit Exceeded
+                  </p>
                   <p className="text-red-700 text-xs mt-1">
                     {creditLimitError}
                   </p>
@@ -212,30 +290,32 @@ function Checkout({
           )}
 
           {/* Balance Display */}
-          <div className={`bg-gradient-to-r rounded-xl p-4 mb-6 ${hasOutstanding
-            ? 'from-red-50 to-orange-50 border border-red-200'
-            : 'from-blue-50 to-indigo-50 border border-blue-200'
-            }`}>
+          <div
+            className={`bg-gradient-to-r rounded-xl p-4 mb-6 ${
+              currentBalance > 0
+                ? "from-red-50 to-orange-50 border border-red-200"
+                : "from-green-50 to-emerald-50 border border-green-200"
+            }`}
+          >
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-semibold text-gray-700 mb-1">
-                  {hasOutstanding ? 'Outstanding Balance' : 'Available Balance'}
+                  {currentBalance > 0
+                    ? "Outstanding Balance"
+                    : "Available Credit"}
                 </p>
-                <p className={`text-lg font-bold ${hasOutstanding ? 'text-red-600' : currentBalance < 0 ? 'text-blue-600' : 'text-red-600'
-                  }`}>
+                <p
+                  className={`text-lg font-bold ${
+                    currentBalance > 0 ? "text-red-600" : "text-green-600"
+                  }`}
+                >
                   {loadingBalance
                     ? "Loading..."
-                    : hasOutstanding
-                      ? `-₹${outstandingAmount.toFixed(2)}`
-                      : currentBalance < 0
-                        ? `₹${Math.abs(currentBalance).toFixed(2)}`
-                        : currentBalance === 0
-                          ? '₹0.00'
-                          : `In Debt: ₹${currentBalance.toFixed(2)}`}
+                    : formatBalance(currentBalance)}
                 </p>
                 {currentCredit > 0 && (
                   <p className="text-xs text-gray-500 mt-1">
-                    Available Credit: ₹{currentCredit.toFixed(2)}
+                    Credit Limit: ₹{currentCredit.toFixed(2)}
                   </p>
                 )}
               </div>
@@ -244,93 +324,109 @@ function Checkout({
                   Balance After Shipment
                 </p>
                 <p
-                  className={`text-lg font-bold ${isShipmentOnHold
-                    ? "text-yellow-600"
-                    : hasInsufficientBalance
-                      ? "text-red-600"
-                      : "text-green-600"
-                    }`}
+                  className={`text-lg font-bold ${
+                    isShipmentOnHold
+                      ? "text-yellow-600"
+                      : isInsufficient
+                        ? "text-red-600"
+                        : remainingBalance <= 0
+                          ? "text-green-600"
+                          : "text-orange-600"
+                  }`}
                 >
-                  {isShipmentOnHold
-                    ? "On Hold"
-                    : remainingBalance < 0
-                      ? `₹${Math.abs(remainingBalance).toFixed(2)}`
-                      : remainingBalance === 0
-                        ? '₹0.00'
-                        : `-₹${remainingBalance.toFixed(2)}`}
+                  {loadingBalance
+                    ? "Loading..."
+                    : isShipmentOnHold
+                      ? "On Hold"
+                      : formatBalance(remainingBalance)}
                 </p>
+                {!loadingBalance && !isShipmentOnHold && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    {remainingBalance <= 0
+                      ? "In credit"
+                      : `Outstanding: ₹${remainingBalance.toFixed(2)}`}
+                  </p>
+                )}
               </div>
             </div>
 
             {/* Low Balance Warning */}
-            {isLowBalance && !isShipmentOnHold && !hasInsufficientBalance && (
+            {isLowBalance && !isShipmentOnHold && !isInsufficient && (
               <div className="mt-3 p-2 bg-yellow-100 rounded text-yellow-700 text-xs font-semibold flex items-center gap-2">
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                <svg
+                  className="w-4 h-4"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                    clipRule="evenodd"
+                  />
                 </svg>
-                ⚠️ Your balance is getting low after this shipment.
+                ⚠️ Your credit is running low after this shipment.
               </div>
             )}
 
-            {/* Will Use Credit */}
-            {willUseCredit && !isShipmentOnHold && !hasInsufficientBalance && (
-              <div className="mt-3 p-2 bg-purple-100 rounded text-purple-700 text-xs font-semibold flex items-center gap-2">
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z" />
-                  <path fillRule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clipRule="evenodd" />
+            {/* Credit Usage Warning */}
+            {willUseCredit &&
+              !isShipmentOnHold &&
+              !isInsufficient &&
+              currentBalance <= 0 && (
+                <div className="mt-3 p-2 bg-purple-100 rounded text-purple-700 text-xs font-semibold flex items-center gap-2">
+                  <svg
+                    className="w-4 h-4"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z" />
+                    <path
+                      fillRule="evenodd"
+                      d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  💳 This shipment will use your credit limit.
+                </div>
+              )}
+
+            {/* Outstanding Balance Warning */}
+            {currentBalance > 0 && !isShipmentOnHold && (
+              <div className="mt-3 p-2 bg-orange-100 rounded text-orange-700 text-xs font-semibold flex items-center gap-2">
+                <svg
+                  className="w-4 h-4"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                    clipRule="evenodd"
+                  />
                 </svg>
-                💳 Credit will be used for this transaction.
+                ⚠️ You have an outstanding balance of ₹
+                {currentBalance.toFixed(2)}.
               </div>
             )}
 
-            {/* Insufficient Balance */}
-            {hasInsufficientBalance && !isShipmentOnHold && (
+            {/* Insufficient Balance Warning */}
+            {isInsufficient && !isShipmentOnHold && (
               <div className="mt-3 p-2 bg-red-100 rounded text-red-700 text-xs font-semibold flex items-center gap-2">
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                <svg
+                  className="w-4 h-4"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                    clipRule="evenodd"
+                  />
                 </svg>
-                ⚠️ Insufficient balance/credit. Your shipment will be placed on hold.
+                ⚠️ Insufficient credit limit. Your shipment will be placed on
+                hold.
               </div>
             )}
-          </div>
-
-          {/* Outstanding Balance Warning */}
-          {hasOutstanding && !isShipmentOnHold && (
-            <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 mb-6">
-              <div className="flex items-start gap-3">
-                <svg className="w-5 h-5 text-orange-600 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
-                <div>
-                  <p className="font-semibold text-orange-800">Outstanding Balance</p>
-                  <p className="text-orange-700 text-xs mt-1">
-                    You have an outstanding balance of ₹{outstandingAmount.toFixed(2)}.
-                    This amount will be adjusted first from your payment.
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Rewards Section */}
-          <div className="bg-red-100 rounded-xl p-4 mb-6 border border-[var(--primary-color)]">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <Image src="/m5c.svg" width={35} height={35} alt="Coins" />
-                <div>
-                  <p className="font-semibold text-gray-900">0 M5Coins</p>
-                  <p className="text-xs text-gray-500">
-                    Apply coins for discount
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                className="bg-white text-[var(--primary-color)] font-semibold py-2 px-4 rounded-lg border border-[var(--primary-color)] hover:bg-red-600 hover:text-white transition-all duration-200 shadow-sm hover:shadow-md"
-              >
-                Apply
-              </button>
-            </div>
           </div>
 
           {/* Pricing Breakdown */}
@@ -368,22 +464,20 @@ function Checkout({
                 ₹{(summary.cgstAmt + summary.sgstAmt).toFixed(2)}
               </span>
             </div>
-
-            <div className="flex justify-between items-center py-2 border-b border-gray-100">
-              <span className="text-gray-600">Coin Discount</span>
-              <span className="text-green-600 font-semibold">- ₹0.00</span>
-            </div>
           </div>
 
           {/* Total */}
-          <div className={`bg-gradient-to-r rounded-xl p-4 mb-6 ${isShipmentOnHold
-            ? 'from-yellow-600 to-yellow-500'
-            : 'from-[var(--primary-color)] to-red-600'
-            }`}>
+          <div
+            className={`bg-gradient-to-r rounded-xl p-4 mb-6 ${
+              isShipmentOnHold
+                ? "from-yellow-600 to-yellow-500"
+                : "from-[var(--primary-color)] to-red-600"
+            }`}
+          >
             <div className="flex justify-between items-center">
               <div>
                 <span className="text-white font-semibold text-lg">
-                  {isShipmentOnHold ? 'Total Amount (On Hold)' : 'Total Amount'}
+                  {isShipmentOnHold ? "Total Amount (On Hold)" : "Total Amount"}
                 </span>
                 <p className="text-white text-xs opacity-90 mt-1">
                   Including all taxes
@@ -395,45 +489,23 @@ function Checkout({
             </div>
           </div>
 
-          {/* Shipment Details Summary */}
-          <div className="bg-gray-50 rounded-xl p-4 mb-6 border border-gray-200">
-            <h3 className="font-semibold text-gray-700 mb-3">Shipment Details</h3>
-            <div className="grid grid-cols-2 gap-4 text-xs">
-              <div>
-                <p className="text-gray-500">Destination</p>
-                <p className="font-medium">{destination || 'N/A'}</p>
-              </div>
-              <div>
-                <p className="text-gray-500">Chargeable Weight</p>
-                <p className="font-medium">{chargeableWt} kg</p>
-              </div>
-              <div>
-                <p className="text-gray-500">Total Pieces</p>
-                <p className="font-medium">{totalPcs}</p>
-              </div>
-              <div>
-                <p className="text-gray-500">Service</p>
-                <p className="font-medium">{summary.service || 'Not Selected'}</p>
-              </div>
-            </div>
-          </div>
-
           {/* CTA Button */}
           <div className="flex justify-end">
             <button
-              className={`font-bold py-4 px-6 rounded-xl flex items-center justify-center space-x-2 transition-colors ${isShipmentOnHold
-                ? 'bg-yellow-600 text-white hover:bg-yellow-700'
-                : 'bg-[var(--primary-color)] text-white hover:bg-red-600'
-                } disabled:opacity-50 disabled:cursor-not-allowed`}
+              className={`font-bold py-4 px-6 rounded-xl flex items-center justify-center space-x-2 transition-colors ${
+                isShipmentOnHold
+                  ? "bg-yellow-600 text-white hover:bg-yellow-700"
+                  : "bg-[var(--primary-color)] text-white hover:bg-red-600"
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
               type="submit"
               disabled={!summary.service}
             >
               <span>
                 {isShipmentOnHold
-                  ? 'Shipment on Hold'
+                  ? "Shipment on Hold"
                   : isEditMode
-                    ? 'Update Shipment'
-                    : 'Create Shipment'}
+                    ? "Update Shipment"
+                    : "Create Shipment"}
               </span>
               <svg
                 className="w-5 h-5"
@@ -451,7 +523,7 @@ function Checkout({
             </button>
           </div>
 
-          {/* Warning if no service selected */}
+          {/* No Service Selected Warning */}
           {!summary.service && (
             <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-start gap-3">
               <svg
@@ -476,7 +548,7 @@ function Checkout({
             </div>
           )}
 
-          {/* Security Badge */}
+          {/* Security Footer */}
           <div className="text-center mt-6">
             <div className="flex items-center justify-center space-x-2 text-gray-500 text-xs">
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -491,6 +563,7 @@ function Checkout({
           </div>
         </div>
 
+        {/* Back Button */}
         <div className="flex justify-end">
           <button
             className="border border-[var(--primary-color)] text-[var(--primary-color)] font-semibold rounded-md px-12 py-3 hover:bg-red-50 transition-colors"
