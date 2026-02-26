@@ -340,6 +340,7 @@ const Tickets = ({
           <li>Status</li>
           <li>Last Updated</li>
           <li>Resolution Date</li>
+          <li>Progress</li>
           <li className="end">Actions</li>
         </ul>
       </div>

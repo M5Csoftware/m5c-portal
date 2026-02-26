@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { GlobalContext } from "../../GlobalContext";
 import NotificationModal from "./NotificationModal";
 import AwbInput from "@/app/components/AwbInput";
-import { useSession } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 import axios from "axios";
 
 const QuickActionButton = ({ name, imageName }) => {
@@ -434,6 +434,8 @@ const formatCurrency = (amount) => {
 const Navbar = () => {
   const [isQuickActionActive, setIsQuickActionActive] = useState(false);
   const [isWalletHovered, setIsWalletHovered] = useState(false);
+  const [toggleLogout, setToggleLogout] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [showAwbInput, setShowAwbInput] = useState(false);
@@ -583,6 +585,19 @@ const Navbar = () => {
     setIsSearchFocused(true);
     if (searchTerm.length > 0) {
       setShowSearchModal(true);
+    }
+  };
+
+  const confirmLogout = async () => {
+    setIsLoading(true);
+    try {
+      await signOut({ redirect: false });
+      console.log("Logged out successfully");
+      router.push("/");
+    } catch (error) {
+      console.error("Logout failed", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -787,6 +802,19 @@ const Navbar = () => {
           >
             <Image width={24} height={24} src="/profile.svg" alt="Profile" />
           </Link>
+          <button
+            onClick={() => setToggleLogout(true)}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors flex items-center justify-center"
+            title="Logout"
+          >
+            <Image
+              width={20}
+              height={20}
+              src="/log-out.svg"
+              alt="Logout"
+              className="text-[#A0AEC0]"
+            />
+          </button>
         </div>
       </div>
 
@@ -803,6 +831,52 @@ const Navbar = () => {
               alwaysShowInput={true}
             />
           </div>
+        </div>
+      )}
+
+      {/* Logout Confirmation Modal */}
+      {toggleLogout && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-[1000]">
+          {isLoading ? (
+            <div className="bg-white rounded-lg px-6 py-16 w-[300px] flex flex-col gap-6 items-center shadow-lg text-[#2D3748]">
+              <div className="loader"></div>
+              <h2 className="text-base font-bold">Logging Out...</h2>
+            </div>
+          ) : (
+            <div className="bg-white rounded-lg px-6 py-5 w-[330px] flex flex-col gap-9 items-center shadow-lg text-[#2D3748]">
+              <div className="flex flex-col items-center gap-2 mt-2">
+                <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mb-2">
+                  <Image
+                    width={24}
+                    height={24}
+                    src="/log-out.svg"
+                    alt="Logout"
+                    className="opacity-60"
+                  />
+                </div>
+                <h2 className="text-xl font-bold text-center">
+                  Logout from M5C Portal?
+                </h2>
+                <p className="text-sm text-gray-500 text-center">
+                  You will need to sign in again to access your account.
+                </p>
+              </div>
+              <div className="flex justify-between gap-4 w-full">
+                <button
+                  onClick={() => setToggleLogout(false)}
+                  className="bg-white border border-gray-200 text-[#71717A] hover:bg-gray-50 transition-colors w-full px-3 py-2.5 text-sm font-medium rounded-lg"
+                >
+                  No, Cancel
+                </button>
+                <button
+                  onClick={confirmLogout}
+                  className="bg-[var(--primary-color)] hover:bg-[#1a202c] transition-colors w-full text-white px-3 py-2.5 text-sm font-medium rounded-lg shadow-md"
+                >
+                  Yes, Logout!
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
