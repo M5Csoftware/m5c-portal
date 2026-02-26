@@ -84,7 +84,7 @@ const ShipmentAndPackageDetail = ({
     async function fetchExporters() {
       try {
         const res = await axios.get(
-          `${server}/portal/csb-setting?accountCode=${accountCode}`
+          `${server}/portal/csb-setting?accountCode=${accountCode}`,
         );
         setExportersDB(res.data.data || []);
       } catch (err) {
@@ -108,7 +108,10 @@ const ShipmentAndPackageDetail = ({
     setValue("termsOfInvoice", selectedExp.termsOfInvoice || "");
     setValue("crnNumber", selectedExp.crnNumber || "");
     setValue("mhbsNumber", selectedExp.mhbsNumber || "");
-    setValue("exportThroughEcommerce", selectedExp.exportThroughEcommerce || false);
+    setValue(
+      "exportThroughEcommerce",
+      selectedExp.exportThroughEcommerce || false,
+    );
     setValue("meisScheme", selectedExp.meisScheme || false);
   }, [watch("exporter"), exportersDB]);
 
@@ -209,21 +212,21 @@ const ShipmentAndPackageDetail = ({
   useEffect(() => {
     const totalWt = boxes.reduce(
       (sum, box) => sum + parseFloat(box.totalWeight || 0),
-      0
+      0,
     );
     setTotalActualWt(totalWt);
     setValue("totalActualWt", totalWt);
 
     const totalVolWt = boxes.reduce(
       (sum, box) => sum + parseFloat(box.volumetricWeight || 0),
-      0
+      0,
     );
     setTotalVolumetricWt(totalVolWt);
     setValue("totalVolWt", totalVolWt);
 
     const totalAmt = boxes.reduce(
       (sum, box) => sum + parseFloat(box.amount || 0),
-      0
+      0,
     );
     setValue("totalInvoiceValue", totalAmt);
     setValue("boxes", boxes);
@@ -256,7 +259,7 @@ const ShipmentAndPackageDetail = ({
     if (tables[selectedBox]) {
       const invoiceValue = tables[selectedBox].reduce(
         (total, item) => total + (parseFloat(item.amount) || 0),
-        0
+        0,
       );
       setTotalAmount(invoiceValue);
     }
@@ -276,9 +279,13 @@ const ShipmentAndPackageDetail = ({
         (parseFloat(newBoxes[index].rate) || 0);
     }
 
-    newBoxes[index].volumetricWeight = calculateVolumetricWeight(newBoxes[index]);
+    newBoxes[index].volumetricWeight = calculateVolumetricWeight(
+      newBoxes[index],
+    );
     newBoxes[index].totalWeight = calculateTotalWeight(newBoxes[index]);
-    newBoxes[index].dimensionSummary = calculateDimensionSummary(newBoxes[index]);
+    newBoxes[index].dimensionSummary = calculateDimensionSummary(
+      newBoxes[index],
+    );
 
     setBoxes(newBoxes);
   };
@@ -323,7 +330,8 @@ const ShipmentAndPackageDetail = ({
           hsnNo: boxes[0].hsnNo,
           qty: parseFloat(boxes[0].qty) || 0,
           rate: parseFloat(boxes[0].rate) || 0,
-          amount: (parseFloat(boxes[0].qty) || 0) * (parseFloat(boxes[0].rate) || 0),
+          amount:
+            (parseFloat(boxes[0].qty) || 0) * (parseFloat(boxes[0].rate) || 0),
         };
         return updatedTables;
       });
@@ -334,7 +342,8 @@ const ShipmentAndPackageDetail = ({
         hsnNo: boxes[0].hsnNo,
         qty: parseFloat(boxes[0].qty) || 0,
         rate: parseFloat(boxes[0].rate) || 0,
-        amount: (parseFloat(boxes[0].qty) || 0) * (parseFloat(boxes[0].rate) || 0),
+        amount:
+          (parseFloat(boxes[0].qty) || 0) * (parseFloat(boxes[0].rate) || 0),
       };
 
       setTables((prevTables) => {
@@ -366,7 +375,9 @@ const ShipmentAndPackageDetail = ({
       ...prevBoxes.slice(1),
     ]);
     setEditingItem(index);
-    document.getElementById("context")?.scrollIntoView({ behavior: "smooth", block: "center" });
+    document
+      .getElementById("context")
+      ?.scrollIntoView({ behavior: "smooth", block: "center" });
   };
 
   const handleDeleteItem = (index) => {
@@ -376,7 +387,9 @@ const ShipmentAndPackageDetail = ({
       onYes: () => {
         setTables((prevTables) => {
           const updated = { ...prevTables };
-          updated[selectedBox] = updated[selectedBox].filter((_, i) => i !== index);
+          updated[selectedBox] = updated[selectedBox].filter(
+            (_, i) => i !== index,
+          );
           return updated;
         });
 
@@ -458,6 +471,23 @@ const ShipmentAndPackageDetail = ({
     { key: "amount", label: "Amt (₹)" },
   ];
 
+  // ✅ Total invoice value across ALL boxes
+  const totalInvoiceAllBoxes = Object.values(tables).reduce(
+    (total, boxItems) => {
+      if (!Array.isArray(boxItems)) return total;
+      return (
+        total +
+        boxItems.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0)
+      );
+    },
+    0,
+  );
+
+  // ✅ Chargeable weight = max(actual, volumetric) rounded up
+  const chargeableWt = Math.ceil(
+    Math.max(totalActualWt || 0, totalVolumetricWt || 0),
+  );
+
   return (
     <div className="bg-white flex flex-col gap-2 rounded-3xl p-10">
       <div className="flex gap-2 items-center">
@@ -481,7 +511,9 @@ const ShipmentAndPackageDetail = ({
             height={36}
           />
         </div>
-        <h2 className="text-base px-2 font-bold">Shipment and Package Details</h2>
+        <h2 className="text-base px-2 font-bold">
+          Shipment and Package Details
+        </h2>
       </div>
 
       <div
@@ -494,35 +526,36 @@ const ShipmentAndPackageDetail = ({
             <div className="flex flex-col gap-4">
               <h4 className="font-semibold">Shipment Type</h4>
               <div className="flex gap-4">
-                {["Non-Document", "Document", "Commercial (CSBV)"].map((type) => (
-                  <label
-                    key={type}
-                    className={`flex font-medium gap-4 text-xs py-[15px] px-[39px] rounded-md cursor-pointer ${
-                      selectedGoodstype === type
-                        ? "bg-[#FFE5E9] text-[#EA1B40]"
-                        : "bg-[#F8F8F8] text-[#979797]"
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      {...register("goodstype")}
-                      value={type}
-                      defaultChecked={type === "Non-Document"}
-                      className={`${
+                {["Non-Document", "Document", "Commercial (CSBV)"].map(
+                  (type) => (
+                    <label
+                      key={type}
+                      className={`flex font-medium gap-4 text-xs py-[15px] px-[39px] rounded-md cursor-pointer ${
                         selectedGoodstype === type
-                          ? "accent-[#EA1B40]"
-                          : "accent-[#979797]"
+                          ? "bg-[#FFE5E9] text-[#EA1B40]"
+                          : "bg-[#F8F8F8] text-[#979797]"
                       }`}
-                    />
-                    <div>{type}</div>
-                  </label>
-                ))}
+                    >
+                      <input
+                        type="radio"
+                        {...register("goodstype")}
+                        value={type}
+                        defaultChecked={type === "Non-Document"}
+                        className={`${
+                          selectedGoodstype === type
+                            ? "accent-[#EA1B40]"
+                            : "accent-[#979797]"
+                        }`}
+                      />
+                      <div>{type}</div>
+                    </label>
+                  ),
+                )}
               </div>
 
               {selectedGoodstype === "Commercial (CSBV)" && (
                 <div className="flex flex-col gap-8 mt-6">
                   {/* CSBV fields - keeping your existing implementation */}
-                  {/* ... (rest of CSBV section) ... */}
                 </div>
               )}
 
@@ -559,7 +592,29 @@ const ShipmentAndPackageDetail = ({
                     </div>
                   )}
                 </div>
-                <div className="flex gap-2 flex-row-reverse">
+
+                {/* ✅ Updated weight/invoice display bar */}
+                <div className="flex gap-2 flex-row-reverse flex-wrap">
+                  {/* ✅ Total Invoice Value - All Boxes */}
+                  <div className="bg-[#FFF3CD] text-xs text-[#979797] px-[16px] py-[15px] rounded-md gap-2 flex">
+                    <div className="flex gap-3">
+                      <span>Total Invoice:</span>
+                      <div className="flex gap-3">
+                        <div>₹ {totalInvoiceAllBoxes.toFixed(2)}</div>
+                      </div>
+                    </div>
+                  </div>
+                  {/* ✅ Chargeable Weight (rounded up) */}
+                  <div className="bg-[#E8F4FD] text-xs text-[#979797] px-[16px] py-[15px] rounded-md gap-2 flex">
+                    <div className="flex gap-3">
+                      <span>Chargeable Wt:</span>
+                      <div className="flex gap-3">
+                        <div>{chargeableWt}</div>
+                        <span>Kg</span>
+                      </div>
+                    </div>
+                  </div>
+                  {/* Total Volumetric Weight */}
                   <div className="bg-[#D8F3E0] text-xs text-[#979797] px-[16px] py-[15px] rounded-md gap-2 flex">
                     <div className="flex gap-3">
                       <span>Total Vol. Weight:</span>
@@ -569,6 +624,7 @@ const ShipmentAndPackageDetail = ({
                       </div>
                     </div>
                   </div>
+                  {/* Total Actual Weight */}
                   <div className="bg-[#D8F3E0] text-xs text-[#979797] p-4 rounded-md gap-2 flex">
                     <div className="flex gap-3">
                       <span>Total Actual Weight:</span>
@@ -581,7 +637,7 @@ const ShipmentAndPackageDetail = ({
                 </div>
               </div>
             </div>
-            
+
             <div className="gap-4 flex flex-col">
               <div className="flex flex-col gap-6">
                 <div className="flex gap-6">
@@ -593,7 +649,11 @@ const ShipmentAndPackageDetail = ({
                           type="number"
                           {...register("weight")}
                           onChange={(e) =>
-                            handleInputChange(selectedBox - 1, "weight", e.target.value)
+                            handleInputChange(
+                              selectedBox - 1,
+                              "weight",
+                              e.target.value,
+                            )
                           }
                           value={boxes[selectedBox - 1]?.weight || 0}
                           placeholder="Weight"
@@ -619,12 +679,13 @@ const ShipmentAndPackageDetail = ({
                                 handleInputChange(
                                   selectedBox - 1,
                                   dimension,
-                                  e.target.value
+                                  e.target.value,
                                 )
                               }
                               value={boxes[selectedBox - 1]?.[dimension] || 0}
                               placeholder={
-                                dimension.charAt(0).toUpperCase() + dimension.slice(1)
+                                dimension.charAt(0).toUpperCase() +
+                                dimension.slice(1)
                               }
                               className="rounded-md px-2 py-3 w-24 outline-none"
                             />
@@ -646,7 +707,9 @@ const ShipmentAndPackageDetail = ({
                   <input
                     type="text"
                     value={boxes[0]?.["context"] || ""}
-                    onChange={(e) => handleInputChange(0, "context", e.target.value)}
+                    onChange={(e) =>
+                      handleInputChange(0, "context", e.target.value)
+                    }
                     placeholder="Item Name"
                     className="border-[#979797] border rounded-md px-2 py-3 w-full outline-none"
                   />
@@ -669,7 +732,10 @@ const ShipmentAndPackageDetail = ({
                               handleInputChange(
                                 0,
                                 field,
-                                Math.max(0, (parseFloat(boxes[0]?.[field]) || 0) - 1)
+                                Math.max(
+                                  0,
+                                  (parseFloat(boxes[0]?.[field]) || 0) - 1,
+                                ),
                               )
                             }
                             className="px-2 bg-[#F3F7FE] w-10 text-base font-bold text-[#979797]"
@@ -679,13 +745,18 @@ const ShipmentAndPackageDetail = ({
                           <input
                             type="number"
                             value={
-                              (boxes[0]?.[field] || 0) < 1 ? "" : boxes[0]?.[field] || ""
+                              (boxes[0]?.[field] || 0) < 1
+                                ? ""
+                                : boxes[0]?.[field] || ""
                             }
                             onChange={(e) => {
                               const value =
                                 e.target.value === ""
                                   ? 0
-                                  : Math.max(0, parseFloat(e.target.value) || 0);
+                                  : Math.max(
+                                      0,
+                                      parseFloat(e.target.value) || 0,
+                                    );
                               handleInputChange(0, field, value);
                             }}
                             placeholder="0"
@@ -697,7 +768,7 @@ const ShipmentAndPackageDetail = ({
                               handleInputChange(
                                 0,
                                 field,
-                                (parseFloat(boxes[0]?.[field]) || 0) + 1
+                                (parseFloat(boxes[0]?.[field]) || 0) + 1,
                               )
                             }
                             className="px-2 bg-[#F3F7FE] w-10 text-base font-bold text-[#979797]"
@@ -709,7 +780,9 @@ const ShipmentAndPackageDetail = ({
                         <input
                           type={field === "hsnNo" ? "text" : "number"}
                           value={boxes[0]?.[field] || ""}
-                          onChange={(e) => handleInputChange(0, field, e.target.value)}
+                          onChange={(e) =>
+                            handleInputChange(0, field, e.target.value)
+                          }
                           placeholder={field === "hsnNo" ? "Eg. 540710" : "0"}
                           className="border-[#979797] border rounded-md px-2 py-3 w-[14.5vw] outline-none"
                         />
@@ -778,7 +851,9 @@ const ShipmentAndPackageDetail = ({
                   <div className="mt-4 border p-5 rounded-lg">
                     <div className="flex justify-between gap-2 mb-9 items-center">
                       <div className="flex bg-[#FFE5E9] px-4 py-2 text-sm gap-1 items-center rounded-md">
-                        <span className="text-xl text-red-600 font-bold">Box</span>
+                        <span className="text-xl text-red-600 font-bold">
+                          Box
+                        </span>
                         <span className="text-xl text-red-600 font-bold">
                           {selectedBox}
                         </span>
@@ -803,8 +878,9 @@ const ShipmentAndPackageDetail = ({
                         </span>
                       </div>
                       <div className="flex gap-4 items-center">
+                        {/* ✅ Shows current box invoice value */}
                         <div className="flex bg-[#F8F8F8] px-4 py-2 text-sm gap-1 items-center rounded-md">
-                          <span className="text-[#EA1B40]">Invoice Value:</span>
+                          <span className="text-[#EA1B40]">Box Invoice:</span>
                           <span className="text-[#EA1B40]">
                             ₹ {totalAmount.toFixed(2)}
                           </span>
@@ -898,6 +974,7 @@ const ShipmentAndPackageDetail = ({
                 )}
               </div>
             </div>
+
             <div className="flex justify-end items-center">
               <div className="flex gap-4">
                 <button

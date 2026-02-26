@@ -1,5 +1,5 @@
 "use client";
-import React, { useContext, useEffect, useState } from "react";
+import React, { useContext, useEffect, useState, useRef } from "react";
 import { useForm } from "react-hook-form";
 import ShipperDetail from "./ShipperDetail";
 import ReceiverDetail from "./ReceiverDetail";
@@ -23,7 +23,9 @@ const MultiStepForm = () => {
   const [selectedSector, setSelectedSector] = useState("");
   const [selectedServiceLocal, setSelectedServiceLocal] = useState(null);
   const [successAwbNo, setSuccessAwbNo] = useState("");
-  const [filteredServicesWithRates, setFilteredServicesWithRates] = useState([]);
+  const [filteredServicesWithRates, setFilteredServicesWithRates] = useState(
+    [],
+  );
   const [zones, setZones] = useState([]);
   const [refetch, setRefetch] = useState(false);
   const [totalActualWt, setTotalActualWt] = useState(0.0);
@@ -33,6 +35,9 @@ const MultiStepForm = () => {
   const [creditLimitError, setCreditLimitError] = useState("");
   const [isShipmentOnHold, setIsShipmentOnHold] = useState(false);
   const [holdMessage, setHoldMessage] = useState("");
+
+  // ✅ Use a ref to prevent double submissions — ref is synchronous unlike state
+  const isSubmittingRef = useRef(false);
 
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -52,11 +57,9 @@ const MultiStepForm = () => {
     trigger,
   } = useForm();
 
-  // flags
   const [destination, setDestination] = useState("N/A");
   const [destinationFlag, setDestinationFlag] = useState("");
 
-  // GST Setting
   const cgst = 9.0;
   const sgst = 9.0;
 
@@ -95,7 +98,7 @@ const MultiStepForm = () => {
     }
   }, [watch, setValue, watch("sector")]);
 
-  // Fetch initial data: Sectors and Zones
+  // Fetch initial data: Sectors
   useEffect(() => {
     const fetchEntity = async (entityType) => {
       try {
@@ -133,10 +136,9 @@ const MultiStepForm = () => {
     const fetchZones = async () => {
       try {
         const res = await axios.get(
-          `${server}/zones?sector=${selectedSectorCode || ""}`
+          `${server}/zones?sector=${selectedSectorCode || ""}`,
         );
         setZones(res.data);
-        console.log("Fetched zones:", res.data);
       } catch (error) {
         console.error("Failed to fetch zones:", error);
       }
@@ -144,51 +146,44 @@ const MultiStepForm = () => {
     fetchZones();
   }, [watch("sector"), server]);
 
-  // Form submission
+  // ✅ FIXED onSubmit — single submission guaranteed via ref lock
   const onSubmit = async (data) => {
+    // ✅ GUARD: If already submitting, reject immediately (ref is synchronous)
+    if (isSubmittingRef.current) {
+      console.warn("⛔ Duplicate submit blocked");
+      return;
+    }
+
+    // ✅ Lock immediately before any async work
+    isSubmittingRef.current = true;
+
     try {
       setCreditLimitError("");
       setIsShipmentOnHold(false);
       setHoldMessage("");
 
       if (isEditMode) {
-        // PUT update existing shipment
-        console.log(data);
         const response = await axios.put(
           `${server}/portal/create-shipment?awbNo=${editAwb}`,
-          {
-            ...data,
-            source: "Portal",
-          }
+          { ...data, source: "Portal" },
         );
 
         if (response.data.isHold) {
           setIsShipmentOnHold(true);
-          setHoldMessage(response.data.message || "Shipment updated but placed on hold due to insufficient credit");
+          setHoldMessage(
+            response.data.message ||
+              "Shipment updated but placed on hold due to insufficient credit",
+          );
         }
 
         alert(response.data.message || "Shipment Updated Successfully!");
-        console.log("Updated:", response.data);
-
-        // Redirect to shipments page
         router.push("/portal/shipments");
         return;
       }
 
-      // POST create route
-      const payload = {
-        ...data,
-        accountCode: session?.user?.accountCode,
-        customerName: session?.user?.name,
-        source: "Portal",
-        entryType: "Portal",
-        userId: session?.user?.id,
-        chargeableWt: chargeableWt,
-      };
-
-      // Get the shipment amount from the selected service
+      // ✅ Get selected service — shipment cost only, never invoice value
       const selectedRate = filteredServicesWithRates.find(
-        (r) => r.service === selectedServiceLocal
+        (r) => r.service === selectedServiceLocal,
       );
 
       if (!selectedRate) {
@@ -196,114 +191,101 @@ const MultiStepForm = () => {
         return;
       }
 
+      // ✅ Only grandTotal is deducted from balance
       const shipmentAmount = Number(selectedRate.grandTotal) || 0;
 
-      // 1. Fetch CURRENT balance before each shipment (fresh fetch)
-      try {
-        const balanceCheckRes = await axios.get(
-          `${server}/portal/update-balance?accountCode=${session?.user?.accountCode}&t=${new Date().getTime()}`
-        );
+      // ✅ Rounded chargeable weight
+      const roundedChargeableWt = chargeableWt
+        ? Math.ceil(Number(chargeableWt))
+        : 0;
 
-        if (balanceCheckRes.data.success) {
-          const currentBalance = Number(balanceCheckRes.data.data.leftOverBalance) || 0;
-          const currentCredit = Number(balanceCheckRes.data.data.creditLimit) || 0;
-          const availableFunds = currentBalance < 0 ? Math.abs(currentBalance) : 0;
+      console.log("🚨 BALANCE DEDUCTION — sending ONCE:", {
+        accountCode: session?.user?.accountCode,
+        shipmentAmount,
+        grandTotal: selectedRate.grandTotal,
+        roundedChargeableWt,
+      });
 
-          console.log(
-            `💰 Balance check: balance=₹${currentBalance}, available=₹${availableFunds}, shipmentAmt=₹${shipmentAmount}`
-          );
+      const payload = {
+        ...data,
+        accountCode: session?.user?.accountCode,
+        customerName: session?.user?.name,
+        source: "Portal",
+        entryType: "Portal",
+        userId: session?.user?.id,
+        chargeableWt: roundedChargeableWt,
+      };
 
-          // Reversed Model: Negative = funds, Positive = debt
-          // Block if already in debt (>= 0) or if adding shipment exceeds available credit
-          if (currentBalance >= 0 || (currentBalance + shipmentAmount) > 0) {
-            const errorReason = currentBalance >= 0
-              ? "Insufficient balance (No funds available)"
-              : `Insufficient balance (₹${availableFunds} available < ₹${shipmentAmount} needed)`;
+      // ✅ Step 1: Deduct balance ONCE using grandTotal
+      let shipmentOnHold = false;
 
-            alert(`⚠️ ${errorReason}`);
-            return;
-          }
-        }
-      } catch (balanceCheckError) {
-        console.error("Error verifying balance before create:", balanceCheckError);
-        alert("Failed to verify balance. Please try again.");
-        return;
-      }
-
-      // 2. Check and update balance BEFORE creating shipment (Actual deduction/addition)
-      try {
-        console.log("Updating balance for amount:", shipmentAmount);
-        const balanceResponse = await axios.post(`${server}/portal/update-balance`, {
+      const balanceResponse = await axios.post(
+        `${server}/portal/update-balance`,
+        {
           accountCode: session?.user?.accountCode,
           shipmentAmount: shipmentAmount,
-        });
+        },
+      );
 
-        if (!balanceResponse.data.success) {
-          alert(balanceResponse.data.message);
-          return;
-        }
+      console.log(
+        "✅ Balance API called ONCE. Response:",
+        balanceResponse.data,
+      );
 
-        console.log("Balance updated successfully:", balanceResponse.data.data);
+      if (balanceResponse.data.insufficient === true) {
+        console.log("⚠️ Insufficient — shipment on hold");
+        shipmentOnHold = true;
+        setCreditLimitError(
+          "⚠️ Credit Limit Exceeded! Your shipment will be placed on hold.",
+        );
+        setIsShipmentOnHold(true);
+      } else if (balanceResponse.data.success === true) {
+        console.log("✅ Balance deducted successfully — NOT on hold");
+        shipmentOnHold = false;
+        setCreditLimitError("");
+        setIsShipmentOnHold(false);
 
-        // Refresh balance in Checkout component
-        if (typeof window !== 'undefined' && window.refreshBalance) {
+        if (typeof window !== "undefined" && window.refreshBalance) {
           window.refreshBalance();
-        }
-      } catch (balanceError) {
-        console.error("Balance update error:", balanceError);
-
-        if (balanceError.response?.data?.message) {
-          // Show credit limit exceeded message
-          if (balanceError.response.data.message.includes("Insufficient")) {
-            setCreditLimitError("⚠️ Credit Limit Exceeded! Your shipment will be placed on hold.");
-            // Allow the shipment creation to continue - it will be placed on hold
-          } else {
-            alert(balanceError.response.data.message);
-            return;
-          }
-        } else {
-          alert("Failed to update balance. Please try again.");
-          return;
         }
       }
 
-      // Continue with shipment creation (even if balance update failed due to credit limit)
-      console.log("Creating shipment with payload:", payload);
-
-      const newShipment = await axios.post(
-        `${server}/portal/create-shipment`,
-        payload
-      );
+      // ✅ Step 2: Create shipment
+      const newShipment = await axios.post(`${server}/portal/create-shipment`, {
+        ...payload,
+        isHold: shipmentOnHold,
+      });
 
       const successAwb = newShipment.data.awbNo;
-      console.log("Shipment Created", successAwb);
+      console.log("✅ Shipment Created:", successAwb);
 
-      // Check if shipment was placed on hold
-      if (newShipment.data.isHold) {
+      if (newShipment.data.isHold || shipmentOnHold) {
         setIsShipmentOnHold(true);
-        setHoldMessage(newShipment.data.message || "Shipment created but placed on hold due to insufficient credit");
-        setCreditLimitError("⚠️ " + (newShipment.data.message || "Credit Limit Exceeded! Shipment placed on hold."));
+        setHoldMessage(
+          newShipment.data.message ||
+            "Shipment created but placed on hold due to insufficient credit",
+        );
+      } else {
+        setIsShipmentOnHold(false);
+        setCreditLimitError("");
+        setHoldMessage("");
       }
 
       setSuccessAwbNo(successAwb);
+      setVisibleFlag(true);
 
-      // Don't reset the form if on hold - keep the data visible
-      if (!newShipment.data.isHold) {
+      if (!shipmentOnHold && !newShipment.data.isHold) {
         reset();
         setValue("accountCode", session?.user?.accountCode);
         setStep(1);
       }
 
-      setVisibleFlag(true);
-
       setTimeout(() => {
         setVisibleFlag(false);
-        // Only redirect if not on hold, or after showing hold message
-        if (!newShipment.data.isHold) {
+        if (!shipmentOnHold && !newShipment.data.isHold) {
           router.push("/portal/shipments");
         }
       }, 3000);
-
     } catch (error) {
       console.error("Error Creating/Updating shipment:", error);
 
@@ -312,13 +294,15 @@ const MultiStepForm = () => {
       } else {
         alert("Something went wrong! Please try again.");
       }
+    } finally {
+      // ✅ Always unlock after completion or error
+      isSubmittingRef.current = false;
     }
   };
 
   // Update destinations when sector changes
   useEffect(() => {
     const selectedSectorCode = watch("sector");
-    console.log("Selected sector code:", selectedSectorCode);
     setSelectedSector(selectedSectorCode);
 
     if (!zones || !Array.isArray(zones) || !selectedSectorCode) {
@@ -330,7 +314,6 @@ const MultiStepForm = () => {
       .filter((zone) => zone.sector === selectedSectorCode)
       .map((zone) => zone.destination);
 
-    // Remove duplicates
     const uniqueDestinations = [...new Set(filteredDestinations)];
     setDestinations(uniqueDestinations);
   }, [watch("sector"), zones]);
@@ -341,24 +324,27 @@ const MultiStepForm = () => {
     setSelectedDestinations(watchedDestination);
   }, [watch("destination")]);
 
-  // Calculate chargeable weight
+  // ✅ Calculate chargeable weight — rounded up
   useEffect(() => {
     const actualWtValue = Number(totalActualWt) || 0;
     const volWtValue = Number(totalVolumetricWt) || 0;
 
-    if (actualWtValue > 0 && volWtValue > 0) {
+    if (actualWtValue > 0 || volWtValue > 0) {
       const maxWt = Math.max(actualWtValue, volWtValue);
-      setChargeableWt(maxWt.toFixed(2));
+      const rounded = Math.ceil(maxWt);
+      setChargeableWt(rounded);
+      setValue("chargeableWt", rounded);
     } else {
-      setChargeableWt(0.0);
+      setChargeableWt(0);
+      setValue("chargeableWt", 0);
     }
-  }, [totalActualWt, totalVolumetricWt]);
+  }, [totalActualWt, totalVolumetricWt, setValue]);
 
   // Update form values when service is selected
   useEffect(() => {
     if (selectedServiceLocal && filteredServicesWithRates.length > 0) {
       const selectedRate = filteredServicesWithRates.find(
-        (r) => r.service === selectedServiceLocal
+        (r) => r.service === selectedServiceLocal,
       );
 
       if (selectedRate) {
@@ -389,17 +375,28 @@ const MultiStepForm = () => {
               Create Shipment
             </h1>
 
-            {/* Credit Limit Error Message */}
-            {creditLimitError && (
+            {/* ✅ Credit error only when on hold */}
+            {creditLimitError && isShipmentOnHold && (
               <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-md shadow-sm">
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
-                    <svg className="h-5 w-5 text-red-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    <svg
+                      className="h-5 w-5 text-red-500"
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                        clipRule="evenodd"
+                      />
                     </svg>
                   </div>
                   <div className="ml-3">
-                    <p className="text-sm text-red-700 font-medium">{creditLimitError}</p>
+                    <p className="text-sm text-red-700 font-medium">
+                      {creditLimitError}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -410,13 +407,27 @@ const MultiStepForm = () => {
               <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded-md shadow-sm">
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
-                    <svg className="h-5 w-5 text-yellow-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                    <svg
+                      className="h-5 w-5 text-yellow-500"
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                        clipRule="evenodd"
+                      />
                     </svg>
                   </div>
                   <div className="ml-3">
-                    <p className="text-sm text-yellow-700 font-medium">{holdMessage || "Shipment is on hold due to insufficient credit"}</p>
-                    <p className="text-xs text-yellow-600 mt-1">AWB Number: {successAwbNo}</p>
+                    <p className="text-sm text-yellow-700 font-medium">
+                      {holdMessage ||
+                        "Shipment is on hold due to insufficient credit"}
+                    </p>
+                    <p className="text-xs text-yellow-600 mt-1">
+                      AWB Number: {successAwbNo}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -435,13 +446,16 @@ const MultiStepForm = () => {
                 <li
                   key={item.num}
                   onClick={() => setStep(item.num)}
-                  className={`flex items-center gap-1 cursor-pointer transition-colors ${step === item.num && "text-[var(--primary-color)]"
-                    }`}
+                  className={`flex items-center gap-1 cursor-pointer transition-colors ${
+                    step === item.num && "text-[var(--primary-color)]"
+                  }`}
                 >
                   <span>{item.label}</span>
                   {idx < 5 && (
                     <Image
-                      src={`/right_arrow_${step === item.num ? "red" : "gray"}.svg`}
+                      src={`/right_arrow_${
+                        step === item.num ? "red" : "gray"
+                      }.svg`}
                       alt="Navigation arrow"
                       width={7}
                       height={7}
@@ -556,8 +570,14 @@ const MultiStepForm = () => {
     <div className="relative flex justify-center">
       <div className="w-full max-w-[80vw]">
         <NotificationFlag
-          message={isShipmentOnHold ? "Shipment Created (On Hold)!" : "Shipment Created!"}
-          subMessage={`AWB No. ${successAwbNo} ${isShipmentOnHold ? "- On Hold" : ""}`}
+          message={
+            isShipmentOnHold
+              ? "Shipment Created (On Hold)!"
+              : "Shipment Created!"
+          }
+          subMessage={`AWB No. ${successAwbNo} ${
+            isShipmentOnHold ? "- On Hold" : ""
+          }`}
           visible={visibleFlag}
           setVisible={setVisibleFlag}
         />

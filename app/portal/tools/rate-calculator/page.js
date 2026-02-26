@@ -570,18 +570,18 @@ const Page = () => {
           {/* Buttons */}
           <div className="flex justify-between w-full gap-4">
             <button
-              type="submit"
-              disabled={loading || loadingServices || loadingDestinations}
-              className="bg-[#EA2147] text-white py-2 px-10 rounded-md w-full disabled:opacity-50 font-semibold"
-            >
-              {loading ? "Calculating..." : "Calculate Rate"}
-            </button>
-            <button
               type="button"
               onClick={handleReset}
               className="border border-[#EA2147] text-[#EA2147] py-2 px-10 rounded w-full font-semibold"
             >
               Reset
+            </button>
+            <button
+              type="submit"
+              disabled={loading || loadingServices || loadingDestinations}
+              className="bg-[#EA2147] text-white py-2 px-10 rounded-md w-full disabled:opacity-50 font-semibold"
+            >
+              {loading ? "Calculating..." : "Calculate Rate"}
             </button>
           </div>
         </form>
