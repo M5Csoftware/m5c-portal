@@ -198,7 +198,39 @@ const MultiStepForm = () => {
 
       const shipmentAmount = Number(selectedRate.grandTotal) || 0;
 
-      // Check and update balance BEFORE creating shipment
+      // 1. Fetch CURRENT balance before each shipment (fresh fetch)
+      try {
+        const balanceCheckRes = await axios.get(
+          `${server}/portal/update-balance?accountCode=${session?.user?.accountCode}&t=${new Date().getTime()}`
+        );
+
+        if (balanceCheckRes.data.success) {
+          const currentBalance = Number(balanceCheckRes.data.data.leftOverBalance) || 0;
+          const currentCredit = Number(balanceCheckRes.data.data.creditLimit) || 0;
+          const availableFunds = currentBalance < 0 ? Math.abs(currentBalance) : 0;
+
+          console.log(
+            `💰 Balance check: balance=₹${currentBalance}, available=₹${availableFunds}, shipmentAmt=₹${shipmentAmount}`
+          );
+
+          // Reversed Model: Negative = funds, Positive = debt
+          // Block if already in debt (>= 0) or if adding shipment exceeds available credit
+          if (currentBalance >= 0 || (currentBalance + shipmentAmount) > 0) {
+            const errorReason = currentBalance >= 0
+              ? "Insufficient balance (No funds available)"
+              : `Insufficient balance (₹${availableFunds} available < ₹${shipmentAmount} needed)`;
+
+            alert(`⚠️ ${errorReason}`);
+            return;
+          }
+        }
+      } catch (balanceCheckError) {
+        console.error("Error verifying balance before create:", balanceCheckError);
+        alert("Failed to verify balance. Please try again.");
+        return;
+      }
+
+      // 2. Check and update balance BEFORE creating shipment (Actual deduction/addition)
       try {
         console.log("Updating balance for amount:", shipmentAmount);
         const balanceResponse = await axios.post(`${server}/portal/update-balance`, {

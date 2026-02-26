@@ -497,7 +497,7 @@ const formatCurrency = (amount) => {
   return new Intl.NumberFormat("en-IN", {
     style: "decimal",
     maximumFractionDigits: 0,
-  }).format(amount);
+  }).format(Math.abs(amount));
 };
 
 function Wallet() {
@@ -625,8 +625,7 @@ function Wallet() {
       console.error("Error initiating payment:", error);
       console.error("Error details:", error.response?.data);
       alert(
-        `Failed to initiate payment: ${
-          error.response?.data?.error || error.message
+        `Failed to initiate payment: ${error.response?.data?.error || error.message
         }`
       );
     } finally {
@@ -875,9 +874,8 @@ function Wallet() {
 
             <div className="relative">
               <span
-                className={`absolute left-6 top-1/2 transform -translate-y-1/2 transition-colors ${
-                  amount ? "" : "text-[#979797]"
-                }`}
+                className={`absolute left-6 top-1/2 transform -translate-y-1/2 transition-colors ${amount ? "" : "text-[#979797]"
+                  }`}
               >
                 ₹
               </span>
@@ -900,9 +898,8 @@ function Wallet() {
                 onBlur={handleBlur}
                 id="amount"
                 placeholder="5000"
-                className={`pl-10 border rounded px-6 py-2.5 outline-none w-full ${
-                  errors.amount ? "border-red-500" : "border-[#979797]"
-                }`}
+                className={`pl-10 border rounded px-6 py-2.5 outline-none w-full ${errors.amount ? "border-red-500" : "border-[#979797]"
+                  }`}
                 value={formattedAmount}
               />
             </div>
@@ -949,11 +946,10 @@ function Wallet() {
           </div>
 
           <button
-            className={`bg-[var(--primary-color)] transition-opacity duration-400 text-white text-sm py-3.5 rounded-md ${
-              !isValid || loading
+            className={`bg-[var(--primary-color)] transition-opacity duration-400 text-white text-sm py-3.5 rounded-md ${!isValid || loading
                 ? "opacity-90 cursor-not-allowed"
                 : "opacity-100"
-            }`}
+              }`}
             type="submit"
             disabled={!isValid || loading}
           >
