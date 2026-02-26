@@ -45,13 +45,21 @@ const ShipmentCard = ({
     shipperState,
     shipperCountry,
     shipperPincode,
-    paymentDetails,
     chargeableWt,
     totalAmt,
     status = "Shipment Created!",
     manifestNo,
     origin,
   } = shipmentData;
+
+  // ✅ Payment display logic
+  // payment field can be "Credit", "COD", "FOC", "RTO", "AIR CARGO" or "" (empty for portal wallet payments)
+  // If payment field is filled → show it
+  // If payment is empty but totalAmt > 0 and not on hold → it was paid via Wallet
+  const paymentMode = (shipmentData.payment || "").trim();
+  const isOnHold = shipmentData.isHold === true;
+  const isPaid = paymentMode !== "" || (Number(totalAmt) > 0 && !isOnHold);
+  const paymentDisplay = paymentMode !== "" ? paymentMode : "Wallet";
 
   // Function to create label data from shipment
   const createLabelDataFromShipment = (shipment) => {
@@ -320,10 +328,6 @@ const ShipmentCard = ({
     Total Boxes : ${Object.keys(shipmentData.shipmentAndPackageDetails || {}).length}
   `;
 
-  const formattedPaymentDetails = paymentDetails
-    ? `Payment Mode : ${paymentDetails.mode}`
-    : "Payment Pending";
-
   // Check if shipment can be selected (not dispatched)
   const isSelectable = status !== "Manifest Dispatched" && !manifestNo;
 
@@ -334,15 +338,11 @@ const ShipmentCard = ({
       btnText: manifestNo ? "View Manifest" : "Create Manifest",
       btnAction: () => {
         if (manifestNo) {
-          // If already has manifest, view it
           router.push(`/portal/manifestOverview/${manifestNo}`);
         } else {
-          // For single or multiple selection
           if (selectedAwbs.length > 1) {
-            // Multiple selection - let parent handle opening modal
             onCheckboxChange?.(_id);
           } else {
-            // Single selection
             setSelectedAwbs([awbNo]);
             setManifestOpen(true);
           }
@@ -355,10 +355,8 @@ const ShipmentCard = ({
       btnText: "Dispatch Shipment",
       btnAction: () => {
         if (selectedAwbs.length > 1) {
-          // Multiple selection - let parent handle opening modal
           onCheckboxChange?.(_id);
         } else {
-          // Single selection
           setSelectedAwbs([awbNo]);
           setDisptchedOpen(true);
         }
@@ -474,11 +472,6 @@ const ShipmentCard = ({
             >
               {awbNo}
             </Link>
-            {/* {origin && (
-              <span className="text-xs bg-gray-100 px-2 py-1 rounded">
-                Origin: {origin}
-              </span>
-            )} */}
           </div>
           {manifestNo && (
             <Link
@@ -546,17 +539,18 @@ const ShipmentCard = ({
           ))}
         </li>
 
-        {/* Payment Details */}
+        {/* ✅ Payment Details */}
         <li>
-          <span className="font-semibold">{totalAmt}</span>
-          {formattedPaymentDetails.split("\n").map((line, index) => (
-            <p
-              key={index}
-              className="truncate whitespace-nowrap rounded-lg bg-gray-300 py-1 my-2 font-semibold"
-            >
-              {line.trim()}
+          <span className="font-semibold">₹{totalAmt}</span>
+          {isPaid ? (
+            <p className="truncate whitespace-nowrap rounded-lg bg-green-200 text-green-700 py-1 my-2 font-semibold px-2">
+               {paymentDisplay}
             </p>
-          ))}
+          ) : (
+            <p className="truncate whitespace-nowrap rounded-lg bg-gray-300 text-gray-600 py-1 my-2 font-semibold px-2">
+              Payment Pending
+            </p>
+          )}
         </li>
 
         {/* Status */}
@@ -608,7 +602,7 @@ const ShipmentCard = ({
             </button>
           )}
 
-          {/* Delete Button - Only show if not dispatched */}
+          {/* Delete Button */}
           {status !== "Manifest Dispatched" && (
             <button
               className="p-1 rounded-full hover:bg-red-100 transition cursor-pointer"
@@ -801,16 +795,12 @@ export const ShipmentBulkActions = ({
     useContext(GlobalContext);
 
   const handleBulkManifest = () => {
-    // Set the selected AWBs in global context
     setSelectedAwbs(selectedAwbs);
-    // Open manifest modal
     setManifestOpen(true);
   };
 
   const handleBulkDispatch = () => {
-    // Set the selected AWBs in global context
     setSelectedAwbs(selectedAwbs);
-    // Open dispatch modal
     setDisptchedOpen(true);
   };
 

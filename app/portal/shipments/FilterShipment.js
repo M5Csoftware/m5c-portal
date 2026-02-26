@@ -303,7 +303,7 @@ function FilterShipment() {
                     />
                     <div>Invoiced</div>
                   </label>
-                  <label
+                  {/* <label
                     htmlFor="New"
                     className={`flex gap-4 rounded-md cursor-pointer ${filterRadioButton === "New" ? "text-[#EA1B40]" : "text-[#979797]"}`}
                   >
@@ -319,12 +319,12 @@ function FilterShipment() {
                       }
                     />
                     <div>New</div>
-                  </label>
+                  </label> */}
                 </div>
 
                 {/* Checkbox Filters */}
                 <div className="flex flex-col gap-4">
-                  <label
+                  {/* <label
                     htmlFor="m5-coin"
                     className="flex gap-4 rounded-md w-fit text-[#979797] cursor-pointer"
                   >
@@ -334,7 +334,7 @@ function FilterShipment() {
                       id="m5-coin"
                     />
                     <div>Shipment with M5 Coin Discount</div>
-                  </label>
+                  </label> */}
                   <label
                     htmlFor="rto"
                     className="flex gap-4 rounded-md w-fit text-[#979797] cursor-pointer"
@@ -449,13 +449,13 @@ function FilterShipment() {
 
                 {/* Dropdown Filters */}
                 <div className="flex flex-col gap-4">
-                  <CustomDropdown
+                  {/* <CustomDropdown
                     options={paymentMethod}
                     selectedOption={paymentFilter}
                     onSelect={setPaymentFilter}
                     title="Filter by Payment Method"
                     name="paymentFilter"
-                  />
+                  /> */}
                   <CustomDropdown
                     options={service}
                     selectedOption={serviceFilter}
@@ -470,13 +470,13 @@ function FilterShipment() {
                     title="Filter by Delivery Country"
                     name="countryFilter"
                   />
-                  <CustomDropdown
+                  {/* <CustomDropdown
                     options={consignment}
                     selectedOption={consignmentFilter}
                     onSelect={setConsignmentFilter}
                     title="Filter by Consignee/Consignor"
                     name="consignmentFilter"
-                  />
+                  /> */}
                 </div>
               </div>
 

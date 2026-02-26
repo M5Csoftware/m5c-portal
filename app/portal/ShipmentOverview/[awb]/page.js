@@ -2,40 +2,15 @@
 "use client";
 import { Phone, MapPin, Download, Search } from "lucide-react";
 import Image from "next/image";
-import ShipmentStatus from "@/app/portal/ShipmentOverview/ShipmentStatus"
+import ShipmentStatus from "@/app/portal/ShipmentOverview/ShipmentStatus";
 import { useContext, useEffect, useState } from "react";
 import axios from "axios";
 import Link from "next/link";
 import { GlobalContext } from "../../GlobalContext";
 
 const ShipmentOverview = ({ params: { awb } }) => {
-  const [shipmentData, setShipmentData] = useState({
-    shipmentId: "MPL00000",
-    bookingDate: "August 15, 2025",
-    service: "FedEx",
-    forwardingNumber: "231231264571",
-    chargeableWeight: 45,
-    actualWeight: 45,
-    volumetricWeight: 15.63,
-    totalBoxes: 3,
-    invoiceValue: 300,
-    paymentMode: "Credit Card",
-    paymentStatus: "Paid",
-    invoiceNumber: "INV-2025-0115-001",
-    generatedOn: "August 15, 2025",
-    consignor: {
-      name: "ABC Manufacturing Ltd.",
-      phone: "+91 9474565210",
-      address: "123 Industrial Area, Sector 16, Gurgaon, Haryana 122001, India",
-    },
-    consignee: {
-      name: "Global Supplies Inc.",
-      phone: "+91 9587423561",
-      address: "456 Business Park, Sector 21, New Delhi 110001, India",
-    },
-  });
-
-  const [loading, setLoading] = useState(false);
+  const [shipmentData, setShipmentData] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const { server } = useContext(GlobalContext);
 
@@ -69,22 +44,28 @@ const ShipmentOverview = ({ params: { awb } }) => {
       return parts.join(", ");
     };
 
+    // ✅ Payment logic — same as ShipmentCard
+    const paymentMode = (apiData.payment || "").trim();
+    const isOnHold = apiData.isHold === true;
+    const totalAmt = apiData.totalAmt || 0;
+    const isPaid = paymentMode !== "" || (totalAmt > 0 && !isOnHold);
+    const paymentDisplay = paymentMode !== "" ? paymentMode : "Wallet";
+
     return {
       shipmentId: apiData.awbNo || "N/A",
-      bookingDate: formatDate(apiData.date),
-      service: apiData.forwarder || apiData.networkName || "N/A",
+      bookingDate: formatDate(apiData.date || apiData.createdAt),
+      service: apiData.service || apiData.forwarder || apiData.networkName || "N/A",
       forwardingNumber: apiData.forwardingNo || "N/A",
-      chargeableWeight: Math.max(
-        apiData.totalActualWt || 0,
-        apiData.totalVolWt || 0
-      ),
+      chargeableWeight: apiData.chargeableWt || 0,
       actualWeight: apiData.totalActualWt || 0,
       volumetricWeight: apiData.totalVolWt || 0,
-      totalBoxes: apiData.pcs || 0,
+      totalBoxes: Array.isArray(apiData.boxes) ? apiData.boxes.length : (apiData.pcs || 0),
       invoiceValue: apiData.totalInvoiceValue || 0,
-      paymentMode:
-        apiData.payment === "Credit" ? "Credit" : apiData.payment || "N/A",
-      paymentStatus: apiData.totalAmt > 0 ? "Paid" : "Pending", // You might need to adjust this logic
+      totalAmt,
+      // ✅ Correct payment fields
+      paymentMode: paymentDisplay,
+      isPaid,
+      paymentStatus: isPaid ? "Paid" : "Pending",
       invoiceNumber: apiData.billNo || `INV-${apiData.awbNo}` || "N/A",
       generatedOn: formatDate(apiData.createdAt),
       consignor: {
@@ -113,14 +94,12 @@ const ShipmentOverview = ({ params: { awb } }) => {
         ),
         email: apiData.receiverEmail || "N/A",
       },
-      // Additional fields you might want to use
-      shipmentType: apiData.shipmentType || "N/A",
       reference: apiData.reference || "N/A",
       currency: apiData.currency || "INR",
       accountCode: apiData.accountCode || "N/A",
       isOnHold: apiData.isHold || false,
       holdReason: apiData.holdReason || "",
-      status: apiData.status || ""
+      status: apiData.status || "",
     };
   };
 
@@ -134,7 +113,6 @@ const ShipmentOverview = ({ params: { awb } }) => {
       .get(`${server}/portal/create-shipment?awbNo=${awb}`)
       .then((res) => {
         console.log("API Response:", res.data);
-
         if (res.data) {
           const mappedData = mapApiDataToShipmentData(res.data);
           setShipmentData(mappedData);
@@ -153,18 +131,12 @@ const ShipmentOverview = ({ params: { awb } }) => {
     alert("Downloading invoice...");
   };
 
-  const trackShipment = () => {
-    // alert("Tracking shipment...");
-  };
-
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
     if (shipmentData?.shipmentId) {
       navigator.clipboard.writeText(shipmentData.shipmentId);
       setCopied(true);
-
-      // Hide message after 2 seconds
       setTimeout(() => setCopied(false), 2000);
     }
   };
@@ -196,6 +168,8 @@ const ShipmentOverview = ({ params: { awb } }) => {
     );
   }
 
+  if (!shipmentData) return null;
+
   return (
     <div className="w-full px-8 mb-10 min-h-screen">
       <h1 className="text-2xl font-bold text-gray-800 mb-6 sticky top-[78px] z-40 bg-gray-50">
@@ -215,7 +189,6 @@ const ShipmentOverview = ({ params: { awb } }) => {
           >
             <Image width={24} height={24} src={"/copy.svg"} alt="Copy shipment ID" />
           </button>
-
           {copied && (
             <span className="text-sm text-green-600 transition-opacity duration-300">
               Copied!
@@ -278,6 +251,12 @@ const ShipmentOverview = ({ params: { awb } }) => {
                   ₹{shipmentData.invoiceValue}
                 </span>
               </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Grand Total:</span>
+                <span className="font-semibold text-sm">
+                  ₹{shipmentData.totalAmt}
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -298,9 +277,8 @@ const ShipmentOverview = ({ params: { awb } }) => {
               <div className="flex justify-between items-center">
                 <span className="text-gray-500">Payment Mode:</span>
                 <div className="flex items-center gap-1">
-                  <span>
-                    <Image width={24} height={24} src={"/credit-card.svg"} alt="Credit card icon" />
-                  </span>
+                  <Image width={18} height={18} src={"/credit-card.svg"} alt="Credit card icon" />
+                  {/* ✅ Fixed: uses paymentMode from mapped data */}
                   <span className="font-semibold text-sm">
                     {shipmentData.paymentMode}
                   </span>
@@ -308,11 +286,13 @@ const ShipmentOverview = ({ params: { awb } }) => {
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-gray-500">Payment Status:</span>
+                {/* ✅ Fixed: green for paid (including Wallet), yellow for pending */}
                 <span
-                  className={`px-3 rounded-2xl font-semibold text-sm ${shipmentData.paymentStatus === "Paid"
-                    ? "bg-green-100 text-green-700"
-                    : "bg-yellow-100 text-yellow-700"
-                    }`}
+                  className={`px-3 rounded-2xl font-semibold text-sm ${
+                    shipmentData.isPaid
+                      ? "bg-green-100 text-green-700"
+                      : "bg-yellow-100 text-yellow-700"
+                  }`}
                 >
                   {shipmentData.paymentStatus}
                 </span>
@@ -322,7 +302,7 @@ const ShipmentOverview = ({ params: { awb } }) => {
               <div className="flex justify-between">
                 <span className="text-gray-600">Invoice Number:</span>
                 <span className="font-semibold text-sm">
-                  {shipmentData.invoiceNumber}
+                  {/* {shipmentData.invoiceNumber} */}
                 </span>
               </div>
               <div className="flex justify-between">
@@ -387,23 +367,16 @@ const ShipmentOverview = ({ params: { awb } }) => {
       </div>
 
       {/* Shipment Status */}
-
-      {shipmentData.status === "hold" ? (
-        <HoldCard
-          onContactClick={() => { console.log("hello") }}
-        />
+      {shipmentData.isOnHold ? (
+        <HoldCard holdReason={shipmentData.holdReason} />
       ) : shipmentData.status === "offloaded" ? (
-        <OffloadedCard
-          onContactClick={handleContact}
-        />
+        <OffloadedCard />
       ) : (
         <ShipmentStatus awb={awb} />
       )}
 
-
-
       {/* Action Buttons */}
-      <div className="flex gap-4">
+      <div className="flex gap-4 mt-4">
         <button
           onClick={downloadInvoice}
           className="flex-1 bg-[#EA1B40] hover:bg-red-600 text-white font-semibold text-sm py-3 px-6 rounded-lg flex items-center justify-center gap-2 transition-colors"
@@ -413,10 +386,7 @@ const ShipmentOverview = ({ params: { awb } }) => {
         </button>
 
         <Link href={`/portal/tracking?awb=${awb}`} className="flex-1">
-          <button
-            onClick={trackShipment}
-            className="w-full border-2 border-[#EA1B40] text-[#EA1B40] hover:bg-red-50 font-semibold text-sm py-3 px-6 rounded-lg flex items-center justify-center gap-2 transition-colors"
-          >
+          <button className="w-full border-2 border-[#EA1B40] text-[#EA1B40] hover:bg-red-50 font-semibold text-sm py-3 px-6 rounded-lg flex items-center justify-center gap-2 transition-colors">
             <Search className="w-5 h-5" />
             Track Shipment
           </button>
@@ -428,31 +398,25 @@ const ShipmentOverview = ({ params: { awb } }) => {
 
 export default ShipmentOverview;
 
-
-const HoldCard = ({ onActionClick }) => {
+const HoldCard = ({ holdReason }) => {
   return (
     <div className="bg-[#EA1B40] rounded-lg p-4 mb-4 border border-gray-200 w-full">
       <div className="flex items-center justify-between">
-
-        {/* Left Section */}
         <div className="flex gap-3 items-start">
           <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center">
             <Image width={15} height={15} src="/bx_error.svg" alt="hold" />
           </div>
-
           <div>
             <h2 className="text-lg font-semibold text-white">
               Shipment on Hold
             </h2>
             <p className="text-sm text-white mt-1">
-              Reason: Documentation pending Verfication
+              Reason: {holdReason || "Documentation pending verification"}
             </p>
           </div>
         </div>
-
-        {/* Button */}
         <button className="bg-white text-[#EA1B40] px-4 py-2 rounded-lg text-sm font-semibold">
-          Tack Action
+          Take Action
         </button>
       </div>
     </div>
@@ -463,13 +427,10 @@ const OffloadedCard = ({ onContactClick }) => {
   return (
     <div className="bg-[#FFA50B] rounded-lg p-4 mb-4 border border-gray-200 w-full">
       <div className="flex items-center justify-between">
-
-        {/* Left Section */}
         <div className="flex gap-3 items-start">
           <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center">
             <Image width={15} height={15} src="/offloaded.svg" alt="Offloaded" />
           </div>
-
           <div>
             <h2 className="text-lg font-semibold text-white">
               Shipment Offloaded
@@ -479,8 +440,6 @@ const OffloadedCard = ({ onContactClick }) => {
             </p>
           </div>
         </div>
-
-        {/* Button */}
         <button className="bg-white text-[#EA1B40] px-4 py-2 rounded-lg text-sm font-semibold">
           Contact Us
         </button>
