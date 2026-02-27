@@ -149,6 +149,24 @@ const TicketCard = ({ ticketData, selected, onCheckboxChange }) => {
     }
   };
 
+  const formatFullDate = (dateString) => {
+    if (!dateString) return "N/A";
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return "N/A";
+      return date.toLocaleString("en-GB", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+      });
+    } catch (error) {
+      return "N/A";
+    }
+  };
+
   return (
     <>
       <div
@@ -203,8 +221,14 @@ const TicketCard = ({ ticketData, selected, onCheckboxChange }) => {
           </li>
 
           <li className="">{formatDate(updatedAt)}</li>
-          <li className="">{formatDate(estimatedResolutionDate)}</li>
-          <li className="">{formatDate(resolutionDate)}</li>
+          <li className="">
+            {status === "Resolved" ? "" : formatDate(estimatedResolutionDate)}
+          </li>
+          <li className="">
+            {status === "Resolved"
+              ? `Resolved at : ${formatFullDate(resolutionDate)}`
+              : formatDate(resolutionDate)}
+          </li>
           <li>
             <button
               onClick={() => setShowProgressModal(true)}
@@ -349,13 +373,34 @@ const TicketCard = ({ ticketData, selected, onCheckboxChange }) => {
           <div className="bg-white rounded-xl shadow-2xl w-[520px] max-h-[80vh] flex flex-col">
             {/* Modal Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b">
-              <div>
-                <h2 className="text-base font-semibold text-gray-800">
-                  Ticket Progress
-                </h2>
-                <p className="text-xs text-gray-400 mt-0.5">
-                  {displayId} · AWB: {awbNumber || "N/A"}
-                </p>
+              <div className="flex justify-between items-center w-full">
+                <div>
+                  <h2 className="text-base font-semibold text-gray-800">
+                    Ticket Progress
+                  </h2>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {displayId} · AWB: {awbNumber || "N/A"}
+                  </p>
+                </div>
+                <div className="mr-6 text-right">
+                  <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-0.5">
+                    Resolution Status
+                  </p>
+                  <p className="text-sm font-medium text-[var(--primary-color)]">
+                    {status === "Resolved" || status === "Closed" ? (
+                      <span className="text-green-600 font-bold">Resolved</span>
+                    ) : estimatedResolutionDate || resolutionDate ? (
+                      <span>
+                        Resolution Date:{" "}
+                        {formatDate(estimatedResolutionDate || resolutionDate)}
+                      </span>
+                    ) : (
+                      <span className="text-yellow-600">
+                        Resolution in progress...
+                      </span>
+                    )}
+                  </p>
+                </div>
               </div>
               <button
                 onClick={() => setShowProgressModal(false)}
@@ -424,16 +469,6 @@ const TicketCard = ({ ticketData, selected, onCheckboxChange }) => {
                               <span>
                                 🕒 {new Date(entry.date).toLocaleString()}
                               </span>
-                            )}
-                            {entry.resolutionDate ? (
-                              <span>
-                                🕒Est. Resolution:{" "}
-                                {new Date(
-                                  entry.resolutionDate,
-                                ).toLocaleString()}
-                              </span>
-                            ) : (
-                              <span>Resloution in progress...</span>
                             )}
                           </div>
                         </div>
