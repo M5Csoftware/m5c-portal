@@ -31,7 +31,7 @@ const Page = () => {
   const [airwaybillStock, setAirwaybillStock] = useState(1000);
 
   const formattedTotalBalance = new Intl.NumberFormat("en-IN").format(
-    -totalBalance,
+    totalBalance,
   );
   const formattedtodaysRevenue = new Intl.NumberFormat("en-IN").format(
     todaysRevenue,
