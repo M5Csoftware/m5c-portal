@@ -339,6 +339,7 @@ const Tickets = ({
           <li>Sub Category</li>
           <li>Status</li>
           <li>Last Updated</li>
+          <li>Est. Resolution Date</li>
           <li>Resolution Date</li>
           <li>Progress</li>
           <li className="end">Actions</li>

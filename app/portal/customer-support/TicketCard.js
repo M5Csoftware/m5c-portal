@@ -14,6 +14,7 @@ const TicketCard = ({ ticketData, selected, onCheckboxChange }) => {
     subCategory,
     status,
     resolutionDate,
+    estimatedResolutionDate,
     updatedAt,
     priorityStatus = "Normal",
     history = [],
@@ -188,12 +189,13 @@ const TicketCard = ({ ticketData, selected, onCheckboxChange }) => {
               </span>
             ) : (
               <span
-                className={`px-4 py-1 text-xs font-semibold rounded-md ${status === "Open"
-                  ? "text-blue-600 bg-blue-100"
-                  : status === "Pending"
-                    ? "text-yellow-600 bg-yellow-100"
-                    : "text-gray-600 bg-gray-100"
-                  }`}
+                className={`px-4 py-1 text-xs font-semibold rounded-md ${
+                  status === "Open"
+                    ? "text-blue-600 bg-blue-100"
+                    : status === "Pending"
+                      ? "text-yellow-600 bg-yellow-100"
+                      : "text-gray-600 bg-gray-100"
+                }`}
               >
                 {status || "Unknown"}
               </span>
@@ -201,6 +203,7 @@ const TicketCard = ({ ticketData, selected, onCheckboxChange }) => {
           </li>
 
           <li className="">{formatDate(updatedAt)}</li>
+          <li className="">{formatDate(estimatedResolutionDate)}</li>
           <li className="">{formatDate(resolutionDate)}</li>
           <li>
             <button
@@ -236,12 +239,15 @@ const TicketCard = ({ ticketData, selected, onCheckboxChange }) => {
           style={{
             top: `${menuPosition.top}px`,
             right: `${menuPosition.right}px`,
-            transform: 'translateY(-100%)',
+            transform: "translateY(-100%)",
             zIndex: 9999,
           }}
         >
           <button
-            onClick={() => { setShowCloseModal(true); setShowMenu(false); }}
+            onClick={() => {
+              setShowCloseModal(true);
+              setShowMenu(false);
+            }}
             disabled={status === "Closed" || status === "Resolved" || loading}
             className="block w-full text-left px-3 py-2 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed rounded text-sm"
           >
@@ -263,7 +269,9 @@ const TicketCard = ({ ticketData, selected, onCheckboxChange }) => {
           <button
             onClick={confirmIncreasePriority}
             disabled={
-              status === "Resolved" || status === "Closed" || priorityStatus === "Prioritized"
+              status === "Resolved" ||
+              status === "Closed" ||
+              priorityStatus === "Prioritized"
             }
             className="block w-full text-left px-3 py-2 hover:bg-gray-100 disabled:opacity-50 rounded text-sm"
           >
@@ -342,8 +350,12 @@ const TicketCard = ({ ticketData, selected, onCheckboxChange }) => {
             {/* Modal Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b">
               <div>
-                <h2 className="text-base font-semibold text-gray-800">Ticket Progress</h2>
-                <p className="text-xs text-gray-400 mt-0.5">{displayId} · AWB: {awbNumber || "N/A"}</p>
+                <h2 className="text-base font-semibold text-gray-800">
+                  Ticket Progress
+                </h2>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  {displayId} · AWB: {awbNumber || "N/A"}
+                </p>
               </div>
               <button
                 onClick={() => setShowProgressModal(false)}
@@ -356,30 +368,38 @@ const TicketCard = ({ ticketData, selected, onCheckboxChange }) => {
             {/* Timeline Body */}
             <div className="overflow-y-auto px-6 py-5 flex-1">
               {history.length === 0 ? (
-                <p className="text-sm text-gray-400 text-center py-8">Ticket Progress will be displayed here, once progress has been made</p>
+                <p className="text-sm text-gray-400 text-center py-8">
+                  Ticket Progress will be displayed here, once progress has been
+                  made
+                </p>
               ) : (
                 <ol className="relative border-l border-gray-200 ml-3">
                   {history.map((entry, idx) => {
                     const isLast = idx === history.length - 1;
                     const statusColor =
-                      entry.statusHistory === "Resolved" || entry.statusHistory === "Closed"
+                      entry.statusHistory === "Resolved" ||
+                      entry.statusHistory === "Closed"
                         ? "bg-green-100 text-green-700"
                         : entry.statusHistory === "In Progress"
                           ? "bg-yellow-100 text-yellow-700"
                           : entry.statusHistory === "Open"
                             ? "bg-blue-100 text-blue-700"
-                            : "bg-gray-100 text-gray-600";
+                            : "bg-[var(--primary-color)] text-white";
                     const dotColor =
-                      entry.statusHistory === "Resolved" || entry.statusHistory === "Closed"
+                      entry.statusHistory === "Resolved" ||
+                      entry.statusHistory === "Closed"
                         ? "bg-green-500"
                         : entry.statusHistory === "In Progress"
                           ? "bg-yellow-400"
                           : entry.statusHistory === "Open"
                             ? "bg-blue-500"
-                            : "bg-gray-400";
+                            : "bg-[var(--primary-color)]";
 
                     return (
-                      <li key={idx} className={`mb-6 ml-5 ${isLast ? "mb-0" : ""}`}>
+                      <li
+                        key={idx}
+                        className={`mb-6 ml-5 ${isLast ? "mb-0" : ""}`}
+                      >
                         {/* Timeline dot */}
                         <span
                           className={`absolute -left-[9px] flex items-center justify-center w-4 h-4 rounded-full ring-4 ring-white ${dotColor}`}
@@ -387,23 +407,33 @@ const TicketCard = ({ ticketData, selected, onCheckboxChange }) => {
                         <div className="bg-gray-50 border border-gray-100 rounded-lg p-4">
                           {/* Action + status badge */}
                           <div className="flex items-start justify-between gap-2 mb-2">
-                            <p className="text-sm font-medium text-gray-800 leading-snug">{entry.action}</p>
+                            <p className="text-sm font-medium text-gray-800 leading-snug">
+                              {entry.action}
+                            </p>
                             {entry.statusHistory && (
-                              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${statusColor}`}>
+                              <span
+                                className={`text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${statusColor}`}
+                              >
                                 {entry.statusHistory}
                               </span>
                             )}
                           </div>
                           {/* Meta row */}
-                          <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-gray-400">
-                            {entry.actionUser && (
-                              <span>👤 {entry.actionUser}</span>
-                            )}
-                            {entry.assignedTo && (
-                              <span>📌 Assigned: {entry.assignedTo}</span>
-                            )}
+                          <div className="flex justify-between gap-x-4 gap-y-1 text-[11px] text-gray-400">
                             {entry.date && (
-                              <span>🕒 {new Date(entry.date).toLocaleString()}</span>
+                              <span>
+                                🕒 {new Date(entry.date).toLocaleString()}
+                              </span>
+                            )}
+                            {entry.resolutionDate ? (
+                              <span>
+                                🕒Est. Resolution:{" "}
+                                {new Date(
+                                  entry.resolutionDate,
+                                ).toLocaleString()}
+                              </span>
+                            ) : (
+                              <span>Resloution in progress...</span>
                             )}
                           </div>
                         </div>
