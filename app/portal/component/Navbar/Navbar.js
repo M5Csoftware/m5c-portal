@@ -335,36 +335,40 @@ const SearchModal = ({
                             key={`${letter}-${itemIndex}`}
                             ref={(el) => (itemsRef.current[flatIndex] = el)}
                             onClick={() => handleItemClick(item)}
-                            className={`p-4 rounded-xl border-2 transition-all duration-200 cursor-pointer group ${isSelected
-                              ? "border-[var(--primary-color)] bg-blue-50 shadow-md"
-                              : "border-gray-200 hover:border-[var(--primary-color)] hover:bg-blue-50"
-                              }`}
+                            className={`p-4 rounded-xl border-2 transition-all duration-200 cursor-pointer group ${
+                              isSelected
+                                ? "border-[var(--primary-color)] bg-blue-50 shadow-md"
+                                : "border-gray-200 hover:border-[var(--primary-color)] hover:bg-blue-50"
+                            }`}
                           >
                             <div className="flex items-start gap-3">
                               <div
-                                className={`p-2 rounded-lg ${isSelected
-                                  ? "bg-[var(--primary-color)]"
-                                  : "bg-gray-200"
-                                  } transition-colors`}
+                                className={`p-2 rounded-lg ${
+                                  isSelected
+                                    ? "bg-[var(--primary-color)]"
+                                    : "bg-gray-200"
+                                } transition-colors`}
                               >
                                 <Image
                                   width={16}
                                   height={16}
                                   src={item.icon}
                                   alt={item.title}
-                                  className={`${isSelected
-                                    ? "filter brightness-0 invert"
-                                    : ""
-                                    }`}
+                                  className={`${
+                                    isSelected
+                                      ? "filter brightness-0 invert"
+                                      : ""
+                                  }`}
                                 />
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-1">
                                   <h5
-                                    className={`font-semibold truncate ${isSelected
-                                      ? "text-[var(--primary-color)]"
-                                      : "text-gray-800"
-                                      }`}
+                                    className={`font-semibold truncate ${
+                                      isSelected
+                                        ? "text-[var(--primary-color)]"
+                                        : "text-gray-800"
+                                    }`}
                                   >
                                     {item.title}
                                   </h5>
@@ -392,10 +396,11 @@ const SearchModal = ({
                                 height={16}
                                 src="/arrow-right.svg"
                                 alt="Go"
-                                className={`opacity-0 transition-opacity ${isSelected
-                                  ? "opacity-100"
-                                  : "group-hover:opacity-100"
-                                  }`}
+                                className={`opacity-0 transition-opacity ${
+                                  isSelected
+                                    ? "opacity-100"
+                                    : "group-hover:opacity-100"
+                                }`}
                               />
                             </div>
                           </div>
@@ -428,7 +433,7 @@ const formatCurrency = (amount) => {
   return new Intl.NumberFormat("en-IN", {
     style: "decimal",
     maximumFractionDigits: 0,
-  }).format(Math.abs(amount));
+  }).format(amount);
 };
 
 const Navbar = () => {
@@ -615,10 +620,11 @@ const Navbar = () => {
         {/* Quick Action Button */}
         <div className="relative">
           <button
-            className={`cursor-pointer px-4 py-2.5 flex gap-2 text-sm ${isQuickActionActive
-              ? "text-white bg-[var(--primary-color)]"
-              : "bg-[#E2E8F0] hover:bg-[#dbe3ee]"
-              } transition-all rounded-lg flex items-center`}
+            className={`cursor-pointer px-4 py-2.5 flex gap-2 text-sm ${
+              isQuickActionActive
+                ? "text-white bg-[var(--primary-color)]"
+                : "bg-[#E2E8F0] hover:bg-[#dbe3ee]"
+            } transition-all rounded-lg flex items-center`}
             onClick={() => setIsQuickActionActive(!isQuickActionActive)}
           >
             <Image
@@ -746,10 +752,11 @@ const Navbar = () => {
         {/* Enhanced Search Input */}
         <div className="relative flex">
           <div
-            className={`flex items-center gap-2 bg-white px-4 py-2.5 rounded-lg border-2 transition-all duration-200 ${isSearchFocused
-              ? "border-[var(--primary-color)] shadow-lg"
-              : "border-gray-200 hover:border-gray-300"
-              }`}
+            className={`flex items-center gap-2 bg-white px-4 py-2.5 rounded-lg border-2 transition-all duration-200 ${
+              isSearchFocused
+                ? "border-[var(--primary-color)] shadow-lg"
+                : "border-gray-200 hover:border-gray-300"
+            }`}
           >
             <Image
               width={20}
