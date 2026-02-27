@@ -845,11 +845,19 @@ const ShipmentAndPackageDetail = ({
 
   const { formData } = useFormData();
 
+  // ── NEW: dropdown suggestion state ──────────────────────────────
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const suggestionRef = useRef(null);
+  const contextInputRef = useRef(null);
+  // ────────────────────────────────────────────────────────────────
+
   // State for HSN notification
   const [hsnNotification, setHsnNotification] = useState({
     show: false,
     message: "",
-    type: "success" // "success" or "error"
+    type: "success",
   });
 
   const [confirmModal, setConfirmModal] = useState({
@@ -903,7 +911,7 @@ const ShipmentAndPackageDetail = ({
     async function fetchExporters() {
       try {
         const res = await axios.get(
-          `${server}/portal/csb-setting?accountCode=${accountCode}`,
+          `${server}/portal/csb-setting?accountCode=${accountCode}`
         );
         setExportersDB(res.data.data || []);
       } catch (err) {
@@ -929,7 +937,7 @@ const ShipmentAndPackageDetail = ({
     setValue("mhbsNumber", selectedExp.mhbsNumber || "");
     setValue(
       "exportThroughEcommerce",
-      selectedExp.exportThroughEcommerce || false,
+      selectedExp.exportThroughEcommerce || false
     );
     setValue("meisScheme", selectedExp.meisScheme || false);
   }, [watch("exporter"), exportersDB]);
@@ -1004,6 +1012,16 @@ const ShipmentAndPackageDetail = ({
       if (menuRef.current && !menuRef.current.contains(event.target)) {
         setIsOpen(false);
       }
+      // Close suggestion dropdown when clicking outside
+      if (
+        suggestionRef.current &&
+        !suggestionRef.current.contains(event.target) &&
+        contextInputRef.current &&
+        !contextInputRef.current.contains(event.target)
+      ) {
+        setShowSuggestions(false);
+        setHighlightedIndex(-1);
+      }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -1027,77 +1045,116 @@ const ShipmentAndPackageDetail = ({
   ]);
   const [totalAmount, setTotalAmount] = useState(0);
 
-  // Function to find HSN code based on content description
-  const findHsnCode = (content) => {
-    if (!content || typeof content !== 'string') return null;
-    
-    const searchTerm = content.toLowerCase().trim();
-    
-    // Find matching product in database
-    const matchedProduct = PRODUCT_DATABASE.find(product => 
-      product.keywords.some(keyword => searchTerm.includes(keyword.toLowerCase())) ||
-      product.name.toLowerCase().includes(searchTerm)
-    );
-    
-    return matchedProduct ? matchedProduct.hsnCode : null;
+  // ── NEW: Get suggestions from PRODUCT_DATABASE based on input ──
+  const getProductSuggestions = (input) => {
+    if (!input || input.trim().length < 1) return [];
+    const searchTerm = input.toLowerCase().trim();
+
+    const seen = new Set();
+    const results = [];
+
+    for (const product of PRODUCT_DATABASE) {
+      if (seen.has(product.name)) continue;
+
+      const nameMatch = product.name.toLowerCase().includes(searchTerm);
+      const keywordMatch = product.keywords.some((kw) =>
+        kw.toLowerCase().includes(searchTerm)
+      );
+
+      if (nameMatch || keywordMatch) {
+        seen.add(product.name);
+        results.push(product);
+        if (results.length >= 8) break; // cap at 8 suggestions
+      }
+    }
+
+    return results;
   };
 
-  // Auto-fill HSN when context changes
-  useEffect(() => {
-    if (boxes[0]?.context && boxes[0]?.context.trim() !== "") {
-      const hsnCode = findHsnCode(boxes[0].context);
-      
-      if (hsnCode) {
-        // Found HSN code
-        if (boxes[0].hsnNo !== hsnCode) {
-          handleInputChange(0, "hsnNo", hsnCode);
-          setHsnNotification({
-            show: true,
-            message: `HSN Code ${hsnCode} found for "${boxes[0].context}"`,
-            type: "success"
-          });
-        }
-      } else {
-        // No HSN code found
-        if (boxes[0].hsnNo) {
-          // Clear HSN if it exists
-          handleInputChange(0, "hsnNo", "");
-        }
-        setHsnNotification({
-          show: true,
-          message: `No HSN code found for "${boxes[0].context}"`,
-          type: "error"
-        });
-      }
-      
-      // Auto-hide notification after 3 seconds
-      const timer = setTimeout(() => {
-        setHsnNotification(prev => ({ ...prev, show: false }));
-      }, 3000);
-      
-      return () => clearTimeout(timer);
+  // ── NEW: Handle selecting a product from the dropdown ──────────
+  const handleSelectSuggestion = (product) => {
+    // Update context (description) and hsnNo together
+    setBoxes((prevBoxes) => {
+      const newBoxes = [...prevBoxes];
+      newBoxes[0] = {
+        ...newBoxes[0],
+        context: product.name,
+        hsnNo: product.hsnCode,
+      };
+      return newBoxes;
+    });
+
+    setShowSuggestions(false);
+    setHighlightedIndex(-1);
+
+    // Show success notification
+    setHsnNotification({
+      show: true,
+      message: `HSN Code ${product.hsnCode} auto-filled for "${product.name}"`,
+      type: "success",
+    });
+
+    const timer = setTimeout(() => {
+      setHsnNotification((prev) => ({ ...prev, show: false }));
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  };
+
+  // ── NEW: Handle context input change with live suggestions ─────
+  const handleContextChange = (value) => {
+    handleInputChange(0, "context", value);
+    handleInputChange(0, "hsnNo", ""); // clear HSN when user types manually
+
+    const matched = getProductSuggestions(value);
+    setSuggestions(matched);
+    setShowSuggestions(matched.length > 0 && value.trim().length > 0);
+    setHighlightedIndex(-1);
+  };
+
+  // ── NEW: Keyboard navigation for suggestions ───────────────────
+  const handleContextKeyDown = (e) => {
+    if (!showSuggestions) return;
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setHighlightedIndex((prev) =>
+        prev < suggestions.length - 1 ? prev + 1 : 0
+      );
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setHighlightedIndex((prev) =>
+        prev > 0 ? prev - 1 : suggestions.length - 1
+      );
+    } else if (e.key === "Enter" && highlightedIndex >= 0) {
+      e.preventDefault();
+      handleSelectSuggestion(suggestions[highlightedIndex]);
+    } else if (e.key === "Escape") {
+      setShowSuggestions(false);
+      setHighlightedIndex(-1);
     }
-  }, [boxes[0]?.context]);
+  };
+  // ────────────────────────────────────────────────────────────────
 
   // Calculate totals whenever boxes change
   useEffect(() => {
     const totalWt = boxes.reduce(
       (sum, box) => sum + parseFloat(box.totalWeight || 0),
-      0,
+      0
     );
     setTotalActualWt(totalWt);
     setValue("totalActualWt", totalWt);
 
     const totalVolWt = boxes.reduce(
       (sum, box) => sum + parseFloat(box.volumetricWeight || 0),
-      0,
+      0
     );
     setTotalVolumetricWt(totalVolWt);
     setValue("totalVolWt", totalVolWt);
 
     const totalAmt = boxes.reduce(
       (sum, box) => sum + parseFloat(box.amount || 0),
-      0,
+      0
     );
     setValue("totalInvoiceValue", totalAmt);
     setValue("boxes", boxes);
@@ -1130,7 +1187,7 @@ const ShipmentAndPackageDetail = ({
     if (tables[selectedBox]) {
       const invoiceValue = tables[selectedBox].reduce(
         (total, item) => total + (parseFloat(item.amount) || 0),
-        0,
+        0
       );
       setTotalAmount(invoiceValue);
     }
@@ -1151,11 +1208,11 @@ const ShipmentAndPackageDetail = ({
     }
 
     newBoxes[index].volumetricWeight = calculateVolumetricWeight(
-      newBoxes[index],
+      newBoxes[index]
     );
     newBoxes[index].totalWeight = calculateTotalWeight(newBoxes[index]);
     newBoxes[index].dimensionSummary = calculateDimensionSummary(
-      newBoxes[index],
+      newBoxes[index]
     );
 
     setBoxes(newBoxes);
@@ -1202,7 +1259,8 @@ const ShipmentAndPackageDetail = ({
           qty: parseFloat(boxes[0].qty) || 0,
           rate: parseFloat(boxes[0].rate) || 0,
           amount:
-            (parseFloat(boxes[0].qty) || 0) * (parseFloat(boxes[0].rate) || 0),
+            (parseFloat(boxes[0].qty) || 0) *
+            (parseFloat(boxes[0].rate) || 0),
         };
         return updatedTables;
       });
@@ -1231,6 +1289,8 @@ const ShipmentAndPackageDetail = ({
       { ...prevBoxes[0], context: "", hsnNo: "", qty: 0, rate: 0 },
       ...prevBoxes.slice(1),
     ]);
+    setSuggestions([]);
+    setShowSuggestions(false);
   };
 
   const handleEditItem = (index) => {
@@ -1259,7 +1319,7 @@ const ShipmentAndPackageDetail = ({
         setTables((prevTables) => {
           const updated = { ...prevTables };
           updated[selectedBox] = updated[selectedBox].filter(
-            (_, i) => i !== index,
+            (_, i) => i !== index
           );
           return updated;
         });
@@ -1348,15 +1408,18 @@ const ShipmentAndPackageDetail = ({
       if (!Array.isArray(boxItems)) return total;
       return (
         total +
-        boxItems.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0)
+        boxItems.reduce(
+          (sum, item) => sum + (parseFloat(item.amount) || 0),
+          0
+        )
       );
     },
-    0,
+    0
   );
 
   // ✅ Chargeable weight = max(actual, volumetric) rounded up
   const chargeableWt = Math.ceil(
-    Math.max(totalActualWt || 0, totalVolumetricWt || 0),
+    Math.max(totalActualWt || 0, totalVolumetricWt || 0)
   );
 
   return (
@@ -1365,8 +1428,8 @@ const ShipmentAndPackageDetail = ({
       {hsnNotification.show && (
         <div
           className={`fixed top-20 right-5 z-50 p-4 rounded-lg shadow-lg transition-all duration-300 ${
-            hsnNotification.type === "success" 
-              ? "bg-green-50 border border-green-300 text-green-800" 
+            hsnNotification.type === "success"
+              ? "bg-green-50 border border-green-300 text-green-800"
               : "bg-red-50 border border-red-300 text-red-800"
           }`}
         >
@@ -1374,7 +1437,9 @@ const ShipmentAndPackageDetail = ({
             <span className="text-lg">
               {hsnNotification.type === "success" ? "✅" : "⚠️"}
             </span>
-            <span className="text-sm font-medium">{hsnNotification.message}</span>
+            <span className="text-sm font-medium">
+              {hsnNotification.message}
+            </span>
           </div>
         </div>
       )}
@@ -1438,7 +1503,7 @@ const ShipmentAndPackageDetail = ({
                       />
                       <div>{type}</div>
                     </label>
-                  ),
+                  )
                 )}
               </div>
 
@@ -1484,7 +1549,6 @@ const ShipmentAndPackageDetail = ({
 
                 {/* ✅ Updated weight/invoice display bar */}
                 <div className="flex gap-2 flex-row-reverse flex-wrap">
-                  {/* ✅ Total Invoice Value - All Boxes */}
                   <div className="bg-[#FFF3CD] text-xs text-[#979797] px-[16px] py-[15px] rounded-md gap-2 flex">
                     <div className="flex gap-3">
                       <span>Total Invoice:</span>
@@ -1493,7 +1557,6 @@ const ShipmentAndPackageDetail = ({
                       </div>
                     </div>
                   </div>
-                  {/* ✅ Chargeable Weight (rounded up) */}
                   <div className="bg-[#E8F4FD] text-xs text-[#979797] px-[16px] py-[15px] rounded-md gap-2 flex">
                     <div className="flex gap-3">
                       <span>Chargeable Wt:</span>
@@ -1503,7 +1566,6 @@ const ShipmentAndPackageDetail = ({
                       </div>
                     </div>
                   </div>
-                  {/* Total Volumetric Weight */}
                   <div className="bg-[#D8F3E0] text-xs text-[#979797] px-[16px] py-[15px] rounded-md gap-2 flex">
                     <div className="flex gap-3">
                       <span>Total Vol. Weight:</span>
@@ -1513,7 +1575,6 @@ const ShipmentAndPackageDetail = ({
                       </div>
                     </div>
                   </div>
-                  {/* Total Actual Weight */}
                   <div className="bg-[#D8F3E0] text-xs text-[#979797] p-4 rounded-md gap-2 flex">
                     <div className="flex gap-3">
                       <span>Total Actual Weight:</span>
@@ -1541,7 +1602,7 @@ const ShipmentAndPackageDetail = ({
                             handleInputChange(
                               selectedBox - 1,
                               "weight",
-                              e.target.value,
+                              e.target.value
                             )
                           }
                           value={boxes[selectedBox - 1]?.weight || 0}
@@ -1568,10 +1629,12 @@ const ShipmentAndPackageDetail = ({
                                 handleInputChange(
                                   selectedBox - 1,
                                   dimension,
-                                  e.target.value,
+                                  e.target.value
                                 )
                               }
-                              value={boxes[selectedBox - 1]?.[dimension] || 0}
+                              value={
+                                boxes[selectedBox - 1]?.[dimension] || 0
+                              }
                               placeholder={
                                 dimension.charAt(0).toUpperCase() +
                                 dimension.slice(1)
@@ -1591,18 +1654,66 @@ const ShipmentAndPackageDetail = ({
 
               {/* Invoice items section */}
               <div className="flex w-full flex-wrap justify-between">
+                {/* ── UPDATED: Package Description with suggestion dropdown ── */}
                 <div id="context" className="flex w-[20vw] flex-col gap-2">
                   <h3>Package Description</h3>
-                  <input
-                    type="text"
-                    value={boxes[0]?.["context"] || ""}
-                    onChange={(e) =>
-                      handleInputChange(0, "context", e.target.value)
-                    }
-                    placeholder="Item Name"
-                    className="border-[#979797] border rounded-md px-2 py-3 w-full outline-none"
-                  />
+                  <div className="relative">
+                    <input
+                      ref={contextInputRef}
+                      type="text"
+                      value={boxes[0]?.["context"] || ""}
+                      onChange={(e) => handleContextChange(e.target.value)}
+                      onKeyDown={handleContextKeyDown}
+                      onFocus={() => {
+                        if (
+                          suggestions.length > 0 &&
+                          boxes[0]?.context?.trim()
+                        ) {
+                          setShowSuggestions(true);
+                        }
+                      }}
+                      placeholder="Type item name..."
+                      autoComplete="off"
+                      className="border-[#979797] border rounded-md px-2 py-3 w-full outline-none"
+                    />
+
+                    {/* Suggestions Dropdown */}
+                    {showSuggestions && suggestions.length > 0 && (
+                      <div
+                        ref={suggestionRef}
+                        className="absolute z-50 left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-56 overflow-y-auto"
+                      >
+                        {suggestions.map((product, idx) => (
+                          <div
+                            key={product.name}
+                            onMouseDown={(e) => {
+                              // use onMouseDown so it fires before onBlur
+                              e.preventDefault();
+                              handleSelectSuggestion(product);
+                            }}
+                            className={`flex items-center justify-between px-3 py-2 cursor-pointer text-xs transition-colors ${
+                              idx === highlightedIndex
+                                ? "bg-[#FFE5E9] text-[#EA1B40]"
+                                : "hover:bg-[#FFF5F7] text-gray-700"
+                            }`}
+                          >
+                            <span className="font-medium">{product.name}</span>
+                            <span
+                              className={`text-[10px] px-2 py-0.5 rounded-full font-mono ${
+                                idx === highlightedIndex
+                                  ? "bg-[#EA1B40] text-white"
+                                  : "bg-gray-100 text-gray-500"
+                              }`}
+                            >
+                              {product.hsnCode}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
+                {/* ─────────────────────────────────────────────────────── */}
 
                 <div className="flex gap-4 items-end">
                   {["hsnNo", "qty", "rate"].map((field) => (
@@ -1623,8 +1734,8 @@ const ShipmentAndPackageDetail = ({
                                 field,
                                 Math.max(
                                   0,
-                                  (parseFloat(boxes[0]?.[field]) || 0) - 1,
-                                ),
+                                  (parseFloat(boxes[0]?.[field]) || 0) - 1
+                                )
                               )
                             }
                             className="px-2 bg-[#F3F7FE] w-10 text-base font-bold text-[#979797]"
@@ -1644,7 +1755,7 @@ const ShipmentAndPackageDetail = ({
                                   ? 0
                                   : Math.max(
                                       0,
-                                      parseFloat(e.target.value) || 0,
+                                      parseFloat(e.target.value) || 0
                                     );
                               handleInputChange(0, field, value);
                             }}
@@ -1657,7 +1768,7 @@ const ShipmentAndPackageDetail = ({
                               handleInputChange(
                                 0,
                                 field,
-                                (parseFloat(boxes[0]?.[field]) || 0) + 1,
+                                (parseFloat(boxes[0]?.[field]) || 0) + 1
                               )
                             }
                             className="px-2 bg-[#F3F7FE] w-10 text-base font-bold text-[#979797]"
@@ -1674,7 +1785,7 @@ const ShipmentAndPackageDetail = ({
                           }
                           placeholder="Auto-filled HSN"
                           className="border-[#979797] border rounded-md px-2 py-3 w-[14.5vw] outline-none bg-gray-50"
-                          readOnly // Make HSN field read-only since it's auto-filled
+                          readOnly
                         />
                       ) : (
                         <input
@@ -1778,7 +1889,6 @@ const ShipmentAndPackageDetail = ({
                         </span>
                       </div>
                       <div className="flex gap-4 items-center">
-                        {/* ✅ Shows current box invoice value */}
                         <div className="flex bg-[#F8F8F8] px-4 py-2 text-sm gap-1 items-center rounded-md">
                           <span className="text-[#EA1B40]">Box Invoice:</span>
                           <span className="text-[#EA1B40]">
