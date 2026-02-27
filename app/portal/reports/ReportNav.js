@@ -45,6 +45,7 @@ const Report = () => {
   const [selectedRows, setSelectedRows] = useState({});
 
   const [isLoadingReports, setIsLoadingReports] = useState(false);
+  const [manifestsMap, setManifestsMap] = useState({});
   const [isLoadingBills, setIsLoadingBills] = useState(false);
   const [isLoadingInvoices, setIsLoadingInvoices] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -653,6 +654,20 @@ const Report = () => {
 
       setIsLoadingReports(true);
       try {
+        // Fetch manifests first to map branches
+        const manifestRes = await axios.get(
+          `${server}/portal/get-manifest?accountCode=${session.user.accountCode}`,
+        );
+        const manifests = Array.isArray(manifestRes.data.manifests)
+          ? manifestRes.data.manifests
+          : [];
+
+        const mMap = {};
+        manifests.forEach((m) => {
+          mMap[m.manifestNumber] = m;
+        });
+        setManifestsMap(mMap);
+
         const res = await axios.get(
           `${server}/portal/get-shipments?accountCode=${session.user.accountCode}`,
         );
@@ -662,8 +677,8 @@ const Report = () => {
           BookingDate: item.date ? formatDate(item.date) : "",
           BookingDateOriginal: item.date || "",
           FlightDate: item.date ? formatDate(item.date) : "",
-          Branch: item.receiverState || "",
-          OriginName: item.shipperCity || "",
+          Branch: mMap[item.manifestNo]?.dropBranchDetails?.code || "-",
+          OriginName: item.origin || item.shipperCity || "",
           Sector: item.sector || "",
           DestinationCode: item.destination || "",
           CustomerCode: item.accountCode || "",
