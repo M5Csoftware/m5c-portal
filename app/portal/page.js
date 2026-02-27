@@ -8,6 +8,7 @@ import { useSession } from "next-auth/react";
 import AwbInput from "../components/AwbInput";
 import { GlobalContext } from "./GlobalContext";
 import axios from "axios";
+import { exportShipmentsToExcel } from "../utils/excelExport";
 
 const Page = () => {
   const [activeDuration, setActiveDuration] = useState("12 Months");
@@ -20,6 +21,7 @@ const Page = () => {
   const [holdShipmentsData, setHoldShipmentsData] = useState([]);
   const [holdLoading, setHoldLoading] = useState(true);
   const [currentReasonIndex, setCurrentReasonIndex] = useState(0);
+  const [shipmentsData, setShipmentsData] = useState([]);
 
   // State variables for l2 values in StatTab components
   const [currency, setCurrency] = useState("INR");
@@ -70,6 +72,7 @@ const Page = () => {
           const data = await shipmentResponse.json();
           if (data.shipments && Array.isArray(data.shipments)) {
             setShipmentCount(data.shipments.length);
+            setShipmentsData(data.shipments);
 
             // Calculate Today's Revenue
             const today = new Date();
@@ -195,6 +198,23 @@ const Page = () => {
 
   const handleGraphDurationChange = (duration) => {
     setActiveDuration(duration);
+  };
+  
+  const handleExportExcel = async () => {
+    if (!shipmentsData || shipmentsData.length === 0) {
+      alert("No shipment data available to export");
+      return;
+    }
+    
+    try {
+      // Filter shipmentsData if needed based on activeDuration? 
+      // The user wants "each sector details", usually meaning a full report.
+      // We'll export the current fetched shipmentsData.
+      await exportShipmentsToExcel(shipmentsData, `Shipment_Overview_${activeDuration.replace(' ', '_')}.xlsx`);
+    } catch (error) {
+      console.error("Export error:", error);
+      alert("Failed to export Excel file");
+    }
   };
 
   const handlePrevClick = () => {
@@ -430,14 +450,17 @@ const Page = () => {
                 />
 
                 <div className="flex items-center border-2 border-gray-200 px-4 py-2 rounded-lg">
-                  <button className="flex items-center gap-2">
+                  <button 
+                    className="flex items-center gap-2 hover:bg-gray-50 transition-colors"
+                    onClick={handleExportExcel}
+                  >
                     <Image
                       width={14}
                       height={14}
-                      src="/export-pdf.svg"
-                      alt="export pdf"
+                      src="/download-excel.svg"
+                      alt="export excel"
                     />
-                    <span className="text-xs font-bold">Export PDF</span>
+                    <span className="text-xs font-bold">Export Excel</span>
                   </button>
                 </div>
               </div>
