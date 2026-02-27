@@ -25,16 +25,16 @@ const ShipmentOverviewDashboard = ({ duration }) => {
   const finalAccountCode =
     accountCode || session?.user?.accountCode || session?.user?.email;
 
-  // Define color palette for countries
-  const countryColors = {
-    USA: "#8D0E30",
-    UK: "#A50F34",
-    Canada: "#C50B31",
-    Europe: "#D12C46",
-    "New Zealand": "#EA1B40",
-    Australia: "#FF6C7B",
-    Unknown: "#736E6E"
-  };
+  // Define red-themed color palette for sectors/countries
+  const redPalette = [
+    "#620e1e",
+    "#a61732",
+    "#d51e41",
+    "#ea2147",
+    "#ee4d6c",
+    "#f599aa",
+    "#fde9ed",
+  ];
 
   // Calculate bar size based on duration
   const getBarSize = (duration) => {
@@ -140,12 +140,47 @@ const ShipmentOverviewDashboard = ({ duration }) => {
 
   const barSize = getBarSize(duration);
 
+  // Process data for "30 Days" to group into weeks
+  const processData = (data, duration, countries) => {
+    if (duration !== "30 Days" || !data || data.length === 0) return data;
+
+    const weeks = [];
+    const itemsPerWeek = 7;
+
+    for (let i = 0; i < data.length; i += itemsPerWeek) {
+      const weekIndex = Math.floor(i / itemsPerWeek) + 1;
+      const weekData = { name: `Week ${weekIndex}` };
+
+      // Initialize with 0s for all countries
+      countries.forEach((country) => {
+        weekData[country] = 0;
+      });
+
+      // Slice and aggregate
+      const items = data.slice(i, i + itemsPerWeek);
+      items.forEach((item) => {
+        countries.forEach((country) => {
+          weekData[country] += item[country] || 0;
+        });
+      });
+
+      weeks.push(weekData);
+    }
+
+    return weeks;
+  };
+
+  const processedData = processData(chartData, duration, countries);
+
+  // Override barSize for Week view (only 4-5 bars)
+  const finalBarSize = duration === "30 Days" ? 40 : barSize;
+
   return (
     <ResponsiveContainer width="100%" height={290}>
       <BarChart
         width={500}
         height={300}
-        data={chartData}
+        data={processedData}
         margin={{
           top: 20,
           right: 30,
@@ -187,15 +222,13 @@ const ShipmentOverviewDashboard = ({ duration }) => {
         {/* Render bars dynamically based on available countries */}
         {countries.map((country, index) => {
           const isLast = index === countries.length - 1;
-          const color =
-            countryColors[country] ||
-            `hsl(${(index * 360) / countries.length}, 70%, 50%)`;
+          const color = redPalette[index % redPalette.length];
 
           return (
             <Bar
               key={country}
               cursor="pointer"
-              barSize={barSize}
+              barSize={finalBarSize}
               radius={isLast ? [4, 4, 0, 0] : [0, 0, 4, 4]}
               dataKey={country}
               stackId="a"
