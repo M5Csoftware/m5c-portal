@@ -38,8 +38,6 @@ function ActiveFilters({ onClear, searchTerm, dateRange, initialDateRange }) {
     if (filters.service) count++;
     if (filters.country) count++;
     if (filters.consignmentType) count++;
-    if (selectedLi !== 0) count++;
-    if (statusFilter !== 'All') count++;
     if (searchTerm && searchTerm.trim() !== '') count++;
     if (!isDefaultDateRange()) count++;
 
@@ -76,17 +74,6 @@ function ActiveFilters({ onClear, searchTerm, dateRange, initialDateRange }) {
             </span>
           )}
 
-          {selectedLi !== 0 && (
-            <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">
-              Tab: {['All', 'Processing', 'Failed', 'Manifest'][selectedLi]}
-            </span>
-          )}
-
-          {statusFilter !== 'All' && (
-            <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">
-              Status: {statusFilter}
-            </span>
-          )}
 
           {filters.filterType !== 'All' && (
             <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">
