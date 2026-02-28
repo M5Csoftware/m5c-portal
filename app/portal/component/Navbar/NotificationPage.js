@@ -2,20 +2,25 @@
 import { useState, useRef, useEffect } from "react";
 import { X } from "lucide-react";
 import Image from "next/image";
-import { getNotifications, updateNotification } from "@/app/lib/notificationService";
+import {
+  getNotifications,
+  updateNotification,
+} from "@/app/lib/notificationService";
 import { useSession } from "next-auth/react";
-
 
 // NotificationPage Component
 export function NotificationPage({ onClose, initialNotification }) {
   const [notifications, setNotifications] = useState([]);
-  const [selectedNotification, setSelectedNotification] = useState(initialNotification || null);
+  const [selectedNotification, setSelectedNotification] = useState(
+    initialNotification || null,
+  );
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("All");
   const { data: session } = useSession();
+  const { user } = session;
 
   // Fetch notifications on mount
   useEffect(() => {
@@ -43,17 +48,18 @@ export function NotificationPage({ onClose, initialNotification }) {
     try {
       await updateNotification({ id, isRead: true });
       // Update local state to reflect read status
-      setNotifications(prev => prev.map(n =>
-        (n._id === id || n.id === id) ? { ...n, isRead: true } : n
-      ));
+      setNotifications((prev) =>
+        prev.map((n) =>
+          n._id === id || n.id === id ? { ...n, isRead: true } : n,
+        ),
+      );
       if (selectedNotification?._id === id || selectedNotification?.id === id) {
-        setSelectedNotification(prev => ({ ...prev, isRead: true }));
+        setSelectedNotification((prev) => ({ ...prev, isRead: true }));
       }
     } catch (err) {
       console.error("Error marking as read:", err);
     }
   };
-
 
   const fetchNotifications = async () => {
     setLoading(true);
@@ -84,7 +90,6 @@ export function NotificationPage({ onClose, initialNotification }) {
     }
   };
 
-
   // UPDATED ICONS
   const getNotificationIcon = (type) => {
     const base = "w-6 h-6 rounded-full flex items-center justify-center";
@@ -102,14 +107,24 @@ export function NotificationPage({ onClose, initialNotification }) {
       case "Shipment Status":
         return (
           <div className={`${base} bg-green-100`}>
-            <Image src="/shipment-check.svg" height={20} width={20} alt="booked" />
+            <Image
+              src="/shipment-check.svg"
+              height={20}
+              width={20}
+              alt="booked"
+            />
           </div>
         );
 
       case "Shipment received at Hub":
         return (
           <div className={`${base} bg-green-100`}>
-            <Image src="/shipment-download.svg" height={20} width={20} alt="hub" />
+            <Image
+              src="/shipment-download.svg"
+              height={20}
+              width={20}
+              alt="hub"
+            />
           </div>
         );
 
@@ -145,7 +160,6 @@ export function NotificationPage({ onClose, initialNotification }) {
     }
   };
 
-
   const handlePrevPage = () => {
     if (currentPage > 1) {
       setCurrentPage(currentPage - 1);
@@ -180,21 +194,24 @@ export function NotificationPage({ onClose, initialNotification }) {
   const handleContactUs = () => {
     window.open(
       "mailto:support@example.com?subject=Notification Inquiry",
-      "_blank"
+      "_blank",
     );
   };
 
   const filteredNotifications = notifications.filter((notification) => {
-    const title = (notification.event || notification.title || "").toLowerCase();
+    const title = (
+      notification.event ||
+      notification.title ||
+      ""
+    ).toLowerCase();
     const awb = (notification.awbNo || notification.awb || "").toLowerCase();
     const search = (searchTerm || "").toLowerCase();
 
-    const matchesSearch =
-      title.includes(search) ||
-      awb.includes(search);
+    const matchesSearch = title.includes(search) || awb.includes(search);
 
     const matchesFilter =
-      filterType === "All" || (notification.event || notification.type) === filterType;
+      filterType === "All" ||
+      (notification.event || notification.type) === filterType;
     return matchesSearch && matchesFilter;
   });
 
@@ -219,7 +236,10 @@ export function NotificationPage({ onClose, initialNotification }) {
             </svg>
             <h2 className="font-semibold text-lg">Notifications</h2>
           </div>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700"
+          >
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -236,7 +256,9 @@ export function NotificationPage({ onClose, initialNotification }) {
                 <option value="All">All</option>
                 <option value="Manifest Requested">Manifest Requested</option>
                 <option value="Shipment Booked">Shipment Booked</option>
-                <option value="Shipment received at Hub">Received at Hub</option>
+                <option value="Shipment received at Hub">
+                  Received at Hub
+                </option>
                 <option value="Shipment Hold">Shipment Hold</option>
               </select>
 
@@ -260,16 +282,23 @@ export function NotificationPage({ onClose, initialNotification }) {
                 </div>
               ) : (
                 filteredNotifications.map((notification) => (
-                  <div key={notification.id || notification._id}
-                    className={`p-6 border cursor-pointer transition-all duration-200 ${selectedNotification?.id === (notification.id || notification._id) || selectedNotification?._id === (notification.id || notification._id)
-                      ? "bg-red-50/50 border-l-4 border-[#EA1B40] translate-x-1"
-                      : "hover:bg-gray-50 border-l-4 border-transparent"
-                      }`}
+                  <div
+                    key={notification.id || notification._id}
+                    className={`p-6 border cursor-pointer transition-all duration-200 ${
+                      selectedNotification?.id ===
+                        (notification.id || notification._id) ||
+                      selectedNotification?._id ===
+                        (notification.id || notification._id)
+                        ? "bg-red-50/50 border-l-4 border-[#EA1B40] translate-x-1"
+                        : "hover:bg-gray-50 border-l-4 border-transparent"
+                    }`}
                     onClick={() => setSelectedNotification(notification)}
                   >
                     <div className="flex items-start">
                       <div className="mr-3 mt-1">
-                        {getNotificationIcon(notification.event || notification.type)}
+                        {getNotificationIcon(
+                          notification.event || notification.type,
+                        )}
                       </div>
                       <div className="flex flex-col gap-1 flex-1">
                         <div className="flex justify-between items-center">
@@ -282,7 +311,11 @@ export function NotificationPage({ onClose, initialNotification }) {
                             )}
                           </div>
                           <span className="text-[#979797] font-normal text-xs">
-                            {notification.createdAt ? new Date(notification.createdAt).toLocaleDateString() : notification.timestamp}
+                            {notification.createdAt
+                              ? new Date(
+                                  notification.createdAt,
+                                ).toLocaleDateString()
+                              : notification.timestamp}
                           </span>
                         </div>
                         <p className="text-xs text-gray-600">
@@ -320,69 +353,115 @@ export function NotificationPage({ onClose, initialNotification }) {
           <div className="w-[587px] p-8 overflow-y-auto bg-gray-50/30">
             {selectedNotification ? (
               <div className="flex flex-col h-full">
-                <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                  <div className="flex justify-between items-start mb-6">
-                    <div className="flex p-3 bg-red-50 rounded-xl">
+                <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+                  <div className="flex justify-between items-start mb-3">
+                    <div className="flex p-2 bg-red-50 rounded-xl gap-1 items-center">
                       <Image
                         src="/roundlogo.svg"
                         alt="Company logo"
-                        height={40}
-                        width={40}
+                        height={32}
+                        width={32}
                       />
+                      <span className="font-extrabold">
+                        {selectedNotification.name || "Customer"}
+                      </span>
                     </div>
                     <div className="text-right">
-                      <p className="text-xs text-gray-500 font-medium">{selectedNotification.createdAt ? new Date(selectedNotification.createdAt).toLocaleString() : selectedNotification.timestamp}</p>
-                      <p className="text-[10px] text-gray-400 mt-1 uppercase tracking-wider">{selectedNotification.event || selectedNotification.type}</p>
+                      <p className="text-xs text-gray-500 font-medium">
+                        {selectedNotification.createdAt
+                          ? new Date(
+                              selectedNotification.createdAt,
+                            ).toLocaleString()
+                          : selectedNotification.timestamp}
+                      </p>
+                      <p className="text-[10px] text-gray-400 mt-1 uppercase tracking-wider">
+                        {selectedNotification.event ||
+                          selectedNotification.type}
+                      </p>
                     </div>
                   </div>
 
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-bold text-gray-800">Hello {selectedNotification.name || "Customer"},</h3>
+                  <div className="space-y-4 p-4">
+                    <h3 className="text-lg font-bold text-gray-800">
+                      Hello {user.name},
+                    </h3>
 
                     <div className="text-sm text-gray-600 leading-relaxed space-y-3">
-                      <p>{selectedNotification.message || selectedNotification.description}</p>
+                      <p>
+                        {selectedNotification.message ||
+                          selectedNotification.description}
+                      </p>
 
                       {/* CATEGORY SPECIFIC DETAILS */}
 
                       {/* SHIPMENT DETAILS */}
-                      {(selectedNotification.event?.includes("Shipment") || selectedNotification.type?.includes("Shipment") || selectedNotification.event === "Manifest Requested" || selectedNotification.type === "Manifest Requested") && (
+                      {(selectedNotification.event?.includes("Shipment") ||
+                        selectedNotification.type?.includes("Shipment") ||
+                        selectedNotification.event === "Manifest Requested" ||
+                        selectedNotification.type === "Manifest Requested") && (
                         <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 space-y-2 mt-4">
                           <div className="flex justify-between">
                             <span className="text-gray-500">AWB Number</span>
-                            <span className="font-semibold text-gray-800">{selectedNotification.awbNo || selectedNotification.awb || "N/A"}</span>
+                            <span className="font-semibold text-gray-800">
+                              {selectedNotification.awbNo ||
+                                selectedNotification.awb ||
+                                "N/A"}
+                            </span>
                           </div>
                           {selectedNotification.status && (
                             <div className="flex justify-between">
-                              <span className="text-gray-500">Current Status</span>
-                              <span className="text-blue-600 font-medium">{selectedNotification.status}</span>
+                              <span className="text-gray-500">
+                                Current Status
+                              </span>
+                              <span className="text-blue-600 font-medium">
+                                {selectedNotification.status}
+                              </span>
                             </div>
                           )}
                           {selectedNotification.address && (
                             <div className="pt-2 border-t border-gray-100">
-                              <span className="text-xs text-gray-400 block mb-1">Pickup Address</span>
-                              <span className="text-xs text-gray-700">{selectedNotification.address}</span>
+                              <span className="text-xs text-gray-400 block mb-1">
+                                Pickup Address
+                              </span>
+                              <span className="text-xs text-gray-700">
+                                {selectedNotification.address}
+                              </span>
                             </div>
                           )}
                         </div>
                       )}
 
                       {/* BILLING DETAILS */}
-                      {(selectedNotification.event?.includes("Invoice") || selectedNotification.type?.includes("Invoice") || selectedNotification.event?.includes("Payment") || selectedNotification.type?.includes("Payment") || selectedNotification.event?.includes("Credit") || selectedNotification.type?.includes("Credit")) && (
+                      {(selectedNotification.event?.includes("Invoice") ||
+                        selectedNotification.type?.includes("Invoice") ||
+                        selectedNotification.event?.includes("Payment") ||
+                        selectedNotification.type?.includes("Payment") ||
+                        selectedNotification.event?.includes("Credit") ||
+                        selectedNotification.type?.includes("Credit")) && (
                         <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 space-y-2 mt-4">
                           <div className="flex justify-between">
                             <span className="text-gray-500">Reference #</span>
-                            <span className="font-semibold text-gray-800">{selectedNotification.invoiceNo || selectedNotification.awbNo || selectedNotification.awb || "N/A"}</span>
+                            <span className="font-semibold text-gray-800">
+                              {selectedNotification.invoiceNo ||
+                                selectedNotification.awbNo ||
+                                selectedNotification.awb ||
+                                "N/A"}
+                            </span>
                           </div>
                           {selectedNotification.amount && (
                             <div className="flex justify-between">
                               <span className="text-gray-500">Amount</span>
-                              <span className="text-red-600 font-bold">₹{selectedNotification.amount}</span>
+                              <span className="text-red-600 font-bold">
+                                ₹{selectedNotification.amount}
+                              </span>
                             </div>
                           )}
                           {selectedNotification.dueDate && (
                             <div className="flex justify-between">
                               <span className="text-gray-500">Due Date</span>
-                              <span className="text-orange-600 font-medium">{selectedNotification.dueDate}</span>
+                              <span className="text-orange-600 font-medium">
+                                {selectedNotification.dueDate}
+                              </span>
                             </div>
                           )}
                         </div>
@@ -394,11 +473,22 @@ export function NotificationPage({ onClose, initialNotification }) {
                   <div className="mt-10 pt-6 border-t border-gray-100 flex flex-col gap-3">
                     {selectedNotification.link ? (
                       <button
-                        onClick={() => window.open(selectedNotification.link, "_blank")}
+                        onClick={() =>
+                          window.open(selectedNotification.link, "_blank")
+                        }
                         className="w-full bg-[#EA1B40] text-white py-3 rounded-xl font-bold hover:bg-red-600 transition-colors shadow-lg shadow-red-100 flex items-center justify-center gap-2"
                       >
-                        {((selectedNotification.event || selectedNotification.type)?.includes("Invoice")) ? "View Invoice" :
-                          ((selectedNotification.event || selectedNotification.type)?.includes("Shipment")) ? "Track Shipment" : "View Details"}
+                        {(
+                          selectedNotification.event ||
+                          selectedNotification.type
+                        )?.includes("Invoice")
+                          ? "View Invoice"
+                          : (
+                                selectedNotification.event ||
+                                selectedNotification.type
+                              )?.includes("Shipment")
+                            ? "Track Shipment"
+                            : "View Details"}
                       </button>
                     ) : (
                       <button
@@ -427,18 +517,35 @@ export function NotificationPage({ onClose, initialNotification }) {
                 </div>
 
                 <div className="mt-auto pt-6 text-center">
-                  <p className="text-[10px] text-gray-400 uppercase tracking-[2px]">M5C Logistics Portal Notification System</p>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-[2px]">
+                    M5C Logistics Portal Notification System
+                  </p>
                 </div>
               </div>
             ) : (
               <div className="h-full flex flex-col items-center justify-center text-center p-12">
                 <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                  <svg className="w-8 h-8 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                  <svg
+                    className="w-8 h-8 text-gray-300"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+                    />
                   </svg>
                 </div>
-                <h4 className="text-gray-800 font-semibold mb-2">Select a notification</h4>
-                <p className="text-gray-500 text-sm">Select a notification from the list to view its complete details and available actions.</p>
+                <h4 className="text-gray-800 font-semibold mb-2">
+                  Select a notification
+                </h4>
+                <p className="text-gray-500 text-sm">
+                  Select a notification from the list to view its complete
+                  details and available actions.
+                </p>
               </div>
             )}
           </div>
@@ -447,5 +554,3 @@ export function NotificationPage({ onClose, initialNotification }) {
     </div>
   );
 }
-
-
