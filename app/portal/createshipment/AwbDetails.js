@@ -18,7 +18,7 @@ function AwbDetails({
 }) {
   const { server } = useContext(GlobalContext);
   const { formData } = useFormData();
-  const [isEditMode, setIsEditMode] = useState(true);
+  const [isEditMode, setIsEditMode] = useState(false); // false = auto-generated (locked), true = manual edit
   const [awbExists, setAwbExists] = useState(null);
   const [isCheckingAwb, setIsCheckingAwb] = useState(false);
   const [awbError, setAwbError] = useState("");
@@ -32,6 +32,38 @@ function AwbDetails({
   const selectedSector = watch("sector");
   const selectedDestination = watch("destination");
 
+  // Generate unique AWB number starting with MPL
+  const generateUniqueAwb = async () => {
+    if (!server) return;
+    let unique = false;
+    let attempts = 0;
+
+    while (!unique && attempts < 10) {
+      const randomNum = Math.floor(10000000 + Math.random() * 90000000);
+      const generatedAwb = `MPL${randomNum}`;
+
+      try {
+        const response = await axios.get(
+          `${server}/portal/get-shipments?awbNo=${generatedAwb}`
+        );
+        // If response.data exists, AWB is taken — try again
+        if (!response.data) {
+          setValue("awbNo", generatedAwb);
+          setAwbExists(false);
+          setAwbError("");
+          unique = true;
+        }
+      } catch (error) {
+        // If request errors (e.g. 404 not found), treat as unique
+        setValue("awbNo", generatedAwb);
+        setAwbExists(false);
+        setAwbError("");
+        unique = true;
+      }
+      attempts++;
+    }
+  };
+
   // Prefill form data
   useEffect(() => {
     if (!formData) return;
@@ -39,6 +71,13 @@ function AwbDetails({
       setValue(key, formData[key]);
     });
   }, [formData, setValue]);
+
+  // Auto-generate AWB on mount if no existing formData awbNo
+  useEffect(() => {
+    if (!formData?.awbNo && server) {
+      generateUniqueAwb();
+    }
+  }, [server]);
 
   // Fetch zones and destinations when sector changes
   useEffect(() => {
@@ -94,7 +133,7 @@ function AwbDetails({
     fetchDestinations();
   }, [selectedSector, server, setValue]);
 
-  // Check AWB existence
+  // Check AWB existence (only in manual edit mode)
   const checkAwbExists = async (awbNumber) => {
     if (!awbNumber || awbNumber.trim() === "") {
       setAwbExists(false);
@@ -124,16 +163,24 @@ function AwbDetails({
     }
   };
 
-  // Debounce AWB check
+  // Debounce AWB check — only when user is manually editing
   useEffect(() => {
+    if (!isEditMode) return; // skip for auto-generated
     const timer = setTimeout(() => {
-      if (awbNo && !isEditMode) {
+      if (awbNo) {
         checkAwbExists(awbNo);
       }
     }, 1000);
 
     return () => clearTimeout(timer);
   }, [awbNo, isEditMode]);
+
+  // Handle pencil icon click — switch to manual edit mode
+  const handleEditClick = () => {
+    setIsEditMode(true);
+    setAwbExists(null);
+    setAwbError("");
+  };
 
   const handleNext = async () => {
     const isValid = await trigger([
@@ -197,7 +244,7 @@ function AwbDetails({
                 <input
                   type="text"
                   placeholder="AWB"
-                  disabled={isEditMode}
+                  disabled={!isEditMode} // disabled when auto-generated, enabled when editing
                   className="w-full border border-[#979797] block outline-none mb-2 rounded-md h-12 px-6 py-4"
                   {...register("awbNo", {
                     required: "AWB is required",
@@ -207,31 +254,30 @@ function AwbDetails({
                   <p className="text-red-500 text-xs">{errors.awbNo.message}</p>
                 )}
 
-                <div
-                  className="absolute top-[15px] right-2"
-                  onClick={() => setIsEditMode(!isEditMode)}
-                >
-                  {isEditMode && (
-                    <Image src="/addEdit.svg" width={20} height={20} alt="edit" />
-                  )}
-                </div>
-                
-                {isCheckingAwb && (
-                  <div className="absolute right-3 top-3">
-                    <div className="animate-spin h-5 w-5 border-2 border-gray-300 border-t-black rounded-full"></div>
-                  </div>
-                )}
-                
-                {!isCheckingAwb && awbExists === false && (
-                  <div className="absolute right-3 top-[16px]">
+                {/* Right side icons inside input — tick and pencil side by side, no overlap */}
+                <div className="absolute top-[14px] right-2 flex items-center gap-1">
+                  {/* Green tick when AWB is valid */}
+                  {!isCheckingAwb && awbExists === false && (
                     <Image
                       src="/green-tick.svg"
                       alt="check"
                       width={15}
                       height={15}
                     />
-                  </div>
-                )}
+                  )}
+
+                  {/* Spinner while checking manually entered AWB */}
+                  {isCheckingAwb && (
+                    <div className="animate-spin h-5 w-5 border-2 border-gray-300 border-t-black rounded-full"></div>
+                  )}
+
+                  {/* Pencil icon only when NOT in edit mode */}
+                  {!isEditMode && (
+                    <div className="cursor-pointer" onClick={handleEditClick}>
+                      <Image src="/addEdit.svg" width={20} height={20} alt="edit" />
+                    </div>
+                  )}
+                </div>
                 
                 {awbError && (
                   <p className="text-red-500 text-xs absolute">{awbError}</p>
