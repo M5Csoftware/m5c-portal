@@ -27,7 +27,10 @@ const ShipperDetail = ({
   const { data: session } = useSession();
   const [showKycModal, setShowKycModal] = useState(false);
   const [kycUploaded, setKycUploaded] = useState(false);
-  const [uploadedImages, setUploadedImages] = useState({ front: null, back: null });
+  const [uploadedImages, setUploadedImages] = useState({
+    front: null,
+    back: null,
+  });
 
   const { formData } = useFormData();
 
@@ -89,12 +92,12 @@ const ShipperDetail = ({
       kycBackUrl: values.shipperKycBackUrl,
     };
 
-    console.log(payload)
+    console.log(payload);
 
     try {
       const response = await axios.post(
         `${server}/portal/address-book`,
-        payload
+        payload,
       );
 
       setShipperAddresses((prev) => [...prev, response.data]);
@@ -109,7 +112,9 @@ const ShipperDetail = ({
     // Fetch shipper addresses from the API
     const fetchShipperAddresses = async () => {
       try {
-        const response = await axios.get(`${server}/portal/address-book/getAddress?accountCode=${session?.user?.accountCode}`);
+        const response = await axios.get(
+          `${server}/portal/address-book/getAddress?accountCode=${session?.user?.accountCode}`,
+        );
         setShipperAddresses(response.data);
       } catch (error) {
         console.error("Error fetching shipper addresses:", error);
@@ -117,14 +122,14 @@ const ShipperDetail = ({
     };
 
     fetchShipperAddresses();
-  }, []);
+  }, [session, server]);
 
   // Watch the selected address and update form fields accordingly
   const selectedAddressId = watch("shipperAddress");
   useEffect(() => {
     if (selectedAddressId) {
       const selectedAddress = shipperAddresses.find(
-        (address) => address._id === selectedAddressId
+        (address) => address._id === selectedAddressId,
       );
       if (selectedAddress) {
         setValue("shipperFullName", selectedAddress.fullName);
@@ -138,15 +143,21 @@ const ShipperDetail = ({
         setValue("shipperEmail", selectedAddress.email);
         setValue("shipperKycType", selectedAddress.kycType);
         setValue("shipperKycNumber", selectedAddress.kycNumber);
-        
+
         // Also set KYC URLs if they exist in the address book
         if (selectedAddress.kycFrontUrl) {
           setValue("shipperKycFrontUrl", selectedAddress.kycFrontUrl);
-          setUploadedImages(prev => ({ ...prev, front: selectedAddress.kycFrontUrl }));
+          setUploadedImages((prev) => ({
+            ...prev,
+            front: selectedAddress.kycFrontUrl,
+          }));
         }
         if (selectedAddress.kycBackUrl) {
           setValue("shipperKycBackUrl", selectedAddress.kycBackUrl);
-          setUploadedImages(prev => ({ ...prev, back: selectedAddress.kycBackUrl }));
+          setUploadedImages((prev) => ({
+            ...prev,
+            back: selectedAddress.kycBackUrl,
+          }));
         }
         if (selectedAddress.kycFrontUrl || selectedAddress.kycBackUrl) {
           setKycUploaded(true);
@@ -155,27 +166,23 @@ const ShipperDetail = ({
     }
   }, [selectedAddressId, shipperAddresses, setValue]);
 
-  const addToAddBook = () => {
-    if (saveToBook) {
-      addAddress();
-    }
-  };
-
   return (
     <div className="bg-white rounded-3xl p-10">
       <div className="flex gap-2 items-center">
         <div className="relative w-9 h-9">
           <Image
-            className={`absolute left-0 right-0 top-0 bottom-0 transition-opacity duration-500 ${step <= 2 ? "opacity-100" : "opacity-0"
-              }`}
+            className={`absolute left-0 right-0 top-0 bottom-0 transition-opacity duration-500 ${
+              step <= 2 ? "opacity-100" : "opacity-0"
+            }`}
             src="/create-shipment/2.svg"
             alt="step 2"
             width={36}
             height={36}
           />
           <Image
-            className={`absolute left-0 right-0 top-0 bottom-0 transition-opacity duration-500 ${step > 2 ? "opacity-100" : "opacity-0"
-              }`}
+            className={`absolute left-0 right-0 top-0 bottom-0 transition-opacity duration-500 ${
+              step > 2 ? "opacity-100" : "opacity-0"
+            }`}
             src="/create-shipment/done-red.svg"
             alt="step 2"
             width={36}
@@ -185,8 +192,9 @@ const ShipperDetail = ({
         <h2 className="text-base px-2 font-bold">Shipper Details</h2>
       </div>
       <div
-        className={`flex gap-2 items-start overflow-hidden transition-max-height duration-500 ease-in-out ${step === 2 ? "max-h-[700px]" : "max-h-0"
-          }`}
+        className={`flex gap-2 items-start overflow-hidden transition-max-height duration-500 ease-in-out ${
+          step === 2 ? "max-h-[700px]" : "max-h-0"
+        }`}
       >
         <Image
           className="py-6"
@@ -199,8 +207,18 @@ const ShipperDetail = ({
           <div className="py-2 px-2 gap-4 flex flex-col items-center">
             <div className="flex w-full justify-end">
               {saveToBook ? (
-                <div className="flex gap-2 items-center text-red-600" onClick={() => { setSaveToBook(false); }}>
-                  <Image src={`/create-shipment/done-red.svg`} alt='check' width={15} height={15} />
+                <div
+                  className="flex gap-2 items-center text-red-600"
+                  onClick={() => {
+                    setSaveToBook(false);
+                  }}
+                >
+                  <Image
+                    src={`/create-shipment/done-red.svg`}
+                    alt="check"
+                    width={15}
+                    height={15}
+                  />
                   <p className="text-xs font-semibold">Saved to Address Book</p>
                 </div>
               ) : (
@@ -230,7 +248,9 @@ const ShipperDetail = ({
                   </span>
                 )}
               </div>
-              <div className={`w-1/2 items-center cursor-pointer relative ${errors.shipperFullName && "pb-4"}`}>
+              <div
+                className={`w-1/2 items-center cursor-pointer relative ${errors.shipperFullName && "pb-4"}`}
+              >
                 <div
                   onClick={() => {
                     setAddressDropOpen(!addressDropOpen);
@@ -326,7 +346,9 @@ const ShipperDetail = ({
             <div className="flex gap-6 items-center w-full">
               <div className="w-full">
                 <input
-                  {...register("shipperCountry", { required: "Country is required" })}
+                  {...register("shipperCountry", {
+                    required: "Country is required",
+                  })}
                   placeholder="Country"
                   className="block border mb-2 border-[#979797] outline-none rounded-md h-12 px-6 py-4 w-full"
                 />
@@ -341,7 +363,10 @@ const ShipperDetail = ({
                 <input
                   {...register("shipperPincode", {
                     required: "Pincode is required",
-                    pattern: { value: /^[0-9]{4,10}$/, message: "Invalid pincode" }
+                    pattern: {
+                      value: /^[0-9]{4,10}$/,
+                      message: "Invalid pincode",
+                    },
                   })}
                   placeholder="Pincode"
                   className="block border mb-2 border-[#979797] outline-none rounded-md h-12 px-6 py-4 w-full"
@@ -368,7 +393,9 @@ const ShipperDetail = ({
               </div>
               <div className="w-full">
                 <input
-                  {...register("shipperState", { required: "State is required" })}
+                  {...register("shipperState", {
+                    required: "State is required",
+                  })}
                   placeholder="State"
                   className="block border mb-2 border-[#979797] outline-none rounded-md h-12 px-6 py-4 w-full"
                 />
@@ -390,15 +417,22 @@ const ShipperDetail = ({
                     className="block mb-2 outline-none border-[#979797] border rounded-md h-12 px-6 py-4 w-full"
                   >
                     <option value="">Select KYC Type</option>
-                    <option value="GSTIN_Normal">GSTIN (Normal)</option>
-                    <option value="GSTIN_Govt">GSTIN (Govt Entities)</option>
-                    <option value="GSTIN_Diplomats">GSTIN (Diplomats)</option>
-                    <option value="Aadhaar">Aadhaar Number</option>
-                    <option value="PAN">PAN Number</option>
-                    <option value="TAN">TAN Number</option>
-                    <option value="Passport">Passport Number</option>
-                    <option value="VoterId">Voter Id</option>
+                    <option value="GSTIN (Normal)">GSTIN (Normal)</option>
+                    <option value="GSTIN (Govt Entities)">
+                      GSTIN (Govt Entities)
+                    </option>
+                    <option value="GSTIN (Diplomats)">GSTIN (Diplomats)</option>
+                    <option value="PAN Number">PAN Number</option>
+                    <option value="TAN Number">TAN Number</option>
+                    <option value="Passport Number">Passport Number</option>
+                    <option value="Aadhaar Number">Aadhaar Number</option>
+                    <option value="Voter Id">Voter Id</option>
                   </select>
+                  {errors.shipperKycType && (
+                    <span className="text-red-600">
+                      {errors.shipperKycType.message}
+                    </span>
+                  )}
                 </div>
 
                 {/* KYC Number */}
@@ -411,11 +445,13 @@ const ShipperDetail = ({
                     className="block border border-[#979797] outline-none mb-2 rounded-md h-12 px-6 py-4 w-full"
                   />
                   {errors.shipperKycNumber && (
-                    <span className="text-red-600">{errors.shipperKycNumber.message}</span>
+                    <span className="text-red-600">
+                      {errors.shipperKycNumber.message}
+                    </span>
                   )}
                 </div>
               </div>
-              
+
               {/* Hidden URLs */}
               <input type="hidden" {...register("shipperKycFrontUrl")} />
               <input type="hidden" {...register("shipperKycBackUrl")} />
@@ -436,10 +472,10 @@ const ShipperDetail = ({
                   />
                 </div>
                 <span>
-                  {kycUploaded 
-                    ? (uploadedImages.front && uploadedImages.back 
-                      ? "KYC Uploaded ✓" 
-                      : "Upload KYC Photo")
+                  {kycUploaded
+                    ? uploadedImages.front && uploadedImages.back
+                      ? "KYC Uploaded ✓"
+                      : "Upload KYC Photo"
                     : "Upload KYC Photo"}
                 </span>
               </button>
