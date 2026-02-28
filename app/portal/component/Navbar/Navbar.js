@@ -433,7 +433,7 @@ const formatCurrency = (amount) => {
   return new Intl.NumberFormat("en-IN", {
     style: "decimal",
     maximumFractionDigits: 0,
-  }).format(Math.abs(amount));
+  }).format(amount);
 };
 
 const Navbar = () => {

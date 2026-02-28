@@ -7,7 +7,6 @@ import axios from "axios";
 import { useSession } from "next-auth/react";
 import KycUploadModal from "./KycUploadModal";
 
-
 const AddAddress = () => {
   const { adding, setAdding, server } = useContext(GlobalContext);
 
@@ -15,6 +14,7 @@ const AddAddress = () => {
   const { register, handleSubmit, reset, setValue } = useForm({
     defaultValues: {
       addressType: "Consignor",
+      kycType: "", // Add default empty value for kycType
     },
   });
 
@@ -23,8 +23,6 @@ const AddAddress = () => {
   const { data: session } = useSession();
   const [showKycModal, setShowKycModal] = useState(false);
   const [kycUploaded, setKycUploaded] = useState(false);
-
-
 
   const fetchLocationByPincode = async (pincode) => {
     setLoading(true);
@@ -72,6 +70,7 @@ const AddAddress = () => {
       alert("Address Saved");
       reset();
       setSelected("Consignor"); // reset UI selection
+      setKycUploaded(false); // reset KYC upload status
       setAdding(false);
     } catch (error) {
       console.error("Error saving address:", error);
@@ -117,8 +116,9 @@ const AddAddress = () => {
             <div className="flex bg-white border border-[#979797] rounded-full h-11 overflow-hidden relative w-[326px] mb-4">
               <label
                 htmlFor="consignor"
-                className={`relative z-10 px-6 py-2 cursor-pointer font-medium transition-all w-[163px] flex items-center justify-center ${selected === "Consignor" ? "text-white" : "text-[#979797]"
-                  }`}
+                className={`relative z-10 px-6 py-2 cursor-pointer font-medium transition-all w-[163px] flex items-center justify-center ${
+                  selected === "Consignor" ? "text-white" : "text-[#979797]"
+                }`}
               >
                 <input
                   type="radio"
@@ -140,8 +140,9 @@ const AddAddress = () => {
 
               <label
                 htmlFor="consignee"
-                className={`relative z-10 px-6 py-2 cursor-pointer font-medium transition-all w-[163px] flex items-center justify-center ${selected === "Consignee" ? "text-white" : "text-[#979797]"
-                  }`}
+                className={`relative z-10 px-6 py-2 cursor-pointer font-medium transition-all w-[163px] flex items-center justify-center ${
+                  selected === "Consignee" ? "text-white" : "text-[#979797]"
+                }`}
               >
                 <input
                   type="radio"
@@ -174,14 +175,22 @@ const AddAddress = () => {
 
               <div className="w-1/2 flex items-center justify-betwee gap-2">
                 <div className="w-full">
-                  <input
+                  <select
                     {...register("kycType")}
-                    placeholder="KYC Type"
                     disabled={selected === "Consignee"}
-                    className={`w-full border border-[#979797] outline-none mb-2 rounded-md h-12 px-6 py-4 
-    ${selected === "Consignee" ? "bg-gray-200 cursor-not-allowed" : ""}`}
-                  />
-
+                    className={`w-full border border-[#979797] outline-none mb-2 rounded-md h-12 px-6 py-4 bg-white
+                      ${selected === "Consignee" ? "bg-gray-200 cursor-not-allowed" : ""}`}
+                  >
+                    <option value="">Select KYC Type</option>
+                    <option value="GSTIN_Normal">GSTIN (Normal)</option>
+                    <option value="GSTIN_Govt">GSTIN (Govt Entities)</option>
+                    <option value="GSTIN_Diplomats">GSTIN (Diplomats)</option>
+                    <option value="Aadhaar">Aadhaar Number</option>
+                    <option value="PAN">PAN Number</option>
+                    <option value="TAN">TAN Number</option>
+                    <option value="Passport">Passport Number</option>
+                    <option value="VoterId">Voter Id</option>
+                  </select>
                 </div>
 
                 <div className="w-full">
@@ -190,9 +199,8 @@ const AddAddress = () => {
                     placeholder="KYC Number"
                     disabled={selected === "Consignee"}
                     className={`w-full border border-[#979797] outline-none mb-2 rounded-md h-12 px-6 py-4 
-    ${selected === "Consignee" ? "bg-gray-200 cursor-not-allowed" : ""}`}
+                      ${selected === "Consignee" ? "bg-gray-200 cursor-not-allowed" : ""}`}
                   />
-
                 </div>
 
                 <div className="w-full">
@@ -206,8 +214,8 @@ const AddAddress = () => {
                       if (selected !== "Consignee") setShowKycModal(true);
                     }}
                     className={`cursor-pointer border border-[var(--primary-color)] text-[var(--primary-color)] rounded-md 
-    h-12 px-5 py-3 w-full font-bold flex items-center justify-center gap-2 mb-2
-    ${selected === "Consignee" ? "opacity-50 cursor-not-allowed" : ""}`}
+                      h-12 px-5 py-3 w-full font-bold flex items-center justify-center gap-2 mb-2
+                      ${selected === "Consignee" ? "opacity-50 cursor-not-allowed" : ""}`}
                   >
                     <div className="rounded-lg shadow-sm p-1">
                       <Image
@@ -219,8 +227,6 @@ const AddAddress = () => {
                     </div>
                     <span>{kycUploaded ? "Uploaded" : "Upload KYC Photo"}</span>
                   </button>
-
-
                 </div>
               </div>
             </div>
@@ -303,9 +309,7 @@ const AddAddress = () => {
             setKycUploaded(true);
           }}
         />
-
       )}
-
     </div>
   );
 };

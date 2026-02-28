@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 
 const AccountDetails = ({
@@ -8,11 +8,12 @@ const AccountDetails = ({
   handleNext,
   server,
   session,
-  onRequestSubmitted // Add this prop
+  onRequestSubmitted
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [fetchError, setFetchError] = useState("");
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showDetails, setShowDetails] = useState(true); // State to toggle details view
 
   const apiList = [
     { name: "Track Shipment", method: "Get", endpoint: "/v1/track" },
@@ -29,59 +30,51 @@ const AccountDetails = ({
     { name: "Get Invoice", method: "Get", endpoint: "/v1/invoices" }
   ];
 
-  // Fetch customer details when account code changes
-  const fetchCustomerDetails = async (accountCode) => {
-    if (!accountCode || accountCode.trim() === "") {
-      return;
-    }
-
-    setIsLoading(true);
-    setFetchError("");
-
-    try {
-      const response = await axios.get(
-        `${server}/api-request/customer-details?accountCode=${accountCode}`,
-      );
-
-      if (response.data.success) {
-        setAccountDetails({
-          ...accountDetails,
-          customerCode: response.data.data.accountCode,
-          customerName: response.data.data.customerName,
-          email: response.data.data.email,
-          phone: response.data.data.phone || "",
-        });
-        setFetchError("");
+  // Fetch customer details using account code from session
+  useEffect(() => {
+    const fetchCustomerDetailsFromSession = async () => {
+      const accountCode = session?.user?.accountCode; // Adjust this path based on your session structure
+      
+      if (!accountCode) {
+        setFetchError("No account code found in session");
+        return;
       }
-    } catch (error) {
-      console.error("Error fetching customer:", error);
-      if (error.response?.status === 404) {
-        setFetchError("Customer not found with this account code");
-      } else {
-        setFetchError("Failed to fetch customer details");
+
+      setIsLoading(true);
+      setFetchError("");
+
+      try {
+        const response = await axios.get(
+          `${server}/api-request/customer-details?accountCode=${accountCode}`,
+        );
+
+        if (response.data.success) {
+          setAccountDetails({
+            ...accountDetails,
+            customerCode: response.data.data.accountCode,
+            customerName: response.data.data.customerName,
+            email: response.data.data.email,
+            phone: response.data.data.phone || "",
+          });
+          setFetchError("");
+        }
+      } catch (error) {
+        console.error("Error fetching customer:", error);
+        if (error.response?.status === 404) {
+          setFetchError("Customer not found with this account code");
+        } else {
+          setFetchError("Failed to fetch customer details");
+        }
+      } finally {
+        setIsLoading(false);
       }
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    };
 
-  // Handle account code change with debounce
-  const handleAccountCodeChange = (e) => {
-    const value = e.target.value;
-    setAccountDetails({ ...accountDetails, customerCode: value });
-
-    // Fetch details when user stops typing (after 500ms)
-    if (window.accountCodeTimeout) {
-      clearTimeout(window.accountCodeTimeout);
-    }
-
-    window.accountCodeTimeout = setTimeout(() => {
-      fetchCustomerDetails(value);
-    }, 500);
-  };
+    fetchCustomerDetailsFromSession();
+  }, [session]);
 
   const onSubmit = async () => {
-    const branch = session?.user.branch;
+    const branch = session?.user?.branch;
     try {
       setIsLoading(true);
       const res = await axios.post(`${server}/api-request`, {
@@ -111,57 +104,70 @@ const AccountDetails = ({
           These details will be linked to your API access.
         </p>
 
-        <div className="grid grid-cols-4 gap-4 mb-4">
-          <div>
-            <label className="block text-sm font-medium mb-2">
-              Customer Account Code
-            </label>
-            <input
-              type="text"
-              value={accountDetails.customerCode}
-              onChange={handleAccountCodeChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-              placeholder="Enter account code"
-            />
-            {isLoading && (
-              <p className="text-xs text-blue-600 mt-1">
-                Fetching customer details...
-              </p>
+        {/* Customer Information Section - Styled like the reference image */}
+        {accountDetails.customerName && (
+          <div className="mb-6 border border-gray-200 rounded-lg overflow-hidden">
+            {/* Header with toggle similar to Application/Storage in the image */}
+            <div 
+              className="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-200 cursor-pointer hover:bg-gray-100"
+              onClick={() => setShowDetails(!showDetails)}
+            >
+              <div className="flex items-center space-x-2">
+                <svg 
+                  className={`w-5 h-5 text-gray-500 transform transition-transform ${showDetails ? 'rotate-90' : ''}`} 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+                <span className="font-medium text-gray-700">Customer Information</span>
+              </div>
+              <span className="text-xs text-gray-500">{accountDetails.customerCode}</span>
+            </div>
+
+            {/* Details section - collapsible like Storage section in the image */}
+            {showDetails && (
+              <div className="divide-y divide-gray-100">
+                <div className="px-4 py-2 flex items-center hover:bg-gray-50">
+                  <span className="text-sm text-gray-500 w-24">Name</span>
+                  <span className="text-sm text-gray-900 font-medium">{accountDetails.customerName}</span>
+                </div>
+                <div className="px-4 py-2 flex items-center hover:bg-gray-50">
+                  <span className="text-sm text-gray-500 w-24">Email</span>
+                  <span className="text-sm text-gray-900">{accountDetails.email}</span>
+                </div>
+                <div className="px-4 py-2 flex items-center hover:bg-gray-50">
+                  <span className="text-sm text-gray-500 w-24">Phone</span>
+                  <span className="text-sm text-gray-900">{accountDetails.phone || 'Not provided'}</span>
+                </div>
+              </div>
             )}
-            {fetchError && (
-              <p className="text-xs text-red-600 mt-1">{fetchError}</p>
-            )}
           </div>
-          <div>
-            <label className="block text-sm font-medium mb-2">
-              Customer Name
-            </label>
-            <input
-              type="text"
-              value={accountDetails.customerName}
-              readOnly
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
-            />
+        )}
+
+        {isLoading && (
+          <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <div className="flex items-center space-x-2">
+              <svg className="animate-spin h-4 w-4 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <p className="text-sm text-blue-600">Loading your account details...</p>
+            </div>
           </div>
-          <div>
-            <label className="block text-sm font-medium mb-2">Email</label>
-            <input
-              type="email"
-              value={accountDetails.email}
-              readOnly
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
-            />
+        )}
+
+        {fetchError && (
+          <div className="mb-4 p-4 bg-red-50 rounded-lg border border-red-200">
+            <div className="flex items-center space-x-2">
+              <svg className="h-4 w-4 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <p className="text-sm text-red-600">{fetchError}</p>
+            </div>
           </div>
-          <div>
-            <label className="block text-sm font-medium mb-2">Phone Number</label>
-            <input
-              type="tel"
-              value={accountDetails.phone}
-              readOnly
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
-            />
-          </div>
-        </div>
+        )}
 
         <div className="mb-6">
           <label className="block text-sm font-medium mb-3">API Use Case</label>
@@ -231,7 +237,7 @@ const AccountDetails = ({
         <div className="flex justify-end">
           <button
             onClick={onSubmit}
-            disabled={isLoading}
+            disabled={isLoading || !accountDetails.customerCode || fetchError}
             className="bg-[#EA1B40] hover:bg-red-600 text-white px-6 py-2.5 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? "Submitting..." : "Submit Request"}
@@ -287,7 +293,7 @@ const AccountDetails = ({
                   type="button"
                   onClick={() => {
                     setShowSuccessModal(false);
-                    window.location.reload(); // Reload to reset the form
+                    window.location.reload();
                   }}
                   className="mt-2 inline-flex w-full justify-center rounded-lg bg-[#EA1B40] px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-red-600 transition-colors"
                 >

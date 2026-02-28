@@ -77,13 +77,18 @@ const Page = () => {
             // Calculate Today's Revenue
             const today = new Date();
             const revenue = data.shipments.reduce((acc, shipment) => {
-              const shipmentDate = new Date(shipment.createdAt || shipment.date || shipment.bookingDate);
+              const shipmentDate = new Date(
+                shipment.createdAt || shipment.date || shipment.bookingDate,
+              );
               if (
                 shipmentDate.getDate() === today.getDate() &&
                 shipmentDate.getMonth() === today.getMonth() &&
                 shipmentDate.getFullYear() === today.getFullYear()
               ) {
-                return acc + (Number(shipment.amount) || Number(shipment.totalAmt) || 0);
+                return (
+                  acc +
+                  (Number(shipment.amount) || Number(shipment.totalAmt) || 0)
+                );
               }
               return acc;
             }, 0);
@@ -195,22 +200,24 @@ const Page = () => {
 
   // Fetch shipment count for the user
 
-
   const handleGraphDurationChange = (duration) => {
     setActiveDuration(duration);
   };
-  
+
   const handleExportExcel = async () => {
     if (!shipmentsData || shipmentsData.length === 0) {
       alert("No shipment data available to export");
       return;
     }
-    
+
     try {
-      // Filter shipmentsData if needed based on activeDuration? 
+      // Filter shipmentsData if needed based on activeDuration?
       // The user wants "each sector details", usually meaning a full report.
       // We'll export the current fetched shipmentsData.
-      await exportShipmentsToExcel(shipmentsData, `Shipment_Overview_${activeDuration.replace(' ', '_')}.xlsx`);
+      await exportShipmentsToExcel(
+        shipmentsData,
+        `Shipment_Overview_${activeDuration.replace(" ", "_")}.xlsx`,
+      );
     } catch (error) {
       console.error("Export error:", error);
       alert("Failed to export Excel file");
@@ -450,7 +457,7 @@ const Page = () => {
                 />
 
                 <div className="flex items-center border-2 border-gray-200 px-4 py-2 rounded-lg">
-                  <button 
+                  <button
                     className="flex items-center gap-2 hover:bg-gray-50 transition-colors"
                     onClick={handleExportExcel}
                   >
@@ -532,8 +539,9 @@ const Page = () => {
 const GraphYearSelect = ({ duration, isActive, onClick }) => {
   return (
     <div
-      className={`text-xs transition-all border-2 px-4 py-2 rounded-lg font-bold cursor-pointer ${isActive ? "border-gray-400" : "border-transparent"
-        }`}
+      className={`text-xs transition-all border-2 px-4 py-2 rounded-lg font-bold cursor-pointer ${
+        isActive ? "border-gray-400" : "border-transparent"
+      }`}
       onClick={onClick}
     >
       {duration}
