@@ -10,7 +10,8 @@ const ManifestTable = () => {
   const { data: session } = useSession();
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-  const { accountCode, statusFilter, server, setSelectedManifest } = useContext(GlobalContext);
+  const { accountCode, statusFilter, server, setSelectedManifest } =
+    useContext(GlobalContext);
 
   // Initialize as empty array instead of with dummy data
   const [manifests, setManifests] = useState([]);
@@ -27,8 +28,8 @@ const ManifestTable = () => {
     statusFilter === "All"
       ? manifestsArray
       : manifestsArray.filter(
-        (m) => m.status.toLowerCase() === statusFilter.toLowerCase()
-      );
+          (m) => m.status.toLowerCase() === statusFilter.toLowerCase(),
+        );
 
   const totalPages = Math.ceil(filteredManifests.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -43,7 +44,7 @@ const ManifestTable = () => {
     try {
       // Fetch details for all AWBs in this manifest
       const awbPromises = awbNumbers.map((awbNumber) =>
-        axios.get(`${server}/portal/get-shipments?awbNo=${awbNumber}`)
+        axios.get(`${server}/portal/get-shipments?awbNo=${awbNumber}`),
       );
 
       const awbResponses = await Promise.all(awbPromises);
@@ -85,7 +86,7 @@ const ManifestTable = () => {
         if (!accountCode) return;
 
         const response = await axios.get(
-          `${server}/portal/label-preferences?accountCode=${accountCode}`
+          `${server}/portal/label-preferences?accountCode=${accountCode}`,
         );
 
         if (response.data.success && response.data.data?.logoUrl) {
@@ -109,7 +110,7 @@ const ManifestTable = () => {
 
       try {
         const res = await axios.get(
-          `${server}/portal/get-manifest?accountCode=${accountCode}`
+          `${server}/portal/get-manifest?accountCode=${accountCode}`,
         );
 
         // Ensure we always set an array
@@ -141,7 +142,7 @@ const ManifestTable = () => {
               pickupAddress: manifest.pickupAddress,
               awbNumbers: awbNumbers,
             };
-          })
+          }),
         );
 
         setManifests(transformedManifests);
@@ -167,7 +168,7 @@ const ManifestTable = () => {
 
   const toggleSelectOne = (id) => {
     setSelected((prev) =>
-      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id],
     );
   };
 
@@ -207,8 +208,9 @@ const ManifestTable = () => {
       from: {
         name: shipment.shipperFullName || "SENDER NAME",
         address:
-          `${shipment.shipperAddressLine1 || ""} ${shipment.shipperAddressLine2 || ""
-            }`.trim() || "SENDER ADDRESS",
+          `${shipment.shipperAddressLine1 || ""} ${
+            shipment.shipperAddressLine2 || ""
+          }`.trim() || "SENDER ADDRESS",
         city: shipment.shipperCity || "SENDER CITY",
         state: shipment.shipperState || "SENDER STATE",
         zip: shipment.shipperPincode || "000000",
@@ -217,8 +219,9 @@ const ManifestTable = () => {
         name: shipment.receiverFullName || "RECEIVER NAME",
         attn: "Attn:",
         address:
-          `${shipment.receiverAddressLine1 || ""} ${shipment.receiverAddressLine2 || ""
-            }`.trim() || "RECEIVER ADDRESS",
+          `${shipment.receiverAddressLine1 || ""} ${
+            shipment.receiverAddressLine2 || ""
+          }`.trim() || "RECEIVER ADDRESS",
         city: shipment.receiverCity || "RECEIVER CITY",
         state: shipment.receiverState || "RECEIVER STATE",
         zip: shipment.receiverPincode || "000000",
@@ -236,7 +239,7 @@ const ManifestTable = () => {
         volWt: `${shipment.totalVolWt || 0} Kg`,
         chgWt: `${Math.max(
           shipment.totalActualWt || 0,
-          shipment.totalVolWt || 0
+          shipment.totalVolWt || 0,
         )} Kg`,
       },
       trackingNumber: shipment.awbNo,
@@ -280,11 +283,12 @@ const ManifestTable = () => {
         <div style="border-bottom: 2px solid #374151; padding: 8px; background: white;">
   <div style="font-weight: bold; border-bottom: 2px solid black; font-size: 1.125rem; padding: 8px 0; display: flex; align-items: center; justify-content: space-between;">
     <span>M5C Logistics™</span>
-    ${previewUrl
-            ? `<img src="${previewUrl}" alt="Company Logo" 
+    ${
+      previewUrl
+        ? `<img src="${previewUrl}" alt="Company Logo" 
               style="height: 32px; object-fit: contain; max-width: 150px;" />`
-            : ""
-          }
+        : ""
+    }
   </div>
   <div style="padding-top: 4px;">
     <span style="font-weight: 600;">Date: </span>
@@ -347,13 +351,15 @@ const ManifestTable = () => {
         <!-- Barcode -->
         <div style="padding: 8px 16px; display: flex; flex-direction: column; background: white;">
           <div style="display: flex; justify-content: center; margin: 10px 0;">
-            <canvas id="barcode-canvas-${labelData.trackingNumber
-          }" width="280" height="60"></canvas>
+            <canvas id="barcode-canvas-${
+              labelData.trackingNumber
+            }" width="280" height="60"></canvas>
           </div>
           <div style="margin-top: 8px; display: flex; justify-content: space-between; align-items: end;">
             <div style="font-weight: bold; font-size: 12px;">TRACKING NUMBER</div>
-            <div style="font-weight: bold; font-size: 20px;">${labelData.trackingNumber
-          }</div>
+            <div style="font-weight: bold; font-size: 20px;">${
+              labelData.trackingNumber
+            }</div>
           </div>
         </div>
 
@@ -368,7 +374,7 @@ const ManifestTable = () => {
 
         // Generate barcode with unique ID
         const barcodeCanvas = labelWrapper.querySelector(
-          `#barcode-canvas-${labelData.trackingNumber}`
+          `#barcode-canvas-${labelData.trackingNumber}`,
         );
         if (barcodeCanvas) {
           try {
@@ -433,7 +439,7 @@ const ManifestTable = () => {
   const fetchShipmentDetails = async (manifestNumber) => {
     try {
       const response = await axios.get(
-        `${server}/portal/get-shipments?manifestNumber=${manifestNumber}`
+        `${server}/portal/get-shipments?manifestNumber=${manifestNumber}`,
       );
 
       if (response.data && response.data.shipments) {
@@ -450,7 +456,7 @@ const ManifestTable = () => {
   const downloadAllLabelsForManifest = async (manifest) => {
     // Set downloading state for this specific manifest
     setDownloadingLabels((prev) => ({ ...prev, [manifest.id]: true }));
-    
+
     try {
       // Fetch shipment details if not already cached
       let shipments = originalShipments[manifest.manifestNumber];
@@ -470,7 +476,7 @@ const ManifestTable = () => {
       for (let i = 0; i < shipments.length; i++) {
         const shipment = shipments[i];
         console.log(
-          `Downloading label ${i + 1}/${shipments.length} for AWB: ${shipment.awbNo}`
+          `Downloading label ${i + 1}/${shipments.length} for AWB: ${shipment.awbNo}`,
         );
 
         const labelData = createLabelDataFromShipment(shipment);
@@ -524,11 +530,11 @@ const ManifestTable = () => {
       awbCount: shipments.length,
       totalPcs: shipments.reduce(
         (sum, shipment) => sum + (shipment.pcs || 0),
-        0
+        0,
       ),
       totalWeight: shipments.reduce(
         (sum, shipment) => sum + (shipment.totalActualWt || 0),
-        0
+        0,
       ),
       shipments: shipments.map((shipment) => ({
         awb: shipment.awbNo || "N/A",
@@ -612,7 +618,7 @@ const ManifestTable = () => {
     pdf.text(
       `Pieces: ${manifestData.totalPcs}`,
       margin + colWidth * 2 + 5,
-      currentY
+      currentY,
     );
 
     currentY += 8;
@@ -780,17 +786,17 @@ const ManifestTable = () => {
     pdf.text(
       `Shipments: ${manifestData.shipments.length}`,
       margin + 5,
-      currentY
+      currentY,
     );
     pdf.text(
       `Pieces: ${manifestData.totalPcs}`,
       margin + summaryColWidth + 5,
-      currentY
+      currentY,
     );
     pdf.text(
       `Weight: ${manifestData.totalWeight} KG`,
       margin + summaryColWidth * 2 + 5,
-      currentY
+      currentY,
     );
 
     // Save file
@@ -886,7 +892,9 @@ const ManifestTable = () => {
                       <Link
                         href={`/portal/manifestOverview/${manifest.manifestNumber}`}
                         className="text-sm hover:underline cursor-pointer"
-                        onClick={() => setSelectedManifest(manifest.manifestNumber)}
+                        onClick={() =>
+                          setSelectedManifest(manifest.manifestNumber)
+                        }
                       >
                         {manifest.manifestNumber}
                       </Link>
