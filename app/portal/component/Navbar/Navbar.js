@@ -447,7 +447,7 @@ const Navbar = () => {
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [balance, setBalance] = useState(0);
   const [balanceLoading, setBalanceLoading] = useState(true);
-  const [creditLimit, setCreditLimit] = useState(50000);
+  const [creditLimit, setCreditLimit] = useState(0);
   const [m5coins, setM5coins] = useState(500);
 
   const dropdownRef = useRef(null);
@@ -494,6 +494,7 @@ const Navbar = () => {
 
       if (response.data.success) {
         setBalance(response.data.balance || 0);
+        setCreditLimit(response.data.creditLimit || 0);
         balanceFetchedRef.current = true;
       }
     } catch (error) {
