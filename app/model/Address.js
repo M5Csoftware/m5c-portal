@@ -1,5 +1,5 @@
 // app/model/Address.js
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 const AddressSchema = new mongoose.Schema({
   accountCode: {
@@ -16,10 +16,21 @@ const AddressSchema = new mongoose.Schema({
   },
   kycType: {
     type: String,
-    enum: ['passport', 'adhaar', 'N/A'],
+    enum: [
+      "passport",
+      "adhaar",
+      "N/A",
+      "GSTIN (Normal)",
+      "GSTIN (Govt Entities)",
+      "GSTIN (Diplomats)",
+      "PAN Number",
+      "TAN Number",
+      "Passport Number",
+      "Aadhaar Number",
+      "Voter Id",
+    ],
     required: true,
   },
-
   kycNumber: {
     type: String,
     required: true,
@@ -53,13 +64,15 @@ const AddressSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-  addressType: { // New field for address type
+  addressType: {
+    // New field for address type
     type: String,
-    enum: ['Consignee', 'Consignor'], // Example options
+    enum: ["Consignee", "Consignor"], // Example options
     required: true,
   },
 });
 
-const Address = mongoose.models.Address || mongoose.model('Address', AddressSchema);
+const Address =
+  mongoose.models.Address || mongoose.model("Address", AddressSchema);
 
 export default Address;
