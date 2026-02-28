@@ -31,7 +31,6 @@ function Manifest() {
 
 export default Manifest;
 
-
 const ManifestActionButtons = ({ setManifestOpen, ctaButtonLabel }) => {
   const { server } = useContext(GlobalContext);
   const { data: session } = useSession();
@@ -56,10 +55,7 @@ const ManifestActionButtons = ({ setManifestOpen, ctaButtonLabel }) => {
     };
 
     try {
-      const res = await axios.post(
-        `${server}/portal/manifest`,
-        payload
-      );
+      const res = await axios.post(`${server}/portal/manifest`, payload);
       setManifestNumber(res.data.manifestNumber);
       setSelectedManifest(res.data.manifestNumber);
       setShowSuccessModal(true);
@@ -106,7 +102,7 @@ export const ManifestSuccessModal = ({ manifestNumber, onClose }) => {
         if (!accountCode) return;
 
         const response = await axios.get(
-          `${server}/portal/label-preferences?accountCode=${accountCode}`
+          `${server}/portal/label-preferences?accountCode=${accountCode}`,
         );
 
         if (response.data.success && response.data.data?.logoUrl) {
@@ -158,8 +154,9 @@ export const ManifestSuccessModal = ({ manifestNumber, onClose }) => {
       for (let i = 0; i < shipments.length; i++) {
         const shipment = shipments[i];
         console.log(
-          `Downloading label ${i + 1}/${shipments.length} for AWB: ${shipment.awbNo
-          }`
+          `Downloading label ${i + 1}/${shipments.length} for AWB: ${
+            shipment.awbNo
+          }`,
         );
 
         const labelData = createLabelDataFromShipment(shipment);
@@ -186,8 +183,9 @@ export const ManifestSuccessModal = ({ manifestNumber, onClose }) => {
       from: {
         name: shipment.shipperFullName || "SENDER NAME",
         address:
-          `${shipment.shipperAddressLine1 || ""} ${shipment.shipperAddressLine2 || ""
-            }`.trim() || "SENDER ADDRESS",
+          `${shipment.shipperAddressLine1 || ""} ${
+            shipment.shipperAddressLine2 || ""
+          }`.trim() || "SENDER ADDRESS",
         city: shipment.shipperCity || "SENDER CITY",
         state: shipment.shipperState || "SENDER STATE",
         zip: shipment.shipperPincode || "000000",
@@ -196,8 +194,9 @@ export const ManifestSuccessModal = ({ manifestNumber, onClose }) => {
         name: shipment.receiverFullName || "RECEIVER NAME",
         attn: "Attn:",
         address:
-          `${shipment.receiverAddressLine1 || ""} ${shipment.receiverAddressLine2 || ""
-            }`.trim() || "RECEIVER ADDRESS",
+          `${shipment.receiverAddressLine1 || ""} ${
+            shipment.receiverAddressLine2 || ""
+          }`.trim() || "RECEIVER ADDRESS",
         city: shipment.receiverCity || "RECEIVER CITY",
         state: shipment.receiverState || "RECEIVER STATE",
         zip: shipment.receiverPincode || "000000",
@@ -215,7 +214,7 @@ export const ManifestSuccessModal = ({ manifestNumber, onClose }) => {
         volWt: `${shipment.totalVolWt || 0} Kg`,
         chgWt: `${Math.max(
           shipment.totalActualWt || 0,
-          shipment.totalVolWt || 0
+          shipment.totalVolWt || 0,
         )} Kg`,
       },
       trackingNumber: shipment.awbNo,
@@ -226,7 +225,7 @@ export const ManifestSuccessModal = ({ manifestNumber, onClose }) => {
   const fetchShipmentDetails = async (manifestNumber) => {
     try {
       const response = await axios.get(
-        `${server}/portal/get-shipments?manifestNumber=${manifestNumber}`
+        `${server}/portal/get-shipments?manifestNumber=${manifestNumber}`,
       );
 
       if (response.data && response.data.shipments) {
@@ -276,11 +275,12 @@ export const ManifestSuccessModal = ({ manifestNumber, onClose }) => {
         <div style="border-bottom: 2px solid #374151; padding: 8px; background: white;">
   <div style="font-weight: bold; border-bottom: 2px solid black; font-size: 1.125rem; padding: 8px 0; display: flex; align-items: center; justify-content: space-between;">
     <span>M5C Logistics™</span>
-    ${previewUrl
-            ? `<img src="${previewUrl}" alt="Company Logo" 
+    ${
+      previewUrl
+        ? `<img src="${previewUrl}" alt="Company Logo" 
               style="height: 32px; object-fit: contain; max-width: 150px;" />`
-            : ""
-          }
+        : ""
+    }
   </div>
   <div style="padding-top: 4px;">
     <span style="font-weight: 600;">Date: </span>
@@ -343,13 +343,15 @@ export const ManifestSuccessModal = ({ manifestNumber, onClose }) => {
         <!-- Barcode -->
         <div style="padding: 8px 16px; display: flex; flex-direction: column; background: white;">
           <div style="display: flex; justify-content: center; margin: 10px 0;">
-            <canvas id="barcode-canvas-${labelData.trackingNumber
-          }" width="280" height="60"></canvas>
+            <canvas id="barcode-canvas-${
+              labelData.trackingNumber
+            }" width="280" height="60"></canvas>
           </div>
           <div style="margin-top: 8px; display: flex; justify-content: space-between; align-items: end;">
             <div style="font-weight: bold; font-size: 12px;">TRACKING NUMBER</div>
-            <div style="font-weight: bold; font-size: 20px;">${labelData.trackingNumber
-          }</div>
+            <div style="font-weight: bold; font-size: 20px;">${
+              labelData.trackingNumber
+            }</div>
           </div>
         </div>
 
@@ -364,7 +366,7 @@ export const ManifestSuccessModal = ({ manifestNumber, onClose }) => {
 
         // Generate barcode with unique ID
         const barcodeCanvas = labelWrapper.querySelector(
-          `#barcode-canvas-${labelData.trackingNumber}`
+          `#barcode-canvas-${labelData.trackingNumber}`,
         );
         if (barcodeCanvas) {
           try {
@@ -429,7 +431,7 @@ export const ManifestSuccessModal = ({ manifestNumber, onClose }) => {
     <div className="fixed inset-0 z-50 bg-black bg-opacity-40 flex justify-center items-center">
       <div
         ref={modalRef}
-        className="bg-white rounded-lg shadow-lg text-center px-10 py-9 w-[622px] relative border-2 border-green-700 m-10"
+        className="bg-white rounded-lg shadow-lg text-center px-10 py-9 w-[800px] relative border-2 border-green-700 m-10"
       >
         <Image
           src="/ManifestSuccess.svg"
@@ -492,13 +494,21 @@ export const ManifestSuccessModal = ({ manifestNumber, onClose }) => {
             </Link>
           </div>
           <div className="mt-6 bg-[var(--primary-color)] hover:bg-red-700 text-white font-semibold py-2 rounded-md w-[40vw]">
-            <button onClick={() =>
-              downloadAllLabelsForManifest(manifestNumber)
-            }>Bulk Print Label</button>
+            <button
+              onClick={() => downloadAllLabelsForManifest(manifestNumber)}
+            >
+              Bulk Print Label
+            </button>
+          </div>
+          <div className="mt-6 bg-[var(--primary-color)] hover:bg-red-700 text-white font-semibold py-2 rounded-md w-[40vw]">
+            <button
+              onClick={() => downloadAllLabelsForManifest(manifestNumber)}
+            >
+              Download Invoice
+            </button>
           </div>
         </div>
       </div>
     </div>
   );
 };
-
