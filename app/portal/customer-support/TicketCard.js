@@ -226,7 +226,7 @@ const TicketCard = ({ ticketData, selected, onCheckboxChange }) => {
           </li>
           <li className="">
             {status === "Resolved"
-              ? `Resolved at : ${formatFullDate(resolutionDate)}`
+              ? `${formatFullDate(resolutionDate)}`
               : formatDate(resolutionDate)}
           </li>
           <li>
@@ -390,8 +390,8 @@ const TicketCard = ({ ticketData, selected, onCheckboxChange }) => {
                     {status === "Resolved" || status === "Closed" ? (
                       <span className="text-green-600 font-bold">Resolved</span>
                     ) : estimatedResolutionDate || resolutionDate ? (
-                      <span>
-                        Resolution Date:{" "}
+                      <span className="text-xs font-semibold">
+                        EST Resolution Date:{" "}
                         {formatDate(estimatedResolutionDate || resolutionDate)}
                       </span>
                     ) : (
