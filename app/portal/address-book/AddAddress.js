@@ -29,7 +29,7 @@ const AddAddress = () => {
     try {
       const apiKey = "839c0840-9051-11ef-a2c7-c5f8467f3319";
       const response = await axios.get(
-        `https://app.zipcodebase.com/api/v1/search?apikey=${apiKey}&codes=${pincode}`
+        `https://app.zipcodebase.com/api/v1/search?apikey=${apiKey}&codes=${pincode}`,
       );
 
       const locationData = response.data.results[pincode];
@@ -41,7 +41,7 @@ const AddAddress = () => {
         setValue("country", country_code || "");
         setValue(
           "addressLine1",
-          province + "," + state + "," + country_code + "," + postal_code
+          province + "," + state + "," + country_code + "," + postal_code,
         );
       } else {
         alert("Invalid Pincode or no data available.");
@@ -64,7 +64,7 @@ const AddAddress = () => {
     try {
       const response = await axios.post(
         `${server}/portal/address-book`,
-        payload
+        payload,
       );
       console.log("Address saved:", response.data);
       alert("Address Saved");
@@ -182,14 +182,16 @@ const AddAddress = () => {
                       ${selected === "Consignee" ? "bg-gray-200 cursor-not-allowed" : ""}`}
                   >
                     <option value="">Select KYC Type</option>
-                    <option value="GSTIN_Normal">GSTIN (Normal)</option>
-                    <option value="GSTIN_Govt">GSTIN (Govt Entities)</option>
-                    <option value="GSTIN_Diplomats">GSTIN (Diplomats)</option>
-                    <option value="Aadhaar">Aadhaar Number</option>
-                    <option value="PAN">PAN Number</option>
-                    <option value="TAN">TAN Number</option>
-                    <option value="Passport">Passport Number</option>
-                    <option value="VoterId">Voter Id</option>
+                    <option value="GSTIN (Normal)">GSTIN (Normal)</option>
+                    <option value="GSTIN (Govt Entities)">
+                      GSTIN (Govt Entities)
+                    </option>
+                    <option value="GSTIN (Diplomats)">GSTIN (Diplomats)</option>
+                    <option value="PAN Number">PAN Number</option>
+                    <option value="TAN Number">TAN Number</option>
+                    <option value="Passport Number">Passport Number</option>
+                    <option value="Aadhaar Number">Aadhaar Number</option>
+                    <option value="Voter Id">Voter Id</option>
                   </select>
                 </div>
 

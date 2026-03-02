@@ -324,7 +324,7 @@ const Tickets = ({
 
       {/* Header */}
       <div>
-        <ul className="ticket-detail-ul flex justify-between bg-white border border-[#E2E8F0] rounded-[4px] drop-shadow-sm shipment-detail-ul p-4 text-[#A0AEC0] text-sm items-center">
+        <ul className="ticket-detail-ul flex gap-10 bg-white border border-[#E2E8F0] rounded-[4px] drop-shadow-sm shipment-detail-ul p-4 text-[#A0AEC0] text-sm items-center">
           <li style={{ width: "0px" }}>
             <input
               type="checkbox"
@@ -335,14 +335,14 @@ const Tickets = ({
             />
           </li>
           <li>Ticket ID</li>
-          <li>AWB Number</li>
-          <li>Sub Category</li>
-          <li>Status</li>
-          <li>Last Updated</li>
-          <li>Est. Resolution Date</li>
-          <li>Resolution Date</li>
-          <li>Progress</li>
-          <li className="end">Actions</li>
+          <li className="pl-1">Sub Category</li>
+          <li className="pl-2">AWB Number</li>
+          <li className="pl-3">Status</li>
+          <li className="pl-4">Last Updated</li>
+          <li className="pl-5">Est. Resolution Date</li>
+          <li className="pl-6">Resolution Date</li>
+          <li className="pl-7">Progress</li>
+          <li className="end pl-16">Actions</li>
         </ul>
       </div>
 
