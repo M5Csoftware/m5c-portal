@@ -39,6 +39,7 @@ const AwbInput = ({ onClose, setIsQuickActionActive, shipmentCount = 0, alwaysSh
                             width={128}
                             height={128}
                             className="w-32 h-32 object-contain"
+                            priority={true}
                         />
                     </div>
 

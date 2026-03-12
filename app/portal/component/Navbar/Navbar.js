@@ -633,6 +633,7 @@ const Navbar = () => {
               height={18}
               src="/quick_action.svg"
               alt="Quick Action"
+              priority={true}
             />
             <span>Quick Action</span>
           </button>
@@ -675,7 +676,7 @@ const Navbar = () => {
           onMouseLeave={() => setIsWalletHovered(false)}
           className="cursor-pointer px-4 py-2.5 text-sm bg-[#E2E8F0] rounded-lg gap-3 flex items-center relative"
         >
-          <Image width={18} height={18} src="/wallet.svg" alt="Wallet" />
+          <Image width={18} height={18} src="/wallet.svg" alt="Wallet" priority={true} />
           <span>
             {balanceLoading ? (
               <span className="text-gray-500">Loading...</span>
@@ -765,6 +766,7 @@ const Navbar = () => {
               src="/search_action.svg"
               alt="Search"
               className="text-gray-400"
+              priority={true}
             />
             <input
               ref={searchInputRef}
@@ -808,7 +810,7 @@ const Navbar = () => {
             href="../../portal/profile"
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
-            <Image width={24} height={24} src="/profile.svg" alt="Profile" />
+            <Image width={24} height={24} src="/profile.svg" alt="Profile" priority={true} />
           </Link>
           <button
             onClick={() => setToggleLogout(true)}
@@ -821,6 +823,7 @@ const Navbar = () => {
               src="/log-out.svg"
               alt="Logout"
               className="text-[#A0AEC0]"
+              priority={true}
             />
           </button>
         </div>

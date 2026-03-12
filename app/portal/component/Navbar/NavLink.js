@@ -26,7 +26,7 @@ const NavLink = (props) => {
               className="w-6 h-6 z-[-1] rounded-lg flex justify-center items-center shadow-sm bg-white transition-transform duration-500"
               style={{ transform: isHovered && !isActive ? '' : '' }}
             />
-            <Image className='absolute top-[0.35rem] left-[0.35rem]' src={props.navLogo} alt={props.navAltTxt} width={12} height={12} />
+            <Image className='absolute top-[0.35rem] left-[0.35rem]' src={props.navLogo} alt={props.navAltTxt} width={12} height={12} priority={true} />
           </div>
           <div className={`text-[12px] font-semibold text-nowrap`}>
             {props.navTitle}

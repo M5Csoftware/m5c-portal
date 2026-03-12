@@ -107,7 +107,7 @@ const Home = () => {
           {/* Logo with animation */}
           <div
             className={`transform ${
-              showWelcome ? "animate-logoEntry" : "scale-0 rotate-180 opacity-0"
+              showWelcome ? "animate-logoEntry" : "scale-0 opacity-0"
             }`}
           >
             <div className="relative group">
@@ -213,11 +213,11 @@ const Home = () => {
         @keyframes logoEntry {
           0% {
             opacity: 0;
-            transform: scale(0) rotate(180deg);
+            transform: scale(0);
           }
           100% {
             opacity: 1;
-            transform: scale(1) rotate(0deg);
+            transform: scale(1);
           }
         }
 
