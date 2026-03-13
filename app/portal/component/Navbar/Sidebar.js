@@ -79,6 +79,7 @@ const Sidebar = () => {
                 height={22}
                 src={"/logo.svg"}
                 alt="M5C LOGISTICS"
+                priority={true}
               />
               <Image
                 className={`${sidebarHovered ? "" : "hidden"}`}
@@ -86,6 +87,7 @@ const Sidebar = () => {
                 height={16}
                 src={"/logoTxt.svg"}
                 alt="M5C LOGISTICS"
+                priority={true}
               />
             </div>
           </Link>
@@ -326,6 +328,7 @@ const LogoutButton = (props) => {
               alt={props.navAltTxt}
               width={12}
               height={12}
+              priority={true}
             />
           </div>
           <div className="text-[12px] font-semibold">{props.navTitle}</div>

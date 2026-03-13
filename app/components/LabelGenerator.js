@@ -1,8 +1,5 @@
 "use client";
 import React, { useRef, useEffect, forwardRef, useImperativeHandle } from "react";
-import { jsPDF } from "jspdf";
-import JsBarcode from "jsbarcode";
-import html2canvas from "html2canvas";
 
 const mockData = {
   date: "14/11/2023",
@@ -42,19 +39,23 @@ const ShippingLabelGenerator = forwardRef(({ labelData, onDownloadComplete, isVi
 
   // Generate Barcode
   useEffect(() => {
-    if (barcodeCanvasRef.current && data?.trackingNumber) {
-      try {
-        JsBarcode(barcodeCanvasRef.current, data.trackingNumber, {
-          format: "CODE128",
-          lineColor: "#000",
-          width: 2,
-          height: 50,
-          displayValue: false, // Hide text under barcode
-        });
-      } catch (error) {
-        console.error("Error generating barcode:", error);
+    const generateBarcode = async () => {
+      if (barcodeCanvasRef.current && data?.trackingNumber) {
+        try {
+          const { default: JsBarcode } = await import("jsbarcode");
+          JsBarcode(barcodeCanvasRef.current, data.trackingNumber, {
+            format: "CODE128",
+            lineColor: "#000",
+            width: 2,
+            height: 50,
+            displayValue: false, // Hide text under barcode
+          });
+        } catch (error) {
+          console.error("Error generating barcode:", error);
+        }
       }
-    }
+    };
+    generateBarcode();
   }, [data]);
 
   // Handle PDF Download
@@ -65,8 +66,14 @@ const ShippingLabelGenerator = forwardRef(({ labelData, onDownloadComplete, isVi
         throw new Error("Label element not found");
       }
 
+      // Dynamic imports
+      const [html2canvas, { jsPDF }] = await Promise.all([
+        import("html2canvas"),
+        import("jspdf")
+      ]);
+
       // Convert HTML to canvas
-      const canvas = await html2canvas(element, {
+      const canvas = await html2canvas.default(element, {
         scale: 2,
         useCORS: true,
         allowTaint: true,

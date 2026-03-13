@@ -11,7 +11,6 @@ import { useSession } from "next-auth/react";
 import axios from "axios";
 import { GlobalContext } from "../GlobalContext";
 import { downloadInvoicePDF } from "./InvoicePDFDownloader";
-import * as XLSX from "xlsx";
 
 const Report = () => {
   const { server } = useContext(GlobalContext);
@@ -517,7 +516,10 @@ const Report = () => {
   };
 
   // Download All functionality - Only for Sale Report and Sale Summary Report
-  const handleDownloadAll = () => {
+  const handleDownloadAll = async () => {
+    // Dynamic import for XLSX
+    const XLSX = await import("xlsx");
+
     // Only work for Sale Report (index 0) and Sale Summary Report (index 1)
     if (selectedLi !== 0 && selectedLi !== 1) {
       return;

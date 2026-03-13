@@ -60,7 +60,7 @@ const NotificationModal = () => {
 
     const interval = setInterval(() => {
       fetchUnreadCount();
-    }, 10000);
+    }, 600000); // 10 minutes
 
     return () => clearInterval(interval);
   }, [session?.user?.accountCode]);
@@ -148,15 +148,6 @@ const NotificationModal = () => {
     setShowFullPage(false);
   };
 
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const interval = setInterval(() => {
-      fetchRecentNotifications();
-    }, 5000);
-
-    return () => clearInterval(interval);
-  }, [isOpen]);
 
   // sort unread first
   const unread = notifications.filter((n) => !n.isRead);

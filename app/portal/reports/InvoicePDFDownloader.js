@@ -1,7 +1,4 @@
 import React, { useRef, useState, useEffect } from "react";
-import html2canvas from "html2canvas";
-import jsPDF from "jspdf";
-import QRCode from "qrcode";
 
 // Simple Invoice Template
 const InvoiceTemplate = ({ invoiceData, qrImage }) => {
@@ -501,6 +498,13 @@ export const downloadInvoicePDF = async (server, invoiceNumber) => {
 
     console.log("✅ Invoice data fetched successfully");
 
+    // Dynamic imports
+    const [html2canvas, { jsPDF }, QRCode] = await Promise.all([
+      import("html2canvas"),
+      import("jspdf"),
+      import("qrcode")
+    ]);
+
     // Generate QR Code if available
     let qrImage = null;
     if (invoiceData?.qrCodeData?.[0]?.qrCode) {
@@ -572,7 +576,7 @@ export const downloadInvoicePDF = async (server, invoiceNumber) => {
 
     // Render page 1
     console.log("📸 Capturing page 1...");
-    const canvas1 = await html2canvas(page1Container, canvasOptions);
+    const canvas1 = await html2canvas.default(page1Container, canvasOptions);
     const img1 = canvas1.toDataURL("image/jpeg", 0.92);
     const img1Height = (canvas1.height * pdfWidth) / canvas1.width;
     pdf.addImage(img1, "JPEG", 0, 0, pdfWidth, img1Height, undefined, 'FAST');
@@ -680,7 +684,7 @@ export const downloadInvoicePDF = async (server, invoiceNumber) => {
       });
 
       pdf.addPage();
-      const canvas2 = await html2canvas(page2Container, canvasOptions);
+      const canvas2 = await html2canvas.default(page2Container, canvasOptions);
       const img2 = canvas2.toDataURL("image/jpeg", 0.92);
       const img2Height = (canvas2.height * pdfWidth) / canvas2.width;
       pdf.addImage(img2, "JPEG", 0, 0, pdfWidth, img2Height, undefined, 'FAST');

@@ -5,20 +5,26 @@ import "./style.css";
 import axios from "axios";
 import { GlobalContext } from "../GlobalContext";
 import { useSession } from "next-auth/react";
-import * as XLSX from "xlsx";
+import { useDebounce } from "../../utils/hooks";
+import { shipmentCache, getCacheKey } from "../../utils/cache";
 
 const Shipments = ({
   setTotalShipments,
-  searchTerm,
+  searchTerm: propSearchTerm, // Rename prop to avoid conflict with state
   onDownloadSetup,
   onSelectedCountChange,
   dateRange,
 }) => {
   const [shipmentsData, setShipmentsData] = useState([]);
   const [selectedShipments, setSelectedShipments] = useState([]);
+  const [searchTerm, setSearchTerm] = useState(""); // Local state for search term
+  const debouncedSearchTerm = useDebounce(searchTerm, 300); // Debounced search term
+
+  // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(15);
   const [isLoading, setIsLoading] = useState(false);
+  const [serverTotalCount, setServerTotalCount] = useState(0);
   const { setAccountCode, setSelectedAwbs, server, selectedLi, filters } =
     useContext(GlobalContext);
   const { data: session } = useSession();
@@ -27,11 +33,27 @@ const Shipments = ({
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
 
+  // Update local searchTerm state when propSearchTerm changes
+  useEffect(() => {
+    setSearchTerm(propSearchTerm);
+  }, [propSearchTerm]);
+
   // Fetch shipments based on selected tab and date range
   useEffect(() => {
     setAccountCode(session?.user?.accountCode);
 
     const fetchShipments = async () => {
+      // optimization: Use global cache if we are on "All" tab and have data
+      const cacheKey = getCacheKey('get-shipments', { accountCode: session?.user?.accountCode });
+      const cachedShipments = shipmentCache.get(cacheKey);
+
+      if (selectedLi === 0 && cachedShipments && cachedShipments.length > 0) {
+        setShipmentsData(cachedShipments);
+        setTotalShipments(cachedShipments.length);
+        setIsLoading(false);
+        return;
+      }
+
       setIsLoading(true);
       try {
         let url;
@@ -71,6 +93,12 @@ const Shipments = ({
         // For tabs that use the getAllShipments endpoint
         if ([0, 1, 5, 6, 7].includes(selectedLi)) {
           url = `${server}/portal/get-delivered-shipments?accountCode=${session?.user?.accountCode}&type=${type}`;
+          
+          // ADD PAGINATION AND SEARCH
+          url += `&page=${currentPage}&limit=${itemsPerPage}`;
+          if (debouncedSearchTerm) {
+            url += `&search=${encodeURIComponent(debouncedSearchTerm)}`;
+          }
 
           // Add date range for applicable tabs (not for Latest tab)
           if (selectedLi !== 1) {
@@ -85,12 +113,19 @@ const Shipments = ({
 
           const shipments = response.data.shipments || [];
           setShipmentsData(shipments);
+          setServerTotalCount(response.data.total || shipments.length);
           setTotalShipments(response.data.total || shipments.length);
-          console.log(`${type} shipments:`, shipments.length);
+          console.log(`${type} shipments:Found ${response.data.total}, returning ${shipments.length}`);
         }
         // For Ready to Ship and Manifest tabs (use regular get-shipments)
         else {
           url = `${server}/portal/get-shipments?accountCode=${session?.user?.accountCode}`;
+          
+          // ADD PAGINATION AND SEARCH
+          url += `&page=${currentPage}&limit=${itemsPerPage}`;
+          if (debouncedSearchTerm) {
+            url += `&search=${encodeURIComponent(debouncedSearchTerm)}`;
+          }
 
           // Add date range filter
           const startDate = dateRange?.[0]?.startDate?.toISOString();
@@ -104,18 +139,26 @@ const Shipments = ({
           let shipments = response.data.shipments || response.data.shipment || [];
           shipments = Array.isArray(shipments) ? shipments : [shipments];
 
-          // Additional filtering for specific tabs
-          if (selectedLi === 2) { // Ready to Ship
-            // status check removed as per new requirement
-            shipments = shipments.filter(s => s.basicAmt > 0 && s.status !== "Hold" && !s.manifestNo);
-          } else if (selectedLi === 3) { // Manifest
-            shipments = shipments.filter(s => s.manifestNo);
-          } else if (selectedLi === 4) { // In Transit
-            shipments = shipments.filter(s => s.manifestNo && s.status !== "Delivered" && s.status !== "RTO" && s.status !== "Hold");
-          }
+          // If backend provided pagination metadata, use it
+          if (response.data.pagination) {
+            setShipmentsData(shipments);
+            setServerTotalCount(response.data.pagination.totalCount);
+            setTotalShipments(response.data.pagination.totalCount);
+          } else {
+            // Fallback for non-paginated (Original behavior)
+            // Additional filtering for specific tabs
+            if (selectedLi === 2) { // Ready to Ship
+              shipments = shipments.filter(s => s.basicAmt > 0 && s.status !== "Hold" && !s.manifestNo);
+            } else if (selectedLi === 3) { // Manifest
+              shipments = shipments.filter(s => s.manifestNo);
+            } else if (selectedLi === 4) { // In Transit
+              shipments = shipments.filter(s => s.manifestNo && s.status !== "Delivered" && s.status !== "RTO" && s.status !== "Hold");
+            }
 
-          setShipmentsData(shipments);
-          setTotalShipments(shipments.length);
+            setShipmentsData(shipments);
+            setTotalShipments(shipments.length);
+            setServerTotalCount(shipments.length);
+          }
           console.log(`${type} shipments:`, shipments.length);
         }
       } catch (error) {
@@ -137,6 +180,9 @@ const Shipments = ({
     setTotalShipments,
     selectedLi,
     dateRange,
+    currentPage,
+    itemsPerPage,
+    debouncedSearchTerm
   ]);
 
   // Search and filter logic
@@ -176,14 +222,14 @@ const Shipments = ({
 
       // 2. Search filtering
       const searchMatch =
-        searchTerm === "" ||
-        shipment.awbNo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        debouncedSearchTerm === "" ||
+        shipment.awbNo?.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
         shipment.receiverFullName
           ?.toLowerCase()
-          .includes(searchTerm.toLowerCase()) ||
-        shipment.receiverName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        shipment.shipperFullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        shipment.shipperName?.toLowerCase().includes(searchTerm.toLowerCase());
+          .includes(debouncedSearchTerm.toLowerCase()) ||
+        shipment.receiverName?.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+        shipment.shipperFullName?.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+        shipment.shipperName?.toLowerCase().includes(debouncedSearchTerm.toLowerCase());
 
       if (!searchMatch) return false;
 
@@ -304,7 +350,10 @@ const Shipments = ({
   };
 
   // Download functionality
-  const downloadExcel = () => {
+  const downloadExcel = async () => {
+    // Dynamic import for XLSX
+    const XLSX = await import("xlsx");
+
     // Determine which shipments to download
     const shipmentsToDownload =
       selectedShipments.length > 0
@@ -501,7 +550,7 @@ const Shipments = ({
         )}
       </div>
 
-      {filteredShipments.length > 0 && (
+      {(serverTotalCount > 0 || filteredShipments.length > 0) && (
         <div
           style={{ boxShadow: "0 0 10px 1px rgba(0, 0, 0, 0.1)" }}
           className="shadow-md flex sticky bottom-2 left-0 right-0 justify-between items-center my-4 text-[#A0AEC0] px-4 py-1 text-sm rounded-lg bg-white"
@@ -524,29 +573,28 @@ const Shipments = ({
               <option value="100">100</option>
             </select>
             <span className="ml-4 text-sm text-gray-600">
-              Showing {filteredShipments.length > 0 ? indexOfFirstItem + 1 : 0}-
-              {Math.min(indexOfLastItem, filteredShipments.length)} of{" "}
-              {filteredShipments.length} shipments
+              Showing {indexOfFirstItem + 1}-
+              {Math.min(indexOfLastItem, serverTotalCount || filteredShipments.length)} of{" "}
+              {serverTotalCount || filteredShipments.length} shipments
             </span>
           </div>
           <div className="flex items-center">
             <button
               className="text-[#A0AEC0] px-4 py-2 rounded mr-2 disabled:opacity-50 hover:text-gray-700 transition-colors"
               onClick={handlePrevPage}
-              disabled={currentPage === 1 || filteredShipments.length === 0}
+              disabled={currentPage === 1}
             >
               Previous
             </button>
             <span className="text-gray-600">
-              Page {currentPage} of {Math.ceil(filteredShipments.length / itemsPerPage)}
+              Page {currentPage} of {Math.ceil((serverTotalCount || filteredShipments.length) / itemsPerPage)}
             </span>
             <button
               className="text-[#A0AEC0] px-4 py-2 rounded ml-2 disabled:opacity-50 hover:text-gray-700 transition-colors"
               onClick={handleNextPage}
               disabled={
                 currentPage ===
-                Math.ceil(filteredShipments.length / itemsPerPage) ||
-                filteredShipments.length === 0
+                Math.ceil((serverTotalCount || filteredShipments.length) / itemsPerPage)
               }
             >
               Next
