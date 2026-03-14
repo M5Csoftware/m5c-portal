@@ -4,7 +4,8 @@ import { TableWithSorting } from "@/app/components/Table";
 import Image from "next/image";
 import { useForm } from "react-hook-form";
 import { useContext, useEffect, useRef, useState } from "react";
-import * as XLSX from "xlsx";
+ // XLSX import will be done dynamically
+// import * as XLSX from "xlsx";
 import axios from "axios";
 import { GlobalContext } from "../GlobalContext";
 import { useSession } from "next-auth/react";
@@ -1011,6 +1012,7 @@ export default function BulkUploadPage() {
 
     reader.onload = async (evt) => {
       const data = new Uint8Array(evt.target.result);
+      const XLSX = await import("xlsx");
       const workbook = XLSX.read(data, { type: "array" });
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];

@@ -2,7 +2,11 @@
 import React, { useEffect, useState, useContext, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import ShipmentOverviewDashboard from "./dashboard/ShipmentOverviewDashboard";
+import dynamic from "next/dynamic";
+const ShipmentOverviewDashboard = dynamic(
+  () => import("./dashboard/ShipmentOverviewDashboard"),
+  { ssr: false }
+);
 import RecentShipments from "./dashboard/RecentShipments";
 import { useSession } from "next-auth/react";
 import AwbInput from "../components/AwbInput";
