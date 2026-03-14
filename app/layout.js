@@ -12,7 +12,12 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <head>
-        <link rel="stylesheet" href="https://use.typekit.net/dzm2myz.css" />
+        <link rel="preconnect" href="https://use.typekit.net" crossOrigin="anonymous" />
+        <link rel="preload" as="style" href="https://use.typekit.net/dzm2myz.css" />
+        <link rel="stylesheet" href="https://use.typekit.net/dzm2myz.css" media="print" onLoad="this.media='all'" />
+        <noscript>
+          <link rel="stylesheet" href="https://use.typekit.net/dzm2myz.css" />
+        </noscript>
       </head>
       <body className="font-lato">
         <Providers>

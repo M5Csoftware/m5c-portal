@@ -3,7 +3,8 @@ import { Download, Trash2, Package } from "lucide-react";
 import { useContext, useEffect, useRef, useState } from "react";
 import axios from "axios";
 import Image from "next/image";
-import jsPDF from "jspdf";
+// jsPDF will be imported dynamically
+// import jsPDF from "jspdf";
 import { GlobalContext } from "../../GlobalContext";
 import { useSession } from "next-auth/react";
 import Dispatch, { DisptchedSuccessModal } from "../../component/Dispatch";
@@ -532,7 +533,8 @@ const ManifestOverview = ({ params }) => {
   };
 
   // Optimized downloadPDF function to fit 15 shipments per page
-  const downloadPDF = (manifestData) => {
+  const downloadPDF = async (manifestData) => {
+    const { jsPDF } = await import("jspdf");
     const pdf = new jsPDF();
     const pageWidth = pdf.internal.pageSize.width;
     const margin = 10;

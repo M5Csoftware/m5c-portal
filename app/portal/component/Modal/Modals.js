@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import React from "react";
-import ExcelJS from "exceljs";
+// ExcelJS imported dynamically
 
 export const Modal = ({
   isOpen,
