@@ -78,12 +78,12 @@ const Home = () => {
     <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200 overflow-hidden relative">
       {/* Background animated circles */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-[#EA2147] opacity-5 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[#EA2147] opacity-5 rounded-full blur-3xl animate-pulse delay-1000"></div>
+        <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-[#EA2147] opacity-5 rounded-full blur-3xl animate-customPulse"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[#EA2147] opacity-5 rounded-full blur-3xl animate-customPulse delay-1000"></div>
       </div>
 
       {/* Audio element */}
-      <audio ref={audioRef} preload="auto">
+      <audio ref={audioRef} preload="none">
         <source src="/windows_12.mp3" type="audio/mpeg" />
         Your browser does not support the audio element.
       </audio>
@@ -107,7 +107,7 @@ const Home = () => {
           {/* Logo with animation */}
           <div
             className={`transform ${
-              showWelcome ? "animate-logoEntry" : "scale-0 rotate-180 opacity-0"
+              showWelcome ? "animate-logoEntry" : "scale-0 opacity-0"
             }`}
           >
             <div className="relative group">
@@ -117,6 +117,7 @@ const Home = () => {
                 alt="M5C Logistics Logo"
                 height={100}
                 width={100}
+                priority
                 className="relative drop-shadow-2xl"
               />
             </div>
@@ -199,67 +200,6 @@ const Home = () => {
       )}
 
       <style jsx>{`
-        @keyframes fadeInUp {
-          0% {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          100% {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        @keyframes logoEntry {
-          0% {
-            opacity: 0;
-            transform: scale(0) rotate(180deg);
-          }
-          100% {
-            opacity: 1;
-            transform: scale(1) rotate(0deg);
-          }
-        }
-
-        @keyframes scaleX {
-          0% {
-            opacity: 0;
-            transform: scaleX(0);
-          }
-          100% {
-            opacity: 1;
-            transform: scaleX(1);
-          }
-        }
-
-        @keyframes pulse {
-          0%,
-          100% {
-            transform: scale(1);
-            opacity: 0.05;
-          }
-          50% {
-            transform: scale(1.1);
-            opacity: 0.08;
-          }
-        }
-
-        .animate-fadeInUp {
-          animation: fadeInUp 1s ease-out forwards;
-        }
-
-        .animate-logoEntry {
-          animation: logoEntry 1s ease-out forwards;
-        }
-
-        .animate-scaleX {
-          animation: scaleX 1s ease-out forwards;
-        }
-
-        .animate-pulse {
-          animation: pulse 3s ease-in-out infinite;
-        }
-
         .delay-500 {
           animation-delay: 0.5s;
         }

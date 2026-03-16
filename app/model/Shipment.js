@@ -119,5 +119,8 @@ const ShipmentSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+ShipmentSchema.index({ accountCode: 1, date: -1 });
+ShipmentSchema.index({ manifestNo: 1 });
+
 export default mongoose.models.Shipment ||
   mongoose.model("Shipment", ShipmentSchema);

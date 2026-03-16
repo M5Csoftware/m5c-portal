@@ -12,6 +12,7 @@ import {
 } from "recharts";
 import { GlobalContext } from "../GlobalContext";
 import { useSession } from "next-auth/react";
+import { analyticsCache, getCacheKey } from "../../utils/cache";
 
 const ShipmentOverviewDashboard = ({ duration }) => {
   const { server, accountCode } = useContext(GlobalContext);
@@ -67,6 +68,17 @@ const ShipmentOverviewDashboard = ({ duration }) => {
         return;
       }
 
+      const cacheKey = getCacheKey('shipment-analytics', { accountCode: finalAccountCode, duration: duration });
+      const cachedData = analyticsCache.get(cacheKey);
+
+      // Check cache first
+      if (cachedData) {
+        setChartData(cachedData.data || []);
+        setCountries(cachedData.countries || []);
+        setLoading(false);
+        return;
+      }
+
       try {
         setLoading(true);
         setError(null);
@@ -84,6 +96,8 @@ const ShipmentOverviewDashboard = ({ duration }) => {
         if (result.success) {
           setChartData(result.data || []);
           setCountries(result.countries || []);
+          // Update cache
+          analyticsCache.set(cacheKey, result);
         } else {
           setError("No data available");
           setChartData([]);

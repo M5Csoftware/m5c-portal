@@ -4,6 +4,7 @@ import Image from "next/image";
 import axios from "axios";
 import { GlobalContext } from "../GlobalContext";
 import { useSession } from "next-auth/react";
+import { trackingCache, getCacheKey } from "../../utils/cache";
 
 // Map Component
 const ShipmentMap = ({ origin, destination }) => {
@@ -529,13 +530,26 @@ function TrackShipment({ awbNumber }) {
     if (!awbNumber) return;
 
     const fetchShipmentData = async () => {
+      const detailsKey = getCacheKey('get-shipments', { awbNo: awbNumber });
+      const eventsKey = getCacheKey('event-activity', { awbNo: awbNumber });
+
+      const cachedDetails = trackingCache.get(detailsKey);
+      const cachedEvents = trackingCache.get(eventsKey);
+
+      // If we have both, and we're not forcefully refreshing (though no force flag here)
+      // we could use them. But wait, if we use cached data we might miss updates.
+      // Let's only use cache if it was fetched very recently.
+      
       setLoading(true);
       try {
-        const shipmentDetailsResponse = await axios.get(
-          `${server}/portal/get-shipments?awbNo=${awbNumber}`
-        );
-
-        const shipmentDetails = shipmentDetailsResponse?.data.shipment || {};
+        let shipmentDetails;
+        if (cachedDetails) {
+          shipmentDetails = cachedDetails;
+        } else {
+          const res = await axios.get(`${server}/portal/get-shipments?awbNo=${awbNumber}`);
+          shipmentDetails = res?.data.shipment || {};
+          trackingCache.set(detailsKey, shipmentDetails);
+        }
 
         const sessionAccountCode = session?.user?.accountCode;
         const shipmentAccountCode = shipmentDetails?.accountCode;
@@ -551,11 +565,15 @@ function TrackShipment({ awbNumber }) {
           return;
         }
 
-        const eventsResponse = await axios.get(
-          `${server}/event-activity?awbNo=${awbNumber}`
-        );
+        let rawData;
+        if (cachedEvents) {
+          rawData = cachedEvents;
+        } else {
+          const res = await axios.get(`${server}/event-activity?awbNo=${awbNumber}`);
+          rawData = res.data;
+          trackingCache.set(eventsKey, rawData);
+        }
 
-        const rawData = eventsResponse.data;
         let events = [];
 
         if (Array.isArray(rawData)) {

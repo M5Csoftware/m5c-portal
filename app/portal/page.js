@@ -2,18 +2,27 @@
 import React, { useEffect, useState, useContext, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import ShipmentOverviewDashboard from "./dashboard/ShipmentOverviewDashboard";
+import dynamic from "next/dynamic";
+const ShipmentOverviewDashboard = dynamic(
+  () => import("./dashboard/ShipmentOverviewDashboard"),
+  { ssr: false }
+);
 import RecentShipments from "./dashboard/RecentShipments";
 import { useSession } from "next-auth/react";
 import AwbInput from "../components/AwbInput";
 import { GlobalContext } from "./GlobalContext";
 import axios from "axios";
 import { exportShipmentsToExcel } from "../utils/excelExport";
+import { analyticsCache, shipmentCache, getCacheKey } from "../utils/cache";
 
 const Page = () => {
   const [activeDuration, setActiveDuration] = useState("12 Months");
   const { data: session } = useSession();
-  const { server, accountCode } = useContext(GlobalContext);
+  const [shipmentsData, setShipmentsData] = useState([]);
+  const {
+    server,
+    accountCode,
+  } = useContext(GlobalContext);
   const [isQuickActionActive, setIsQuickActionActive] = useState(false);
   const [shipmentCount, setShipmentCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -21,7 +30,6 @@ const Page = () => {
   const [holdShipmentsData, setHoldShipmentsData] = useState([]);
   const [holdLoading, setHoldLoading] = useState(true);
   const [currentReasonIndex, setCurrentReasonIndex] = useState(0);
-  const [shipmentsData, setShipmentsData] = useState([]);
 
   // State variables for l2 values in StatTab components
   const [currency, setCurrency] = useState("INR");
@@ -54,69 +62,63 @@ const Page = () => {
 
   // Replace the existing useEffect for fetching shipment count with this:
   useEffect(() => {
-    const fetchShipmentData = async () => {
+    const fetchDashboardData = async () => {
       if (!finalAccountCode || !server) {
         setLoading(false);
         return;
       }
 
+      const statsKey = getCacheKey('shipment-stats', { accountCode: finalAccountCode });
+      const analyticsKey = getCacheKey('shipment-analytics', { accountCode: finalAccountCode, duration: activeDuration });
+
+      const cachedStats = analyticsCache.get(statsKey);
+      const cachedAnalytics = analyticsCache.get(analyticsKey);
+
+      // If we have cached stats, use them
+      if (cachedStats && !isRefreshingRef.current) {
+        setShipmentCount(cachedStats.totalCount);
+        setTodaysRevenue(cachedStats.todaysRevenue);
+        
+        // Use cached analytics if available
+        if (cachedAnalytics && cachedAnalytics.stats) {
+          setAnalyticsStats(cachedAnalytics.stats);
+          setLoading(false);
+          return;
+        }
+      }
+
       try {
         setLoading(true);
 
-        // Fetch basic shipment count
-        const shipmentResponse = await fetch(
-          `${server}/portal/get-shipments?accountCode=${finalAccountCode}`,
-        );
+        const [statsRes, analyticsRes] = await Promise.all([
+          fetch(`${server}/portal/shipment-stats?accountCode=${finalAccountCode}`),
+          fetch(`${server}/portal/shipment-analytics?accountCode=${finalAccountCode}&duration=${activeDuration}`)
+        ]);
 
-        if (shipmentResponse.ok) {
-          const data = await shipmentResponse.json();
-          if (data.shipments && Array.isArray(data.shipments)) {
-            setShipmentCount(data.shipments.length);
-            setShipmentsData(data.shipments);
-
-            // Calculate Today's Revenue
-            const today = new Date();
-            const revenue = data.shipments.reduce((acc, shipment) => {
-              const shipmentDate = new Date(
-                shipment.createdAt || shipment.date || shipment.bookingDate,
-              );
-              if (
-                shipmentDate.getDate() === today.getDate() &&
-                shipmentDate.getMonth() === today.getMonth() &&
-                shipmentDate.getFullYear() === today.getFullYear()
-              ) {
-                return (
-                  acc +
-                  (Number(shipment.amount) || Number(shipment.totalAmt) || 0)
-                );
-              }
-              return acc;
-            }, 0);
-            setTodaysRevenue(revenue);
+        if (statsRes.ok) {
+          const statsData = await statsRes.json();
+          if (statsData.success && statsData.stats) {
+            setShipmentCount(statsData.stats.totalCount);
+            setTodaysRevenue(statsData.stats.todaysRevenue);
+            analyticsCache.set(statsKey, statsData.stats);
           }
         }
 
-        // Fetch analytics stats based on current duration
-        const analyticsResponse = await fetch(
-          `${server}/portal/shipment-analytics?accountCode=${finalAccountCode}&duration=${activeDuration}`,
-        );
-
-        if (analyticsResponse.ok) {
-          const analyticsData = await analyticsResponse.json();
+        if (analyticsRes.ok) {
+          const analyticsData = await analyticsRes.json();
           if (analyticsData.success && analyticsData.stats) {
             setAnalyticsStats(analyticsData.stats);
+            analyticsCache.set(analyticsKey, analyticsData);
           }
         }
       } catch (error) {
-        console.error("Error fetching shipment data:", error);
-        setShipmentCount(0);
-        setAnalyticsStats({ total: 0, delivered: 0, pending: 0, rto: 0 });
+        console.error("Error fetching dashboard data:", error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchShipmentData();
+    fetchDashboardData();
   }, [finalAccountCode, server, activeDuration]);
 
   // Fetch balance function
@@ -205,17 +207,28 @@ const Page = () => {
   };
 
   const handleExportExcel = async () => {
-    if (!shipmentsData || shipmentsData.length === 0) {
-      alert("No shipment data available to export");
-      return;
-    }
-
     try {
-      // Filter shipmentsData if needed based on activeDuration?
-      // The user wants "each sector details", usually meaning a full report.
-      // We'll export the current fetched shipmentsData.
+      let dataToExport = shipmentsData;
+
+      // If we don't have data in state, try to fetch it on demand
+      if (!dataToExport || dataToExport.length === 0) {
+        console.log("Fetching data on-demand for Excel export...");
+        const res = await fetch(`${server}/portal/get-shipments?accountCode=${finalAccountCode}`);
+        if (res.ok) {
+          const data = await res.json();
+          dataToExport = data.shipments || [];
+          // Optionally update state so subsequent exports are faster
+          setShipmentsData(dataToExport);
+        }
+      }
+
+      if (!dataToExport || dataToExport.length === 0) {
+        alert("No shipment data available to export");
+        return;
+      }
+
       await exportShipmentsToExcel(
-        shipmentsData,
+        dataToExport,
         `Shipment_Overview_${activeDuration.replace(" ", "_")}.xlsx`,
       );
     } catch (error) {
@@ -566,7 +579,7 @@ const StatTab = (props) => {
         <span>{props.l2}</span>
       </div>
       <div className="rounded-lg bg-[var(--primary-color)] p-2">
-        <Image width={20} height={20} src={props.logo} alt={props.l1} />
+        <Image width={20} height={20} src={props.logo} alt={props.l1} priority={true} />
       </div>
     </div>
   );
