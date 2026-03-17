@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 const CustomerAccountSchema = new mongoose.Schema(
   {
     accountType: { type: String, required: true },
-    accountCode: { type: String, default: "", unique: true },
+    accountCode: { type: String, default: "", unique: true, index: true },
     name: { type: String, default: "" },
     addressLine1: { type: String, default: "" },
     addressLine2: { type: String, default: "" },

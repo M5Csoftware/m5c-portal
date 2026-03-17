@@ -10,6 +10,7 @@ const UserSchema = new mongoose.Schema({
     default: null,
     unique: true,
     sparse: true,
+    index: true,
   },
   fullName: { type: String, required: true },
   status: {
