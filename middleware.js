@@ -1,7 +1,9 @@
 // middleware.js
 import { NextResponse } from 'next/server';
 
-// In-memory store for rate limiting (Reset on server restart)
+// In-memory store for rate limiting (Reset on server restart/function cold start)
+// Note: In serverless environments like Vercel, this store is not shared between instances.
+// For production-grade global rate limiting, consider using Redis (e.g., Upstash).
 const rateLimitStore = new Map();
 
 // Configuration
@@ -36,18 +38,12 @@ function getRateLimit(ip, type = 'GLOBAL') {
   return { success: true, remaining: config.limit - data.count, reset: data.resetTime - now };
 }
 
-// Cleanup store periodically
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, value] of rateLimitStore.entries()) {
-    if (now > value.resetTime) {
-      rateLimitStore.delete(key);
-    }
-  }
-}, 5 * 60 * 1000);
+// Note: Removed setInterval for cleanup as it is unreliable in serverless environments.
+// Memory is reclaimed when the function instance is destroyed.
 
 export function middleware(request) {
-  const ip = request.headers.get('x-forwarded-for')?.split(',')[0] || '127.0.0.1';
+  // Use request.ip provided by Next.js if available, otherwise fallback to headers
+  const ip = request.ip || request.headers.get('x-forwarded-for')?.split(',')[0] || '127.0.0.1';
   const path = request.nextUrl.pathname;
 
   // Protect NextAuth endpoints
@@ -76,7 +72,7 @@ export function middleware(request) {
     response.headers.set('X-RateLimit-Remaining', limitCheck.remaining.toString());
     response.headers.set('X-RateLimit-Reset', Math.ceil(limitCheck.reset / 1000).toString());
     
-    // Set a cookie so the client-side can read the remaining attempts (since NextAuth hides headers)
+    // Set a cookie so the client-side can read the remaining attempts
     response.cookies.set('ratelimit_remaining', limitCheck.remaining.toString(), { maxAge: 300 });
     
     return response;
