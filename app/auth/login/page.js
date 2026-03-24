@@ -96,7 +96,17 @@ export default function LoginPage() {
       if (!result.error) {
         router.push("/portal");
       } else {
-        showNotification("error", result.error || "Login failed");
+        // Read remaining attempts from cookie set by middleware
+        const cookies = document.cookie.split(';');
+        const remainingCookie = cookies.find(c => c.trim().startsWith('ratelimit_remaining='));
+        const remaining = remainingCookie ? remainingCookie.split('=')[1] : null;
+
+        let msg = result.error === "CredentialsSignin" ? "Invalid credentials" : result.error;
+        if (remaining !== null) {
+          msg += `. ${remaining} attempts left.`;
+        }
+        
+        showNotification("error", msg || "Login failed");
       }
     } catch (error) {
       console.error("Login error:", error);

@@ -1,7 +1,11 @@
 import { LRUCache } from 'lru-cache';
 
 /**
- * Cache configuration for different types of data
+ * Cache configuration for different types of data.
+ * 
+ * NOTE: In serverless environments (e.g., Vercel), this in-memory cache is NOT shared 
+ * across different function instances and is lost when the instance is destroyed.
+ * For persistent global caching, consider using Redis (e.g., Upstash).
  */
 const options = {
   // Analytics and Dashboard stats: 5 minutes TTL
