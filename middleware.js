@@ -9,7 +9,7 @@ const rateLimitStore = new Map();
 // Configuration
 const CONFIG = {
   GLOBAL: { limit: 100, window: 60 * 1000 }, // 100 req per minute
-  AUTH: { limit: 5, window: 5 * 60 * 1000 },    // 5 attempts per 5 minutes
+  AUTH: { limit: 20, window: 60 * 1000 },      // 20 attempts per 1 minute (relaxed from 5 per 5m)
 };
 
 function getRateLimit(ip, type = 'GLOBAL') {
