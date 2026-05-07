@@ -264,9 +264,12 @@ const NotificationModal = () => {
                       <p className="text-xs font-medium text-gray-800 mt-1">
                         {notification.description}
                       </p>
-                      <span className="text-xs tracking-wide leading-tight">
-                        {notification.message}
-                      </span>
+                      {notification.message &&
+                        notification.message !== notification.description && (
+                          <span className="text-xs tracking-wide leading-tight">
+                            {notification.message}
+                          </span>
+                        )}
                     </div>
 
                     {/* Red indicator for unread */}
